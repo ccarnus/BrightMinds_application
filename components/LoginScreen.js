@@ -62,6 +62,7 @@ const LoginScreen = ({ navigation }) => {
             value={email}
             onChangeText={setEmail}
             mode="outlined"
+            autoCapitalize="none"
           />
           <TextInput
             label="Password"
@@ -70,6 +71,7 @@ const LoginScreen = ({ navigation }) => {
             onChangeText={setPassword}
             secureTextEntry
             mode="outlined"
+            autoCapitalize="none"
           />
           <Button 
             mode="contained" 

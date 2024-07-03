@@ -6,12 +6,14 @@ import InfoIcon from '../../assets/Virtual_lab_icons/info_icon.png';
 import CompassIcon from '../../assets/Virtual_lab_icons/compass_icon.png';
 import MainIcebergIcon from '../../assets/Virtual_lab_icons/main_iceberg_icon.png';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 const VirtualLab = ({ route }) => {
   const { labId } = route.params;
   const [labData, setLabData] = useState([]);
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchLabData();
@@ -21,10 +23,22 @@ const VirtualLab = ({ route }) => {
     try {
       const response = await fetch(`http://3.17.219.54/cast/department/${labId}`);
       const data = await response.json();
-      setLabData(data);
+
+      // Fetch university logos
+      const dataWithLogos = await Promise.all(data.map(async (cast) => {
+        const universityResponse = await fetch(`http://3.17.219.54/university/by/name/${cast.university}`);
+        const universityData = await universityResponse.json();
+        return { ...cast, universityLogo: universityData.iconurl };
+      }));
+
+      setLabData(dataWithLogos);
     } catch (error) {
       console.error('Error fetching lab data:', error);
     }
+  };
+
+  const handleCastPress = (castId) => {
+    navigation.navigate('CategoryScreen', { selectedCastId: castId, category: labId });
   };
 
   return (
@@ -51,9 +65,12 @@ const VirtualLab = ({ route }) => {
           <Text style={styles.noDataText}>No data available.</Text>
         ) : (
           labData.map((cast, index) => (
-            <TouchableOpacity key={index} style={styles.castContainer}>
+            <TouchableOpacity key={index} style={styles.castContainer} onPress={() => handleCastPress(cast._id)}>
               <Image source={{ uri: cast.castimageurl }} style={styles.castImage} />
-              <Text style={styles.castTitle}>{cast.title}</Text>
+              <View style={styles.castTextContainer}>
+                <Text style={styles.castTitle}>{cast.title}</Text>
+                <Image source={{ uri: cast.universityLogo }} style={styles.universityLogo} />
+              </View>
             </TouchableOpacity>
           ))
         )}
@@ -116,20 +133,26 @@ const styles = StyleSheet.create({
     width: '90%',
     paddingHorizontal: spacing.m,
   },
-  castTitle: {
+  castTextContainer: {
     marginLeft: spacing.m,
+    flex: 1,
+  },
+  castTitle: {
     fontSize: sizes.h3,
     color: colors.darkblue,
     fontFamily: 'MontserratBold',
-    flex: 1,
-    flexWrap: 'wrap',
-    maxWidth: '80%',
   },
   castImage: {
     width: 80,
     height: 80,
     borderRadius: sizes.radius,
     resizeMode: 'cover',
+  },
+  universityLogo: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+    marginTop: spacing.xs,
   },
   noDataText: {
     fontSize: sizes.body,

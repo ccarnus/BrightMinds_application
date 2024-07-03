@@ -98,6 +98,7 @@ const SignupScreen = ({ navigation }) => {
             value={email}
             onChangeText={setEmail}
             mode="outlined"
+            autoCapitalize="none"
           />
           <TextInput
             label="Password"
@@ -106,6 +107,7 @@ const SignupScreen = ({ navigation }) => {
             onChangeText={setPassword}
             secureTextEntry
             mode="outlined"
+            autoCapitalize="none"
           />
           <TextInput
             label="Username"
@@ -113,6 +115,7 @@ const SignupScreen = ({ navigation }) => {
             value={username}
             onChangeText={setUsername}
             mode="outlined"
+            autoCapitalize="none"
           />
           <Picker
             selectedValue={role}

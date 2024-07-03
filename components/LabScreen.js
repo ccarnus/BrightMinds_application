@@ -25,7 +25,7 @@ const departmentImages = {
   'PoliticalScience': require('../assets/Virtual_labs/PoliticalScience.png'),
   'Engineering': require('../assets/Virtual_labs/Engineering.png'),
   'MedicineandHealthSciences': require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
-  'Agricultural Sciences': require('../assets/Virtual_labs/AgriculturalSciences.png'),
+  'AgriculturalSciences': require('../assets/Virtual_labs/AgriculturalSciences.png'),
   'History': require('../assets/Virtual_labs/History.png'),
   'Philosophy': require('../assets/Virtual_labs/Philosophy.png'),
   'Linguistics': require('../assets/Virtual_labs/Linguistics.png'),
