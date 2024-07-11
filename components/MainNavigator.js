@@ -23,6 +23,8 @@ import LoginScreen from './LoginScreen';
 import SignupScreen from './SignupScreen';
 import PreferencesScreen from './PreferencesScreen';
 import CategoryScreen from './VirtualLab/CategoryScreen';
+import CastPublicationsScreen from './Track/CastPublicationsScreen';
+import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
 
 const Stack = createStackNavigator();
 
@@ -57,6 +59,8 @@ const MainNavigator = () => {
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SignupScreen" component={SignupScreen} options={{ headerShown: false, tabBarVisible: false }} />

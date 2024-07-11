@@ -16,6 +16,29 @@ const SignupScreen = ({ navigation }) => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState("");
+  const [universities, setUniversities] = useState([]);
+  const [selectedUniversity, setSelectedUniversity] = useState('');
+
+  useEffect(() => {
+    const fetchUniversities = async () => {
+      try {
+        const response = await axios.get('http://3.17.219.54/university');
+        setUniversities(response.data);
+      } catch (error) {
+        console.error('Error fetching universities:', error);
+      }
+    };
+
+    fetchUniversities();
+  }, []);
+
+  useEffect(() => {
+    if (email && password && username && role && profilePicture && (role === 'College Student' || selectedUniversity)) {
+      setIsButtonDisabled(false);
+    } else {
+      setIsButtonDisabled(true);
+    }
+  }, [email, password, username, role, profilePicture, selectedUniversity]);
 
   const showCustomAlert = (message) => {
     setCustomAlertMessage(message);
@@ -39,8 +62,12 @@ const SignupScreen = ({ navigation }) => {
       password,
       username,
       role,
-      score: 0
+      score: 0,
     };
+
+    if (role === 'Professor' || role === 'PhD Student' || role === 'Researcher') {
+      user.university = selectedUniversity;
+    }
 
     const formData = new FormData();
     formData.append('user', JSON.stringify(user));
@@ -48,15 +75,6 @@ const SignupScreen = ({ navigation }) => {
       uri: profilePicture.uri,
       type: 'image/jpeg',
       name: 'profile.jpg',
-    });
-
-    console.log("FormData JSON: ", {
-      user,
-      profilePicture: {
-        uri: profilePicture.uri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
-      }
     });
 
     try {
@@ -74,14 +92,6 @@ const SignupScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    if (email && password && username && role && profilePicture) {
-      setIsButtonDisabled(false);
-    } else {
-      setIsButtonDisabled(true);
-    }
-  }, [email, password, username, role, profilePicture]);
 
   return (
     <Provider>
@@ -128,6 +138,18 @@ const SignupScreen = ({ navigation }) => {
             <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
             <Picker.Item label="PhD Student" value="PhD Student" />
           </Picker>
+          {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
+            <Picker
+              selectedValue={selectedUniversity}
+              style={styles.input}
+              onValueChange={(itemValue) => setSelectedUniversity(itemValue)}
+            >
+              <Picker.Item label="Select University" value="" />
+              {universities.map((university) => (
+                <Picker.Item key={university._id} label={university.name} value={university.name} />
+              ))}
+            </Picker>
+          )}
           <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
             {profilePicture ? (
               <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />

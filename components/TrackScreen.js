@@ -22,6 +22,14 @@ const TrackScreen = () => {
     navigation.navigate('Ready');
   };
 
+  const handleNavigateToPublications = (type) => {
+    if (type === 'cast') {
+      navigation.navigate('CastPublicationsScreen');
+    } else if (type === 'article') {
+      navigation.navigate('ArticlePublicationsScreen');
+    }
+  };
+
   useFocusEffect(
     React.useCallback(() => {
       const getUserRole = async () => {
@@ -102,14 +110,14 @@ const TrackScreen = () => {
         >
           <Text style={styles.greenSectionTitle}>Publications</Text>
           <View style={styles.greenSectionContent}>
-            <View style={styles.greenSectionColumn}>
+            <TouchableOpacity style={styles.greenSectionColumn} onPress={() => handleNavigateToPublications('article')}>
               <Image source={require('../assets/Cast_screen_icons/article_logo.png')} style={styles.greenSectionIcon} />
               <Text style={styles.greenSectionText}>{articleCount}</Text>
-            </View>
-            <View style={styles.greenSectionColumn}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.greenSectionColumn} onPress={() => handleNavigateToPublications('cast')}>
               <Image source={require('../assets/Cast_screen_icons/cast_logo.png')} style={styles.greenSectionIcon} />
               <Text style={styles.greenSectionText}>{castCount}</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.greenSectionColumn}>
               <Image source={require('../assets/Cast_screen_icons/podcast_logo.png')} style={styles.greenSectionIcon} />
               <Text style={styles.greenSectionText}>0</Text>
