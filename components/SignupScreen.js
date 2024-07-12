@@ -33,7 +33,7 @@ const SignupScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (email && password && username && role && profilePicture && (role === 'College Student' || selectedUniversity)) {
+    if (email && password && username && role && profilePicture && (role === 'College Student' || role === 'Learning Enthu3siast' || selectedUniversity)) {
       setIsButtonDisabled(false);
     } else {
       setIsButtonDisabled(true);

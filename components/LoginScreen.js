@@ -24,10 +24,16 @@ const LoginScreen = ({ navigation }) => {
       const userId = response.data.userId;
       await AsyncStorage.setItem('userId', userId);
 
-      // Fetch user details to get the role
+      // Fetch user details to get the role and university
       const userDetailsResponse = await axios.get(`http://3.17.219.54/user/${userId}`);
       const userRole = userDetailsResponse.data.role;
+      const userUniversity = userDetailsResponse.data.university || '';
       await AsyncStorage.setItem('userRole', userRole);
+
+      // Save university if it exists
+      if (userUniversity) {
+        await AsyncStorage.setItem('userUniversity', userUniversity);
+      }
 
       // Check if user has preferences defined
       const userPreferencesResponse = await axios.get(`http://3.17.219.54/user/${userId}/preferences`);

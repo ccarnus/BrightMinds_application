@@ -59,6 +59,7 @@ const ProfileScreen = () => {
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userId');
     await AsyncStorage.removeItem('userRole');
+    await AsyncStorage.removeItem('userUniversity');
     setUserData(null);
     setUserPreferences([]);
     setTrackingData({ objective: '', progress: 0 });
