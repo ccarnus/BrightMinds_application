@@ -107,7 +107,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
-    padding: spacing.m,
     width: '100%'
   },
   sectionTitle: {
@@ -126,6 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: sizes.radius,
     elevation: 5,
+    marginHorizontal: spacing.m,
   },
   castImage: {
     width: 80,

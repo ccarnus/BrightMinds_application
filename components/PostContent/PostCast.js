@@ -1,29 +1,47 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, Dimensions, Modal as ModalReact} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator, Dimensions, Modal as ModalReact, FlatList } from 'react-native';
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import categories from '../../lists/categories';
-import {colors, shadow, sizes, spacing} from '../theme';
+import departments from '../../lists/departments';
+import { colors, shadow, sizes, spacing } from '../theme';
 import Slider from '@react-native-community/slider';
 import visibilityCategories from '../../lists/visibilityCategories';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const PostCast = ({navigation}) => {
+const PostCast = ({ navigation }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
+  const [department, setDepartment] = useState('');
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [thumbnailUri, setThumbnailUri] = useState(null);
   const [visibility, setVisibility] = useState(1);
   const [isModalVisible, setModalVisible] = useState(false);
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [isDepartmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState("");
+  const [userId, setUserId] = useState(null);
+  const [university, setUniversity] = useState('GeorgiaTech');
 
   const showCustomAlert = (message) => {
     setCustomAlertMessage(message);
     setCustomAlertVisible(true);
-  };  
+  };
+
+  useEffect(() => {
+    const fetchUserIdAndUniversity = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      const storedUniversity = await AsyncStorage.getItem('userUniversity');
+      setUserId(storedUserId);
+      if (storedUniversity) {
+        setUniversity(storedUniversity);
+      }
+    };
+    fetchUserIdAndUniversity();
+  }, []);
 
   const takeNewVideo = async () => {
     try {
@@ -69,31 +87,31 @@ const PostCast = ({navigation}) => {
 
   const sendCast = async () => {
     let missingFields = [];
-  
+
     if (!title.trim()) missingFields.push("Title");
     if (!description.trim()) missingFields.push("Description");
     if (!category.trim()) missingFields.push("Category");
+    if (!department.trim()) missingFields.push("Department");
     if (!video) missingFields.push("Video");
-  
+
     if (missingFields.length > 0) {
       let errorMessage = 'Please fill in all the required fields:\n\n ' + missingFields.join('\n\n ');
-  
-      showCustomAlert(errorMessage);('Missing Information', errorMessage);
+
+      showCustomAlert(errorMessage);
       return;
     }
-  
+
     setLoading(true);
     const castData = {
       title,
       description,
-      department: 'Engineering',
+      department,
       category,
-      university: 'GeorgiaTech',
-      category: 'Breakthrough',
-      brightmindid: '101',
+      university,
+      brightmindid: userId,
       visibility,
     };
-  
+
     const formData = new FormData();
     formData.append('cast', JSON.stringify(castData));
     formData.append('video', {
@@ -101,7 +119,7 @@ const PostCast = ({navigation}) => {
       type: 'video/mp4',
       name: 'video.mp4',
     });
-  
+
     try {
       const response = await fetch('http://3.17.219.54/cast', {
         method: 'POST',
@@ -110,7 +128,7 @@ const PostCast = ({navigation}) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-  
+
       if (response.ok) {
         Alert.alert('Success', 'Cast posted successfully!');
         navigation.navigate('Cast');
@@ -125,7 +143,17 @@ const PostCast = ({navigation}) => {
       setLoading(false);
     }
   };
-  
+
+  const renderDepartmentItem = ({ item }) => (
+    <Button
+      onPress={() => { setDepartment(item.name); setDepartmentModalVisible(false); }}
+      style={styles.modalItem}
+      labelStyle={styles.modalItemLabel}
+    >
+      {item.display}
+    </Button>
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       {loading && (
@@ -152,10 +180,10 @@ const PostCast = ({navigation}) => {
           mode="outlined"
           multiline
         />
-        <Button 
-          icon="menu-down" 
-          mode="outlined" 
-          onPress={() => setCategoryModalVisible(true)} 
+        <Button
+          icon="menu-down"
+          mode="outlined"
+          onPress={() => setCategoryModalVisible(true)}
           style={styles.dropdownButton}
           contentStyle={styles.dropdownContent}
           labelStyle={styles.dropdownLabel}
@@ -165,8 +193,8 @@ const PostCast = ({navigation}) => {
         <Portal>
           <Modal visible={isCategoryModalVisible} onDismiss={() => setCategoryModalVisible(false)} contentContainerStyle={styles.modalContainer}>
             {categories.map((item, index) => (
-              <Button 
-                key={index} 
+              <Button
+                key={index}
                 onPress={() => { setCategory(item); setCategoryModalVisible(false); }}
                 style={styles.modalItem}
                 labelStyle={styles.modalItemLabel}
@@ -174,6 +202,26 @@ const PostCast = ({navigation}) => {
                 {item}
               </Button>
             ))}
+          </Modal>
+        </Portal>
+
+        <Button
+          icon="menu-down"
+          mode="outlined"
+          onPress={() => setDepartmentModalVisible(true)}
+          style={styles.dropdownButton}
+          contentStyle={styles.dropdownContent}
+          labelStyle={styles.dropdownLabel}
+        >
+          {department ? departments.find(dept => dept.name === department).display : "Select Department"}
+        </Button>
+        <Portal>
+          <Modal visible={isDepartmentModalVisible} onDismiss={() => setDepartmentModalVisible(false)} contentContainerStyle={styles.modalContainer}>
+            <FlatList
+              data={departments}
+              renderItem={renderDepartmentItem}
+              keyExtractor={(item) => item.name}
+            />
           </Modal>
         </Portal>
 
@@ -476,13 +524,6 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: sizes.radius,
     marginBottom: spacing.s,
-  },
-  centeredView: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // semi-transparent background
   },
   customAlertModalView: {
     margin: 20,

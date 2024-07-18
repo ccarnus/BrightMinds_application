@@ -55,7 +55,7 @@ const ArticlePublicationsScreen = () => {
 
   const renderItem = ({ item }) => (
     <View style={styles.articleItem}>
-      <Image source={{ uri: item.imageurl }} style={styles.articleImage} />
+      <Image source={{ uri: item.articleimageurl }} style={styles.articleImage} />
       <View style={styles.articleInfo}>
         <Text style={styles.articleTitle}>{item.title}</Text>
       </View>
@@ -107,14 +107,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
-    padding: spacing.m,
     width: '100%'
   },
   sectionTitle: {
     fontSize: sizes.h2,
-    color: colors.secondary,
-    marginBottom: spacing.m,
     fontFamily: 'MontserratBold',
+    color: colors.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.l,
+    marginTop: spacing.l,
+    elevation: 5,
   },
   articleItem: {
     flexDirection: 'row',
@@ -123,6 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: sizes.radius,
     elevation: 5,
+    marginHorizontal: spacing.m,
   },
   articleImage: {
     width: 80,

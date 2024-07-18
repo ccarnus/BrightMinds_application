@@ -92,9 +92,9 @@
         const differenceInDays = Math.floor(differenceInTime / (1000 * 3600 * 24));
     
         if (differenceInDays === 0) {
-            return "today";  // Return 'today' if the difference is zero
+            return "today";
         } else {
-            return `${differenceInDays} days ago`;  // Otherwise return the number of days ago
+            return `${differenceInDays} days ago`;
         }
     };
     
@@ -134,10 +134,8 @@
             
             <View style={styles.infoDisplay}>
                 <Text style={styles.infoText}>{getDaysSincePosted(article.dateAdded)}</Text>
-                <Text style={styles.separator}>  ·  </Text>
+                <Text style={styles.separator}> · </Text>
                 <Text style={styles.infoText}>{article.department}</Text>
-                <Text style={styles.separator}>  ·  </Text>
-                <Text style={styles.infoText}>{article.duration} min</Text>
             </View>
 
         
@@ -226,21 +224,25 @@
       paddingHorizontal: spacing.m,
       width: '80%',
       marginVertical: spacing.s,
+      borderWidth: 1,
+      backgroundColor: colors.primary,
+      borderColor: colors.secondary,
+      elevation: 5,
     },
     buttonAddText: {
-      color: colors.primaryBis,
+      color: colors.secondary,
       fontSize: sizes.title,
       textAlign: 'center',
       fontFamily: "MontserratBold",
     },
     buttonAccessText: {
-      color: colors.primaryBis,
+      color: colors.secondary,
       fontSize: sizes.h3,
       textAlign: 'center',
-      fontFamily: "MontserratBold",
+      fontFamily: "Montserrat",
     },
     infoDisplay: {
-        backgroundColor: colors.darkblue,
+        backgroundColor: colors.primary,
         paddingVertical: spacing.xs,
         paddingHorizontal: spacing.m,
         borderRadius: sizes.radius,
@@ -248,18 +250,19 @@
         justifyContent: 'center',
         alignItems: 'center',
         alignSelf: 'center',
-        marginHorizontal: spacing.m,
+        marginHorizontal: spacing.s,
         marginBottom: spacing.m,
+        borderWidth: 1,
+        elevation: 5,
       },
       infoText: {
         fontSize: sizes.h4,
-        color: colors.primaryBis,
-        paddingHorizontal: spacing.xs,
+        color: colors.secondary,
         fontFamily: "MontserratBold",
       },
       separator: {
         fontSize: sizes.title,
-        color: colors.primaryBis,
+        color: colors.secondary,
         paddingHorizontal: spacing.xs,
         fontFamily: "MontserratBold",
       },
