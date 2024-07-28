@@ -53,6 +53,24 @@ const DiscoverScreen = ({ navigation }) => {
       });
   }, []);
 
+  const getDepartmentIcon = (department) => {
+    switch (department) {
+      case 'MedicineandHealthSciences':
+        return require('../assets/Virtual_labs/MedicineandHealthSciences.png');
+      case 'History':
+        return require('../assets/Virtual_labs/History.png');
+      case 'ComputerScience':
+        return require('../assets/Virtual_labs/ComputerScience.png');
+      case 'Biology':
+        return require('../assets/Virtual_labs/Biology.png');
+      case 'Chemistry':
+        return require('../assets/Virtual_labs/Chemistry.png');
+      // Add cases for other departments as needed
+      default:
+        return null; // Return a default icon or null if no match is found
+    }
+  };
+
   const togglePlay = () => {
     setShowVideo(true);
     setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? !status : status));
@@ -123,6 +141,9 @@ const DiscoverScreen = ({ navigation }) => {
     <View style={styles.container}>
       {videos.length > 0 && videos[focusedIndex] && (
         <>
+          <View style={styles.titleView}>
+            <Text style={styles.videoTitle}>{videos[focusedIndex] ? videos[focusedIndex].title : ''}</Text>
+          </View>
           <TouchableOpacity
             style={[styles.imageContainer, { height: width / 1.5 }]}
             onPress={togglePlay}
@@ -201,11 +222,18 @@ const DiscoverScreen = ({ navigation }) => {
         </>
       )}
       <View style={styles.bottomSection}>
-        <View style={styles.band}>
-          <Text style={styles.videoTitle}>{videos[focusedIndex] ? videos[focusedIndex].title : ''}</Text>
-        </View>
         <View style={styles.middleband}>
           <View style={styles.leftColumn}>
+            {videos[focusedIndex] && videos[focusedIndex].department && (
+              <Image
+                source={getDepartmentIcon(videos[focusedIndex].department)}
+                style={styles.departmentIcon}
+                resizeMode="contain"
+              />
+            )}
+          </View>
+          <View style={styles.separator} />
+          <View style={styles.middleColumn}>
             {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
               <Image
                 source={{ uri: videos[focusedIndex].universityLogo }}
@@ -214,6 +242,7 @@ const DiscoverScreen = ({ navigation }) => {
               />
             )}
           </View>
+          <View style={styles.separator} />
           <View style={styles.rightColumn}>
             <Text style={styles.durationText}>
               {videos[focusedIndex] ? formatDuration(videos[focusedIndex].duration) : '00:00'}
@@ -257,14 +286,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  separator: {
+    width: 1,
+    height: '60%',
+    backgroundColor: colors.secondary,
+  },
+  middleColumn: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   rightColumn: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   universityIconMain: {
-    width: 72,
-    height: 72,
+    width: width*0.25,
+    height: width*0.25,
+  },
+  departmentIcon: {
+    width: width*0.15,
+    height: width*0.15,
   },
   durationText: {
     fontSize: sizes.h3,
@@ -290,7 +333,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     width: width,
-    height: width / 1.5,
+    height: width / 1.75,
   },
   approvedIcon: {
     position: 'absolute',
@@ -310,10 +353,17 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
   },
+  titleView: {
+    marginLeft: spacing.s,
+    marginRight: spacing.s,
+    height: height*0.2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   videoTitle: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h1,
     color: colors.secondary,
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
     textAlign: 'center',
   },
   buttonBookmarkContainer: {
@@ -326,8 +376,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   buttonUniversityContainer: {
-    width: 54,
-    height: 54,
+    width: 62,
+    height: 62,
     position: 'absolute',
     bottom: spacing.m + 64,
     right: spacing.m,

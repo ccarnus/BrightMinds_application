@@ -3,9 +3,9 @@ import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 
-const CARD_WIDTH = sizes.width / 1.5;
-const CARD_HEIGHT = 180;
-const CARD_HEIGHT_TOTAL = 215;
+const CARD_HEIGHT = 140;
+const CARD_WIDTH = CARD_HEIGHT * 1.75;
+const CARD_HEIGHT_TOTAL = 180;
 const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
 
 const ArticleCarousel = ({ list }) => {
@@ -67,19 +67,15 @@ const styles = StyleSheet.create({
       },
       titleBox: {
         position: 'absolute',
-        borderRadius: 5,
         top: CARD_HEIGHT_TOTAL - 30,
         maxHeight: 50,
         width: '100%',
-        marginBottom: 50,
       },
       title: {
         fontSize: sizes.h45,
-        color: colors.secondary,
-        paddingRight: 10,
+        color: colors.white,
         textAlign: 'left',
-        marginLeft: 10,
-        fontFamily: 'Montserrat',
+        fontFamily: "Montserrat",
       },
       duration: {
         position: 'absolute',

@@ -7,6 +7,7 @@
     const { selectedArticleId } = route.params;
     const [article, setArticle] = useState(null);
     const [universityLogo, setUniversityLogo] = useState(null);
+    const [universityName, setUniversityName] = useState(null);
     const [author, setAuthor] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const navigation = useNavigation();
@@ -48,6 +49,7 @@
         const response = await fetch(`http://3.17.219.54/university/by/name/${universityName}`);
         const data = await response.json();
         setUniversityLogo(data.iconurl);
+        setUniversityName(data.displayedName);
         } catch (error) {
         console.error('Error fetching university logo:', error);
         }
@@ -121,7 +123,7 @@
             {universityLogo && (
               <View style={styles.iconContainer}>
                 <Image source={{ uri: universityLogo }} style={styles.icon} />
-                <Text style={styles.iconText}>{article.university}</Text>
+                <Text style={styles.iconText}>{universityName}</Text>
               </View>
             )}
 

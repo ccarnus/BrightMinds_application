@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
     marginRight: spacing.s,
     marginLeft: spacing.xs,
-    height: 50,
+    height: 35,
     elevation: 5,
   },
   searchContainer1: {
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: 'Montserrat',
     color: colors.white,
-    fontSize: sizes.h3,
+    fontSize: sizes.h4,
     paddingLeft: spacing.l,
   },
   clearButton: {
@@ -309,18 +309,18 @@ const styles = StyleSheet.create({
   categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.m,
-    marginTop: spacing.l,
+    marginBottom: spacing.xs,
+    marginTop: spacing.s,
     marginLeft: spacing.s,
   },
   categoryTitle: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     color: colors.secondary,
     fontFamily: 'MontserratBold',
   },
   categoryIcon: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     marginRight: spacing.s,
   },
   noResultsText: {
