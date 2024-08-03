@@ -1,51 +1,79 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { colors, sizes } from '../theme';
-import { Shape } from 'react-native-svg';
-
-const USER_ID = "6474e4001eec5ee1ecd40180";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ReadyScreen = ({ navigation }) => {
   const [showButton, setShowButton] = useState(false);
   const [numQuestions, setNumQuestions] = useState(0);
-  const opacityValue = new Animated.Value(0);
-  let evaluations;
+  const [userId, setUserId] = useState(null);
+  const [evaluations, setEvaluations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const opacityValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const getUserId = async () => {
+      try {
+        const storedUserId = await AsyncStorage.getItem('userId');
+        setUserId(storedUserId);
+      } catch (error) {
+        console.error('Failed to fetch user ID from storage:', error);
+      }
+    };
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      getCastList();
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (showButton) {
+      Animated.timing(opacityValue, {
+        toValue: 1,
+        duration: 2000,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [showButton]);
 
   const getCastList = async () => {
     try {
-      const response = await axios.get('http://3.17.219.54/user/' + USER_ID);
+      const response = await axios.get(`http://3.17.219.54/user/${userId}`);
       const evaluationList = response.data.evaluation_list.filter(item => item.watched && !item.answered);
-      evaluations = evaluationList.map(item => ({
+      const evaluationsData = evaluationList.map(item => ({
         contentid: item.contentid,
         type: item.type
       }));
-      console.log(evaluations);
-      setNumQuestions(evaluations.length);
+      setEvaluations(evaluationsData);
+      setNumQuestions(evaluationsData.length);
     } catch (error) {
       console.error('Error fetching evaluation list:', error);
+    } finally {
+      setIsLoading(false);
+      setShowButton(true);
     }
   };
-  
-  getCastList();
-
-  useEffect(() => {
-    setShowButton(true);
-    Animated.timing(opacityValue, {
-      toValue: 1,
-      duration: 2000,
-      useNativeDriver: true,
-    }).start();
-  });
 
   const handleReadyButtonPress = () => {
-    if (numQuestions > 0) {
+    if (evaluations.length > 0) {
       navigation.navigate('Evaluation', { evaluations });
     } else {
       navigation.goBack();
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.secondary} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -55,8 +83,8 @@ const ReadyScreen = ({ navigation }) => {
       <View style={styles.buttonContainer}>
         <Animated.View style={[styles.readyButton, { opacity: opacityValue }]}>
           <TouchableOpacity onPress={handleReadyButtonPress}>
-          <Text style={styles.readyButtonText}>
-              {numQuestions > 0 ? "Let's GO!" : "Come Back Later"} 
+            <Text style={styles.readyButtonText}>
+              {numQuestions > 0 ? "Let's GO!" : "Come Back Later"}
             </Text>
           </TouchableOpacity>
         </Animated.View>
@@ -71,6 +99,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
     paddingTop: 200,
     alignItems: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBis,
   },
   title: {
     fontSize: sizes.title,

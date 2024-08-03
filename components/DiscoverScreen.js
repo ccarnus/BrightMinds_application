@@ -4,6 +4,7 @@ import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -13,10 +14,53 @@ const DiscoverScreen = ({ navigation }) => {
   const [videoStatus, setVideoStatus] = useState([]);
   const [showVideo, setShowVideo] = useState(false);
   const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
+  const [userId, setUserId] = useState(null);
   const videoRefs = useRef([]);
-  const userId = "6474e4001eec5ee1ecd40180";
+
+  const departmentIcons = {
+    MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
+    History: require('../assets/Virtual_labs/History.png'),
+    ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
+    Biology: require('../assets/Virtual_labs/Biology.png'),
+    Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
+    Physics: require('../assets/Virtual_labs/Physics.png'),
+    Robotics: require('../assets/Virtual_labs/Robotics.png'),
+    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
+    Geology: require('../assets/Virtual_labs/Geology.png'),
+    Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
+    AstronomyandSpaceScience: require('../assets/Virtual_labs/AstronomyandSpaceScience.png'),
+    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
+    Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
+    Statistics: require('../assets/Virtual_labs/Statistics.png'),
+    Psychology: require('../assets/Virtual_labs/Psychology.png'),
+    Sociology: require('../assets/Virtual_labs/Sociology.png'),
+    Anthropology: require('../assets/Virtual_labs/Anthropology.png'),
+    Economics: require('../assets/Virtual_labs/Economics.png'),
+    PoliticalScience: require('../assets/Virtual_labs/PoliticalScience.png'),
+    Engineering: require('../assets/Virtual_labs/Engineering.png'),
+    AgriculturalSciences: require('../assets/Virtual_labs/AgriculturalSciences.png'),
+    Philosophy: require('../assets/Virtual_labs/Philosophy.png'),
+    Linguistics: require('../assets/Virtual_labs/Linguistics.png'),
+    Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
+    Biophysics: require('../assets/Virtual_labs/Biophysics.png'),
+    DataScience: require('../assets/Virtual_labs/DataScience.png'),
+    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png')}  
 
   useEffect(() => {
+    const getUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId);
+    };
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchVideosAndBookmarks();
+    }
+  }, [userId]);
+
+  const fetchVideosAndBookmarks = () => {
     fetch('http://3.17.219.54/cast')
       .then(response => response.json())
       .then(data => {
@@ -51,24 +95,10 @@ const DiscoverScreen = ({ navigation }) => {
       .catch(error => {
         console.error(error);
       });
-  }, []);
+  };
 
   const getDepartmentIcon = (department) => {
-    switch (department) {
-      case 'MedicineandHealthSciences':
-        return require('../assets/Virtual_labs/MedicineandHealthSciences.png');
-      case 'History':
-        return require('../assets/Virtual_labs/History.png');
-      case 'ComputerScience':
-        return require('../assets/Virtual_labs/ComputerScience.png');
-      case 'Biology':
-        return require('../assets/Virtual_labs/Biology.png');
-      case 'Chemistry':
-        return require('../assets/Virtual_labs/Chemistry.png');
-      // Add cases for other departments as needed
-      default:
-        return null; // Return a default icon or null if no match is found
-    }
+    return departmentIcons[department] || null; // Return the icon if found, otherwise null
   };
 
   const togglePlay = () => {
@@ -184,7 +214,7 @@ const DiscoverScreen = ({ navigation }) => {
               style={{ flex: 1 }}
               onPress={togglePlayVideoFocused}
             >
-              <View style={{ flex: 1, backgroundColor: 'white' }}>
+              <View style={{ flex: 1, backgroundColor: colors.secondary }}>
                 <Video
                   ref={ref => (videoRefs.current[focusedIndex] = ref)}
                   source={{ uri: videos[focusedIndex].casturl }}

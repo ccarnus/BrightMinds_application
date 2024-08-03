@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, Alert } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ObjectiveScreen = () => {
   const buttons = ['Follower', 'Explorer', 'Deep Learner', 'Researcher', 'Career'];
   const route = useRoute();
   let initialObjective = route.params?.objective;
   const [selectedObjective, setSelectedObjective] = useState(initialObjective);
-  const USER_ID = '6474e4001eec5ee1ecd40180';
+  const [userId, setUserId] = useState(null);
   const descriptions = {
     'Follower': "Don’t miss anything related to your preferences. The up to date pathway guides you through the trending casts, articles and podcasts that so that you are always on top of the latest discoveries in the fields that passionate you.",
     'Explorer': "Ideal for users looking to keep up with their preferences as well as explore a wide range of research disciplines and topics, this pathway provides a curated selection of introductory content from various fields. It encourages users to discover new areas of interest.",
@@ -18,8 +19,18 @@ const ObjectiveScreen = () => {
     'Career': "Aimed at users looking to enhance their career prospects, this pathway offers content related to skills development, career opportunities, and industry insights. It helps users bridge the gap between research and career goals."
   };
 
+  useEffect(() => {
+    const getUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId);
+    };
+    getUserId();
+  }, []);
+
   const updateObjective = (newObjective) => {
-    axios.put(`http://3.17.219.54/user/${USER_ID}/update/tracking`, {
+    if (!userId) return; // Ensure userId is available before making the API call
+
+    axios.put(`http://3.17.219.54/user/${userId}/update/tracking`, {
       objective: newObjective
     })
     .then(response => {

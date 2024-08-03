@@ -1,36 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
 import axios from 'axios';
-import { colors, sizes, spacing} from '../theme';
+import { colors, sizes, spacing } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
 const SearchResultScreen = ({ route, navigation }) => {
   const { selectedCastId } = route.params;
-  const [videos, setVideos] = useState([]);
-  const [focusedIndex, setFocusedIndex] = useState(0);
-  const [videoStatus, setVideoStatus] = useState([]);
+  const [video, setVideo] = useState(null);
+  const [videoStatus, setVideoStatus] = useState(true); // Set initial status to true to auto-play
   const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
-  const videoRefs = useRef([]);
-  const userId = "6474e4001eec5ee1ecd40180";
+  const [userId, setUserId] = useState(null);
+  const videoRef = useRef(null);
 
   useEffect(() => {
-    fetch(`http://3.17.219.54/cast`)
+    const getUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId);
+    };
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchVideoAndBookmarks();
+    }
+  }, [userId, selectedCastId]);
+
+  const fetchVideoAndBookmarks = () => {
+    fetch(`http://3.17.219.54/cast/${selectedCastId}`)
       .then(response => response.json())
-      .then(data => {
-        const fetchUniversityLogos = data.map(video =>
-          fetch(`http://3.17.219.54/university/by/name/${video.university}`)
-            .then(res => res.json())
-            .then(universityData => ({ ...video, universityLogo: universityData.iconurl }))
-        );
-        return Promise.all(fetchUniversityLogos);
-      })
-      .then(dataWithLogos => {
-        const selectedIndex = dataWithLogos.findIndex(video => video._id === selectedCastId);
-        setFocusedIndex(selectedIndex);
-        setVideos([dataWithLogos[selectedIndex], ...dataWithLogos.slice(0, selectedIndex), ...dataWithLogos.slice(selectedIndex + 1)]);
+      .then(videoData => {
+        fetch(`http://3.17.219.54/university/by/name/${videoData.university}`)
+          .then(res => res.json())
+          .then(universityData => {
+            setVideo({ ...videoData, universityLogo: universityData.iconurl });
+          });
       })
       .catch(error => console.error(error));
 
@@ -42,26 +50,19 @@ const SearchResultScreen = ({ route, navigation }) => {
       .catch(error => {
         console.error(error);
       });
-  }, []);
-
-  useEffect(() => {
-    setVideoStatus(videos.map((_, index) => index === 0));
-  }, [videos]);
-
-  const handleVideoPress = index => {
-    setFocusedIndex(index);
-    setVideoStatus(prevStatus => prevStatus.map((status, idx) => (idx === index ? !status : false)));
   };
 
   const handleBookmarkPress = () => {
-    const castId = videos[focusedIndex]._id;
+    if (!video) return;
+
+    const castId = video._id;
 
     if (bookmarkedCasts.some(cast => cast.castId === castId)) {
       axios
         .delete(`http://3.17.219.54/user/remove/bookmarks/${userId}/${castId}`)
         .then(response => {
           setBookmarkedCasts(bookmarkedCasts.filter(cast => cast.castId !== castId));
-          videos[focusedIndex].bookmarkIcon = require('../../assets/Cast_icons/bookmark_icon.png');
+          setVideo({ ...video, bookmarkIcon: require('../../assets/Cast_icons/bookmark_icon.png') });
         })
         .catch(error => {
           console.error(error);
@@ -69,7 +70,7 @@ const SearchResultScreen = ({ route, navigation }) => {
       return;
     }
 
-    videos[focusedIndex].bookmarkIcon = require('../../assets/Cast_icons/bookmark_filled_icon.png');
+    setVideo({ ...video, bookmarkIcon: require('../../assets/Cast_icons/bookmark_filled_icon.png') });
 
     axios
       .post(`http://3.17.219.54/user/add/bookmarks/${userId}`, { castId: castId })
@@ -82,7 +83,9 @@ const SearchResultScreen = ({ route, navigation }) => {
   };
 
   const handleCastDonePlaying = () => {
-    const castId = videos[focusedIndex]._id;
+    if (!video) return;
+
+    const castId = video._id;
 
     axios
       .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
@@ -93,83 +96,62 @@ const SearchResultScreen = ({ route, navigation }) => {
         console.error(error);
       });
   };
-  
 
   useEffect(() => {
     // Pause the video when the screen loses focus
     const pauseVideo = () => {
-      setVideoStatus(prevStatus => prevStatus.map(() => false));
+      setVideoStatus(false);
     };
     const unsubscribe = navigation.addListener('blur', pauseVideo);
     return unsubscribe;
   }, [navigation]);
 
+  if (!video) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        style={styles.scrollView}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onMomentumScrollEnd={event => {
-          const offsetX = event.nativeEvent.contentOffset.x;
-          const index = Math.round(offsetX / windowWidth);
-          setFocusedIndex(index);
-          setVideoStatus(prevStatus =>
-            prevStatus.map((status, idx) => (idx === index ? !status : false))
-          );
-        }}
-      >
-        {videos.map((video, index) => (
-          <TouchableOpacity
-            key={index}
-            style={[
-              styles.videoContainer,
-              {
-                width: windowWidth,
-                height: windowHeight,
-                opacity: focusedIndex === index ? 1 : 0.7,
-              },
-            ]}
-            onPress={() => handleVideoPress(index)}
-          >
-            <View style={styles.videoWrapper}>
-            <Video
-              ref={ref => (videoRefs.current[index] = ref)}
-              source={{ uri: video.casturl }}
-              shouldPlay={videoStatus[index]}
-              resizeMode="contain"
-              style={styles.video}
-              onPlaybackStatusUpdate={(status) => {
-                if (status.didJustFinish) {
-                  videoRefs.current[index].setPositionAsync(0);
-                  handleCastDonePlaying();
-                }
-              }}
+      <View style={styles.videoContainer}>
+        <View style={styles.videoWrapper}>
+          <Video
+            ref={videoRef}
+            source={{ uri: video.casturl }}
+            shouldPlay={videoStatus}
+            resizeMode="contain"
+            style={styles.video}
+            onPlaybackStatusUpdate={(status) => {
+              if (status.didJustFinish) {
+                videoRef.current.setPositionAsync(0);
+                handleCastDonePlaying();
+              }
+            }}
+          />
+        </View>
+        <View style={styles.buttonUniversityContainer}>
+          <Image
+            source={{ uri: video.universityLogo }}
+            style={styles.universityIcon}
+            resizeMode="contain"
+          />
+        </View>
+        <View style={styles.buttonBookmarkContainer}>
+          <TouchableOpacity style={styles.button} onPress={handleBookmarkPress}>
+            <Image
+              source={
+                bookmarkedCasts.some(cast => cast.castId === video._id)
+                  ? require('../../assets/Cast_icons/bookmark_filled_icon.png')
+                  : require('../../assets/Cast_icons/bookmark_icon.png')
+              }
+              style={styles.icon}
             />
-            </View>
-            <View style={styles.buttonUniversityContainer}>
-              <Image
-                source={{ uri: video.universityLogo }}
-                style={styles.universityIcon}
-                resizeMode="contain"
-              />
-            </View>
-            <View style={styles.buttonBookmarkContainer}>
-              <TouchableOpacity style={styles.button} onPress={handleBookmarkPress}>
-                  <Image
-                    source={
-                      bookmarkedCasts.some(cast => cast.castId === video._id)
-                        ? require('../../assets/Cast_icons/bookmark_filled_icon.png')
-                        : require('../../assets/Cast_icons/bookmark_icon.png')
-                    }
-                    style={styles.icon}
-                  />
-              </TouchableOpacity>
-            </View>
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        </View>
+      </View>
     </View>
   );
 };
@@ -180,17 +162,20 @@ const windowHeight = Dimensions.get('window').height;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
-    overflow: 'hidden',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  videoContainer: {
-    position: 'relative',
+    backgroundColor: colors.secondary,
     justifyContent: 'center',
     alignItems: 'center',
-    overflow: 'hidden',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoContainer: {
+    width: windowWidth,
+    height: windowHeight,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   videoWrapper: {
     width: '100%',

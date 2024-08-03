@@ -4,7 +4,7 @@ import axios from 'axios';
 import Gauge from './Gauge';
 import { colors, sizes, spacing } from '../theme';
 
-const USER_ID = "6474e4001eec5ee1ecd40180";
+const USER_ID = "667b58469af159d9ea0041e8";
 let correctAnswerCount = 0;
 
 const TakeTest = ({ route, navigation }) => {
@@ -52,7 +52,6 @@ const TakeTest = ({ route, navigation }) => {
           Points: points,
         }
       );
-      console.log('Points added:', response.data);
     } catch (error) {
       console.error('Error adding points:', error);
     }
@@ -63,7 +62,6 @@ const TakeTest = ({ route, navigation }) => {
       await axios.post(`http://3.17.219.54/user/mark/content/as/answered/${USER_ID}`, {
         contentId: evaluation.contentid,
       });
-      console.log(`Content ${evaluation.contentid} marked as answered`);
     } catch (error) {
       console.error(`Error marking content ${evaluation.contentid} as answered:`, error);
     }
@@ -153,7 +151,6 @@ const TakeTest = ({ route, navigation }) => {
       animateCorrectAnswer();
       addPoints(10);
       correctAnswerCount = correctAnswerCount + 1 ;
-      console.log(`current count ${correctAnswerCount}`)
       removeContentFromEvaluationList(evaluations[currentQuestionIndex]);
     } else {
       animateIncorrectAnswer();

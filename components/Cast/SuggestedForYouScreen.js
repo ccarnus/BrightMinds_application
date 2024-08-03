@@ -4,6 +4,7 @@ import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
 import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -12,11 +13,24 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
   const [video, setVideo] = useState(null);
   const [videoStatus, setVideoStatus] = useState(true); // Set initial status to true to auto-play
   const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
+  const [userId, setUserId] = useState(null);
   const videoRef = useRef(null);
-  const userId = "6474e4001eec5ee1ecd40180";
 
   useEffect(() => {
-    // Fetch the selected video and its university logo
+    const getUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId);
+    };
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchVideoAndBookmarks();
+    }
+  }, [userId, selectedVideoId]);
+
+  const fetchVideoAndBookmarks = () => {
     fetch(`http://3.17.219.54/cast/${selectedVideoId}`)
       .then(response => response.json())
       .then(videoData => {
@@ -28,7 +42,6 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
       })
       .catch(error => console.error(error));
 
-    // Fetch bookmarked casts
     axios
       .get(`http://3.17.219.54/user/bookmarks/${userId}`)
       .then(response => {
@@ -37,7 +50,7 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
       .catch(error => {
         console.error(error);
       });
-  }, [selectedVideoId]);
+  };
 
   const handleBookmarkPress = () => {
     if (!video) return;
