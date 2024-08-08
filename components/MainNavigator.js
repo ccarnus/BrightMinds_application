@@ -14,7 +14,6 @@ import SuggestedForYou from './Cast/SuggestedForYouScreen';
 import Trending from './Cast/TrendingScreen';
 import SearchResult from './Cast/SearchResultScreen';
 import SimpleHeader from './Profile/SimpleHeader';
-import LeaderBoard from './LeaderBoardScreen';
 import Objective from './Profile/Objective';
 import Finish from './Track/finish';
 import VirtualLab from './VirtualLab/VirtualLab';
@@ -68,7 +67,6 @@ const MainNavigator = () => {
         <Stack.Screen name="Trending" component={Trending} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CategoryScreen" component={CategoryScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="LeaderBoard" component={LeaderBoard} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />

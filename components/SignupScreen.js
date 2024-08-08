@@ -33,7 +33,7 @@ const SignupScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    if (email && password && username && role && profilePicture && (role === 'College Student' || role === 'Learning Enthu3siast' || selectedUniversity)) {
+    if (email && password && username && role && profilePicture && (role === 'College Student' || role === 'Learning Enthusiast' || selectedUniversity)) {
       setIsButtonDisabled(false);
     } else {
       setIsButtonDisabled(true);
@@ -86,7 +86,10 @@ const SignupScreen = ({ navigation }) => {
       Alert.alert('Signup successful', 'You can now log in with your credentials');
       navigation.navigate('LoginScreen');
     } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Could not create account. Please try again.';
+      let errorMessage = 'Could not create account. Please try again.';
+      if (error.response && error.response.data) {
+        errorMessage = error.message;
+      }
       Alert.alert('Signup failed', errorMessage);
     } finally {
       setLoading(false);

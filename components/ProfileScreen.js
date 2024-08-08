@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, Alert, ScrollView, Button, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import axios from 'axios';
-import Slider from '@react-native-community/slider';
-import { colors, shadow, sizes, spacing } from './theme';
+import { colors, sizes, spacing } from './theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
+import PieChart from 'react-native-pie-chart'; // Import the PieChart component
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,7 +20,6 @@ const ProfileScreen = () => {
   const [userPreferences, setUserPreferences] = useState([]);
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
   const [userId, setUserId] = useState(null);
-  const streak = 5;
 
   useEffect(() => {
     const getUserId = async () => {
@@ -52,10 +51,6 @@ const ProfileScreen = () => {
     }
   }, [userId]);
 
-  const handleSliderComplete = (category, newValue) => {
-    Alert.alert(`Section ${departmentMapping[category]} updated to ${newValue.toFixed(2)}`);
-  };
-
   const handleLogout = async () => {
     await AsyncStorage.removeItem('userId');
     await AsyncStorage.removeItem('userRole');
@@ -65,6 +60,9 @@ const ProfileScreen = () => {
     setTrackingData({ objective: '', progress: 0 });
     navigation.navigate('LoginScreen');
   };
+
+  const pieData = userPreferences.map(pref => pref.weight);
+  const pieColors = userPreferences.map((_, index) => `hsl(${index * 360 / userPreferences.length}, 70%, 50%)`);
 
   return (
     <View style={styles.container}>
@@ -76,24 +74,6 @@ const ProfileScreen = () => {
               style={styles.profileImage}
             />
             <Text style={styles.overlayUsername}>{userData.username}</Text>
-          </View>
-          <View style={styles.scoreContainer}>
-            <View style={styles.buttonContainer}>
-              <Text style={styles.streakText}>{streak}</Text>
-              <Image
-                source={require('../assets/Profile_icons/streak_icon.png')}
-                style={styles.streakImage}
-              />
-            </View>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('LeaderBoard')}>
-                <Image
-                  source={require('../assets/Profile_icons/podium_icon.png')}
-                  style={styles.streakImage}
-                />
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       )}
@@ -113,24 +93,24 @@ const ProfileScreen = () => {
           <View style={styles.lowerSectionContainer}>
             <Text style={styles.preferencesTitle}>Preferences</Text>
             {userPreferences.length > 0 ? (
-              userPreferences.map(pref => (
-                <View key={pref._id} style={styles.preferenceContainer}>
-                  <View style={styles.textContainer}>
-                    <Text style={styles.preferenceText}>{departmentMapping[pref.category]}</Text>
-                  </View>
-                  <View style={styles.sliderContainer}>
-                    <Slider
-                      style={styles.slider}
-                      value={pref.weight / 100}
-                      onSlidingComplete={(newValue) => handleSliderComplete(pref.category, newValue * 100)}
-                      minimumValue={0}
-                      maximumValue={1}
-                      minimumTrackTintColor={colors.black}
-                      maximumTrackTintColor={colors.white}
-                    />
-                  </View>
+              <View style={styles.pieContainer}>
+                <PieChart
+                  widthAndHeight={250}
+                  series={pieData}
+                  sliceColor={pieColors}
+                  doughnut={true}
+                  coverRadius={0.6}
+                  coverFill={colors.primary}
+                />
+                <View style={styles.legendContainer}>
+                  {userPreferences.map((pref, index) => (
+                    <View key={index} style={styles.legendItem}>
+                      <View style={[styles.legendColor, { backgroundColor: pieColors[index] }]} />
+                      <Text style={styles.legendText}>{departmentMapping[pref.category]}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))
+              </View>
             ) : (
               <Text style={styles.noDataText}>No preferences set just yet..</Text>
             )}
@@ -157,8 +137,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    height: height / 3,
-    backgroundColor: colors.primary,
+    height: height*2 / 7,
+    backgroundColor: colors.secondary,
     elevation: 5,
   },
   lowerSection: {
@@ -197,23 +177,29 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.secondary,
   },
-  preferenceContainer: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    width: "100%",
+  pieContainer: {
+    alignItems: 'center',
+    marginTop: spacing.m,
   },
-  preferenceText: {
+  legendContainer: {
+    marginTop: spacing.m,
+    alignItems: 'center',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.s,
+  },
+  legendColor: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: spacing.s,
+  },
+  legendText: {
     fontSize: sizes.h4,
     color: colors.secondary,
-    textAlign: "center",
     fontFamily: 'Montserrat',
-  },
-  slider: {
-    width: "100%",
-  },
-  sliderContainer: {
-    width: "66%",
-    marginRight: 5,
   },
   textContainer: {
     width: "33%",
@@ -231,24 +217,19 @@ const styles = StyleSheet.create({
     marginTop: 15,
     elevation: 5,
   },
-  streakText: {
-    fontSize: sizes.title,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    alignItems: 'center',
-  },
   overlayUsername: {
     position: 'absolute',
     bottom: -20,
     alignSelf: 'center',
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.primary,
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: sizes.radius,
     fontSize: sizes.h3,
     borderWidth: 1,
-    color: colors.primary,
+    color: colors.secondary,
     fontFamily: 'MontserratBold',
+    elevation:5,
   },
   preferencesTitle: {
     fontSize: sizes.h2,
@@ -256,11 +237,6 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: spacing.s,
     fontFamily: 'MontserratBold',
-  },
-  streakImage: {
-    width: 54,
-    height: 54,
-    marginLeft: 5,
   },
   objectiveContainer: {
     alignItems: 'center',

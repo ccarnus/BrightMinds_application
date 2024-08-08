@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity, ScrollView } from 'react-native';
-import { ProgressBar } from 'react-native-paper';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, sizes, spacing } from './theme';
-import { VictoryPie } from 'victory-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+let PLACE_HOLDER_FOR_TARGET = 3;
 
 const TrackScreen = () => {
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
@@ -53,7 +54,10 @@ const TrackScreen = () => {
             progress: data.tracking.progress / 100,
           });
           if (data.tracking.history) {
-            setHistory(data.tracking.history.map(history => ({ x: history.category, y: history.count })));
+            setHistory(data.tracking.history.map(history => ({
+              category: history.category,
+              progress: history.count,
+            })));
           }
         }
       } catch (error) {
@@ -97,7 +101,7 @@ const TrackScreen = () => {
             <Text style={styles.questionsansweredText}>Things learned</Text>
           </View>
           <View style={styles.infoBottomContainerRight}>
-            <Image source={BrightMindsMascot} style={styles.infoImage}/>
+            <Image source={BrightMindsMascot} style={styles.infoImage} />
           </View>
         </View>
       </LinearGradient>
@@ -129,21 +133,48 @@ const TrackScreen = () => {
         <Text style={styles.sectionTitle}>
           <Text style={styles.ProgressText}>{trackingData.objective}</Text> progress
         </Text>
-        <ProgressBar progress={trackingData.progress} color={colors.darkblue} style={styles.progressBar} />
+        <View style={styles.gaugeContainer}>
+          <AnimatedCircularProgress
+            size={150}
+            width={15}
+            fill={trackingData.progress * 100}
+            tintColor={colors.secondary}
+            backgroundColor={colors.primaryBis}
+            lineCap="round"
+            rotation={0}
+          >
+            {fill => (
+              <Text style={styles.gaugeText}>
+                {`${Math.round(trackingData.progress * 100)}%`}
+              </Text>
+            )}
+          </AnimatedCircularProgress>
+        </View>
       </View>
       <View style={styles.ChartTitleContainer}>
         <Text style={styles.sectionTitle}>Learnings</Text>
-        <View>
+        <View style={styles.circularGaugesContainer}>
           {history.length > 0 ? (
-            <VictoryPie 
-              data={history}
-              colorScale="qualitative"
-              innerRadius={55}
-              labelRadius={({ innerRadius }) => (Dimensions.get('window').width * 0.4 + innerRadius) / 2.5}
-              style={{ labels: { fill: 'white', fontSize: 14, fontFamily: 'MontserratBold', justifyContent: 'center', alignItems: 'center'} }}
-              labels={({ datum }) => datum.y > 0.1 ? `${datum.x}` : ''}
-              width={Dimensions.get('window').width}
-            />
+            history.map((item, index) => (
+              <View key={index} style={styles.circularGaugeItem}>
+                <Text style={styles.departmentName}>{item.category}</Text>
+                <AnimatedCircularProgress
+                  size={120}
+                  width={10}
+                  fill={(item.progress/PLACE_HOLDER_FOR_TARGET)*100}
+                  tintColor={colors.secondary}
+                  backgroundColor={colors.primaryBis}
+                  lineCap="round"
+                  rotation={0}
+                >
+                  {fill => (
+                    <Text style={styles.gaugeText}>
+                      {`${Math.round((item.progress/PLACE_HOLDER_FOR_TARGET)*100)}%`}
+                    </Text>
+                  )}
+                </AnimatedCircularProgress>
+              </View>
+            ))
           ) : (
             <Text style={styles.noDataText}>No learnings yet...</Text>
           )}
@@ -206,7 +237,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontFamily: 'Montserrat',
     color: colors.primaryBis,
-    marginTop: spacing.xs, 
+    marginTop: spacing.xs,
   },
   infoText: {
     fontSize: sizes.h2,
@@ -276,10 +307,15 @@ const styles = StyleSheet.create({
     color: colors.primaryBis,
     fontFamily: 'MontserratBold',
   },
-  progressBar: {
-    height: 10,
-    backgroundColor: colors.lightGray,
-    borderRadius: sizes.radius,
+  gaugeContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.s,
+  },
+  gaugeText: {
+    fontSize: sizes.h2,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
   },
   WatchTimeText: {
     fontSize: 16,
@@ -310,6 +346,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  circularGaugesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    marginVertical: spacing.m,
+  },
+  circularGaugeItem: {
+    alignItems: 'center',
+    marginVertical: spacing.m,
+    width: '45%',
+  },
+  departmentName: {
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    marginBottom: spacing.s,
+  },
   noDataText: {
     color: colors.secondary,
     fontSize: sizes.h3,
@@ -317,7 +370,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     lineHeight: 150,
-  }
+  },
 });
 
 export default TrackScreen;
