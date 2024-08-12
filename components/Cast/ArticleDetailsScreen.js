@@ -200,9 +200,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginLeft: spacing.l,
+    marginLeft: spacing.xl,
     marginRight: spacing.l,
-    marginVertical: spacing.s,
+    marginVertical: spacing.m,
   },
   icon: {
     width: 40,

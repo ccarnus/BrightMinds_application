@@ -6,10 +6,8 @@ import { colors, sizes, spacing } from './theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-let PLACE_HOLDER_FOR_TARGET = 3;
-
 const TrackScreen = () => {
-  const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
+  const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
   const [history, setHistory] = useState([]);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [userRole, setUserRole] = useState('');
@@ -52,6 +50,7 @@ const TrackScreen = () => {
           setTrackingData({
             objective: data.tracking.objective,
             progress: data.tracking.progress / 100,
+            target: data.target,
           });
           if (data.tracking.history) {
             setHistory(data.tracking.history.map(history => ({
@@ -161,7 +160,7 @@ const TrackScreen = () => {
                 <AnimatedCircularProgress
                   size={120}
                   width={10}
-                  fill={(item.progress/PLACE_HOLDER_FOR_TARGET)*100}
+                  fill={(item.progress/trackingData.target)*100}
                   tintColor={colors.secondary}
                   backgroundColor={colors.primaryBis}
                   lineCap="round"
@@ -169,7 +168,7 @@ const TrackScreen = () => {
                 >
                   {fill => (
                     <Text style={styles.gaugeText}>
-                      {`${Math.round((item.progress/PLACE_HOLDER_FOR_TARGET)*100)}%`}
+                      {`${Math.round((item.progress/trackingData.target)*100)}%`}
                     </Text>
                   )}
                 </AnimatedCircularProgress>

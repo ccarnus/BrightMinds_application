@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Image } from 'react-native';
 import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
+import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,8 +13,9 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
   const { selectedVideoId } = route.params;
   const [video, setVideo] = useState(null);
   const [videoStatus, setVideoStatus] = useState(true); // Set initial status to true to auto-play
-  const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
   const [userId, setUserId] = useState(null);
+  const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
+  const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -41,45 +43,6 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
           });
       })
       .catch(error => console.error(error));
-
-    axios
-      .get(`http://3.17.219.54/user/bookmarks/${userId}`)
-      .then(response => {
-        setBookmarkedCasts(response.data);
-      })
-      .catch(error => {
-        console.error(error);
-      });
-  };
-
-  const handleBookmarkPress = () => {
-    if (!video) return;
-
-    const castId = video._id;
-
-    if (bookmarkedCasts.some(cast => cast.castId === castId)) {
-      axios
-        .delete(`http://3.17.219.54/user/remove/bookmarks/${userId}/${castId}`)
-        .then(response => {
-          setBookmarkedCasts(bookmarkedCasts.filter(cast => cast.castId !== castId));
-          setVideo({ ...video, bookmarkIcon: require('../../assets/Cast_icons/bookmark_icon.png') });
-        })
-        .catch(error => {
-          console.error(error);
-        });
-      return;
-    }
-
-    setVideo({ ...video, bookmarkIcon: require('../../assets/Cast_icons/bookmark_filled_icon.png') });
-
-    axios
-      .post(`http://3.17.219.54/user/add/bookmarks/${userId}`, { castId: castId })
-      .then(response => {
-        setBookmarkedCasts([...bookmarkedCasts, { castId }]);
-      })
-      .catch(error => {
-        console.error(error);
-      });
   };
 
   const handleCastDonePlaying = () => {
@@ -90,7 +53,7 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
     axios
       .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
-        setBookmarkedCasts([...bookmarkedCasts, { castId }]);
+        // Handle successful completion
       })
       .catch(error => {
         console.error(error);
@@ -106,6 +69,40 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
     return unsubscribe;
   }, [navigation]);
 
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setPlaybackInstancePosition(status.positionMillis);
+      setPlaybackInstanceDuration(status.durationMillis);
+
+      if (status.didJustFinish) {
+        videoRef.current.setPositionAsync(0);
+        handleCastDonePlaying();
+      }
+    }
+  };
+
+  const getMMSSFromMillis = (millis) => {
+    const totalSeconds = millis / 1000;
+    const seconds = Math.floor(totalSeconds % 60);
+    const minutes = Math.floor(totalSeconds / 60);
+
+    const padWithZero = (number) => {
+      const string = number.toString();
+      if (number < 10) {
+        return '0' + string;
+      }
+      return string;
+    };
+    return padWithZero(minutes) + ':' + padWithZero(seconds);
+  };
+
+  const handleSliderValueChange = async (value) => {
+    if (videoRef.current) {
+      const seekPosition = value * playbackInstanceDuration;
+      await videoRef.current.setPositionAsync(seekPosition);
+    }
+  };
+
   if (!video) {
     return (
       <View style={styles.loadingContainer}>
@@ -117,39 +114,35 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <View style={styles.videoContainer}>
-        <View style={styles.videoWrapper}>
+        <TouchableOpacity
+          style={styles.videoWrapper}
+          onPress={() => setVideoStatus(!videoStatus)}
+        >
           <Video
             ref={videoRef}
             source={{ uri: video.casturl }}
             shouldPlay={videoStatus}
             resizeMode="contain"
             style={styles.video}
-            onPlaybackStatusUpdate={(status) => {
-              if (status.didJustFinish) {
-                videoRef.current.setPositionAsync(0);
-                handleCastDonePlaying();
-              }
-            }}
+            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
           />
-        </View>
+        </TouchableOpacity>
+        <Slider
+          style={styles.progressSlider}
+          value={playbackInstancePosition / playbackInstanceDuration}
+          minimumValue={0}
+          maximumValue={1}
+          onSlidingComplete={handleSliderValueChange}
+        />
+        <Text style={styles.duration}>
+          {getMMSSFromMillis(playbackInstancePosition)} / {getMMSSFromMillis(playbackInstanceDuration)}
+        </Text>
         <View style={styles.buttonUniversityContainer}>
           <Image
             source={{ uri: video.universityLogo }}
             style={styles.universityIcon}
             resizeMode="contain"
           />
-        </View>
-        <View style={styles.buttonBookmarkContainer}>
-          <TouchableOpacity style={styles.button} onPress={handleBookmarkPress}>
-            <Image
-              source={
-                bookmarkedCasts.some(cast => cast.castId === video._id)
-                  ? require('../../assets/Cast_icons/bookmark_filled_icon.png')
-                  : require('../../assets/Cast_icons/bookmark_icon.png')
-              }
-              style={styles.icon}
-            />
-          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -188,25 +181,22 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  icon: {
-    width: 32,
-    height: 32,
-    tintColor: colors.darkblue,
-    marginHorizontal: 12,
+  progressSlider: {
+    position: 'absolute',
+    bottom: 30,
+    width: '90%',
+  },
+  duration: {
+    position: 'absolute',
+    bottom: 10,
+    color: 'white',
+    textAlign: 'center',
+    width: '100%',
   },
   universityIcon: {
     width: "100%",
     height: "100%",
     marginHorizontal: 12,
-  },
-  buttonBookmarkContainer: {
-    position: 'absolute',
-    bottom: spacing.m,
-    right: spacing.m,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 64,
-    backgroundColor: colors.primaryBis,
   },
   buttonUniversityContainer: {
     width: 54,
