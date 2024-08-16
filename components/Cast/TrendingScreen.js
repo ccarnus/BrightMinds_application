@@ -132,6 +132,9 @@ const TrendingScreen = ({ route, navigation }) => {
           value={playbackInstancePosition / playbackInstanceDuration}
           minimumValue={0}
           maximumValue={1}
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.secondary}
+          thumbTintColor={colors.primary}
           onSlidingComplete={handleSliderValueChange}
         />
         <Text style={styles.duration}>
@@ -192,6 +195,7 @@ const styles = StyleSheet.create({
     color: 'white',
     textAlign: 'center',
     width: '100%',
+    fontFamily: 'Montserrat',
   },
   universityIcon: {
     width: "100%",

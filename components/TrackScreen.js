@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, sizes, spacing } from './theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import departments from '../lists/departments';  // Import the departments list
 
 const TrackScreen = () => {
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
@@ -14,6 +15,7 @@ const TrackScreen = () => {
   const [userId, setUserId] = useState(null);
   const [castCount, setCastCount] = useState(0);
   const [articleCount, setArticleCount] = useState(0);
+  const [refreshing, setRefreshing] = useState(false); // Add refreshing state
   const navigation = useNavigation();
   const BrightMindsMascot = require('../assets/Track_icons/BrightMindsMascot.png');
 
@@ -41,52 +43,66 @@ const TrackScreen = () => {
     }, [])
   );
 
+  const fetchData = async () => {
+    try {
+      const response = await fetch(`http://3.17.219.54/user/${userId}/tracking`);
+      const data = await response.json();
+      if (data.tracking) {
+        setTrackingData({
+          objective: data.tracking.objective,
+          progress: data.tracking.progress / 100,
+          target: data.target,
+        });
+        if (data.tracking.history) {
+          setHistory(data.tracking.history.map(history => ({
+            category: history.category,
+            progress: history.count,
+          })));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching tracking data:', error);
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch(`http://3.17.219.54/user/${userId}`);
+      const data = await response.json();
+      if (data.evaluation_list) {
+        const answeredEvaluations = data.evaluation_list.filter(evaluation => evaluation.answered).length;
+        setAnsweredCount(answeredEvaluations);
+      }
+      setCastCount(data.castPublications.length);
+      setArticleCount(data.articlePublications.length);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`http://3.17.219.54/user/${userId}/tracking`);
-        const data = await response.json();
-        if (data.tracking) {
-          setTrackingData({
-            objective: data.tracking.objective,
-            progress: data.tracking.progress / 100,
-            target: data.target,
-          });
-          if (data.tracking.history) {
-            setHistory(data.tracking.history.map(history => ({
-              category: history.category,
-              progress: history.count,
-            })));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching tracking data:', error);
-      }
-    };
-
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch(`http://3.17.219.54/user/${userId}`);
-        const data = await response.json();
-        if (data.evaluation_list) {
-          const answeredEvaluations = data.evaluation_list.filter(evaluation => evaluation.answered).length;
-          setAnsweredCount(answeredEvaluations);
-        }
-        setCastCount(data.castPublications.length);
-        setArticleCount(data.articlePublications.length);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
-    };
-
     if (userId) {
       fetchData();
       fetchUserData();
     }
   }, [userId]);
 
+  const onRefresh = React.useCallback(() => {
+    if (userId) {
+      setRefreshing(true);
+      fetchData();
+      fetchUserData();
+      setRefreshing(false);
+    }
+  }, [userId]);
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       <LinearGradient
         colors={[colors.lightblue, colors.darkblue]}
         start={{ x: 0, y: 0 }}
@@ -154,26 +170,29 @@ const TrackScreen = () => {
         <Text style={styles.sectionTitle}>Learnings</Text>
         <View style={styles.circularGaugesContainer}>
           {history.length > 0 ? (
-            history.map((item, index) => (
-              <View key={index} style={styles.circularGaugeItem}>
-                <Text style={styles.departmentName}>{item.category}</Text>
-                <AnimatedCircularProgress
-                  size={120}
-                  width={10}
-                  fill={(item.progress/trackingData.target)*100}
-                  tintColor={colors.secondary}
-                  backgroundColor={colors.primaryBis}
-                  lineCap="round"
-                  rotation={0}
-                >
-                  {fill => (
-                    <Text style={styles.gaugeText}>
-                      {`${Math.round((item.progress/trackingData.target)*100)}%`}
-                    </Text>
-                  )}
-                </AnimatedCircularProgress>
-              </View>
-            ))
+            history.map((item, index) => {
+              const department = departments.find(dep => dep.name === item.category);
+              return (
+                <View key={index} style={styles.circularGaugeItem}>
+                  <Text style={styles.departmentName}>{department ? department.display : item.category}</Text>
+                  <AnimatedCircularProgress
+                    size={120}
+                    width={10}
+                    fill={(item.progress / trackingData.target) * 100}
+                    tintColor={colors.secondary}
+                    backgroundColor={colors.primaryBis}
+                    lineCap="round"
+                    rotation={0}
+                  >
+                    {fill => (
+                      <Text style={styles.gaugeText}>
+                        {`${Math.round((item.progress / trackingData.target) * 100)}%`}
+                      </Text>
+                    )}
+                  </AnimatedCircularProgress>
+                </View>
+              );
+            })
           ) : (
             <Text style={styles.noDataText}>No learnings yet...</Text>
           )}

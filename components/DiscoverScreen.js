@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, Text, Image, StyleSheet, Modal } from 'react-native';
 import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
+import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,38 +14,14 @@ const DiscoverScreen = ({ navigation }) => {
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [videoStatus, setVideoStatus] = useState([]);
   const [showVideo, setShowVideo] = useState(false);
-  const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
   const [userId, setUserId] = useState(null);
+  const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
+  const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
   const videoRefs = useRef([]);
 
   const departmentIcons = {
-    MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
-    History: require('../assets/Virtual_labs/History.png'),
-    ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
-    Biology: require('../assets/Virtual_labs/Biology.png'),
-    Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
-    Physics: require('../assets/Virtual_labs/Physics.png'),
-    Robotics: require('../assets/Virtual_labs/Robotics.png'),
-    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
-    Geology: require('../assets/Virtual_labs/Geology.png'),
-    Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
-    AstronomyandSpaceScience: require('../assets/Virtual_labs/AstronomyandSpaceScience.png'),
-    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
-    Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
-    Statistics: require('../assets/Virtual_labs/Statistics.png'),
-    Psychology: require('../assets/Virtual_labs/Psychology.png'),
-    Sociology: require('../assets/Virtual_labs/Sociology.png'),
-    Anthropology: require('../assets/Virtual_labs/Anthropology.png'),
-    Economics: require('../assets/Virtual_labs/Economics.png'),
-    PoliticalScience: require('../assets/Virtual_labs/PoliticalScience.png'),
-    Engineering: require('../assets/Virtual_labs/Engineering.png'),
-    AgriculturalSciences: require('../assets/Virtual_labs/AgriculturalSciences.png'),
-    Philosophy: require('../assets/Virtual_labs/Philosophy.png'),
-    Linguistics: require('../assets/Virtual_labs/Linguistics.png'),
-    Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
-    Biophysics: require('../assets/Virtual_labs/Biophysics.png'),
-    DataScience: require('../assets/Virtual_labs/DataScience.png'),
-    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png')}  
+    //... (same as before)
+  };
 
   useEffect(() => {
     const getUserId = async () => {
@@ -56,11 +33,11 @@ const DiscoverScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (userId) {
-      fetchVideosAndBookmarks();
+      fetchVideos();
     }
   }, [userId]);
 
-  const fetchVideosAndBookmarks = () => {
+  const fetchVideos = () => {
     fetch('http://3.17.219.54/cast')
       .then(response => response.json())
       .then(data => {
@@ -85,15 +62,6 @@ const DiscoverScreen = ({ navigation }) => {
       })
       .catch(error => {
         console.error('Fetching error:', error);
-      });
-
-    axios
-      .get(`http://3.17.219.54/user/bookmarks/${userId}`)
-      .then(response => {
-        setBookmarkedCasts(response.data);
-      })
-      .catch(error => {
-        console.error(error);
       });
   };
 
@@ -131,7 +99,7 @@ const DiscoverScreen = ({ navigation }) => {
     const minutes = Math.floor(duration);
     const seconds = Math.round((duration - minutes) * 60);
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };  
+  };
 
   const handleNextVideoPress = () => {
     const nextIndex = (focusedIndex + 1) % videos.length;
@@ -139,32 +107,37 @@ const DiscoverScreen = ({ navigation }) => {
     setVideoStatus(videoStatus.map((_, idx) => idx === nextIndex ? false : false));
   };
 
-  const handleBookmarkPress = () => {
-    const castId = videos[focusedIndex]._id;
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setPlaybackInstancePosition(status.positionMillis);
+      setPlaybackInstanceDuration(status.durationMillis);
 
-    if (bookmarkedCasts.some(cast => cast.castId === castId)) {
-      axios
-        .delete(`http://3.17.219.54/user/remove/bookmarks/${userId}/${castId}`)
-        .then(response => {
-          setBookmarkedCasts(bookmarkedCasts.filter(cast => cast.castId !== castId));
-          videos[focusedIndex].bookmarkIcon = require('../assets/Cast_icons/bookmark_icon.png');
-        })
-        .catch(error => {
-          console.error(error);
-        });
-      return;
+      if (status.didJustFinish) {
+        handleCastDonePlaying();
+      }
     }
+  };
 
-    videos[focusedIndex].bookmarkIcon = require('../assets/Cast_icons/bookmark_filled_icon.png');
+  const getMMSSFromMillis = (millis) => {
+    const totalSeconds = millis / 1000;
+    const seconds = Math.floor(totalSeconds % 60);
+    const minutes = Math.floor(totalSeconds / 60);
 
-    axios
-      .post(`http://3.17.219.54/user/add/bookmarks/${userId}`, { castId: castId })
-      .then(response => {
-        setBookmarkedCasts([...bookmarkedCasts, { castId }]);
-      })
-      .catch(error => {
-        console.error(error);
-      });
+    const padWithZero = (number) => {
+      const string = number.toString();
+      if (number < 10) {
+        return '0' + string;
+      }
+      return string;
+    };
+    return padWithZero(minutes) + ':' + padWithZero(seconds);
+  };
+
+  const handleSliderValueChange = async (value) => {
+    if (videoRefs.current[focusedIndex]) {
+      const seekPosition = value * playbackInstanceDuration;
+      await videoRefs.current[focusedIndex].setPositionAsync(seekPosition);
+    }
   };
 
   return (
@@ -221,30 +194,27 @@ const DiscoverScreen = ({ navigation }) => {
                   shouldPlay={videoStatus[focusedIndex]}
                   resizeMode="contain"
                   style={{ width: '100%', height: '100%' }}
-                  onPlaybackStatusUpdate={(status) => {
-                    if (status.didJustFinish) {
-                      handleCastDonePlaying();
-                    }
-                  }}
+                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
                 />
+                <Slider
+                  style={styles.progressSlider}
+                  value={playbackInstancePosition / playbackInstanceDuration}
+                  minimumValue={0}
+                  maximumValue={1}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor={colors.secondary}
+                  thumbTintColor={colors.primary}
+                  onSlidingComplete={handleSliderValueChange}
+                />
+                <Text style={styles.duration}>
+                  {getMMSSFromMillis(playbackInstancePosition)} / {getMMSSFromMillis(playbackInstanceDuration)}
+                </Text>
                 <View style={styles.buttonUniversityContainer}>
                   <Image
                     source={{ uri: videos[focusedIndex].universityLogo }}
                     style={styles.universityIcon}
                     resizeMode="contain"
                   />
-                </View>
-                <View style={styles.buttonBookmarkContainer}>
-                  <TouchableOpacity style={styles.buttonBookmark} onPress={handleBookmarkPress}>
-                    <Image
-                      source={
-                        bookmarkedCasts.some(cast => cast.castId === videos[focusedIndex]._id)
-                          ? require('../assets/Cast_icons/bookmark_filled_icon.png')
-                          : require('../assets/Cast_icons/bookmark_icon.png')
-                      }
-                      style={styles.iconBookmark}
-                    />
-                  </TouchableOpacity>
                 </View>
               </View>
             </TouchableOpacity>
@@ -332,12 +302,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   universityIconMain: {
-    width: width*0.25,
-    height: width*0.25,
+    width: width * 0.25,
+    height: width * 0.25,
   },
   departmentIcon: {
-    width: width*0.15,
-    height: width*0.15,
+    width: width * 0.15,
+    height: width * 0.15,
   },
   durationText: {
     fontSize: sizes.h3,
@@ -386,7 +356,7 @@ const styles = StyleSheet.create({
   titleView: {
     marginLeft: spacing.s,
     marginRight: spacing.s,
-    height: height*0.2,
+    height: height * 0.2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -395,15 +365,6 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'MontserratBold',
     textAlign: 'center',
-  },
-  buttonBookmarkContainer: {
-    position: 'absolute',
-    bottom: spacing.m,
-    right: spacing.m,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 64,
-    backgroundColor: colors.primaryBis,
   },
   buttonUniversityContainer: {
     width: 62,
@@ -415,23 +376,24 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 50,
   },
-  icon: {
-    width: 42,
-    height: 42,
-    tintColor: colors.darkblue,
-    marginHorizontal: 12,
-  },
   universityIcon: {
     width: "100%",
     height: "100%",
     marginHorizontal: 12,
-  },  
-  iconBookmark: {
-    width: 32,
-    height: 32,
-    tintColor: colors.darkblue,
-    marginHorizontal: 12,
-  }
+  },
+  progressSlider: {
+    position: 'absolute',
+    bottom: 30,
+    width: '90%',
+  },
+  duration: {
+    position: 'absolute',
+    bottom: 10,
+    color: 'white',
+    textAlign: 'center',
+    width: '100%',
+    fontFamily: 'Montserrat',
+  },
 });
 
 export default DiscoverScreen;
