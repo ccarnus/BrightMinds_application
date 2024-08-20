@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ScrollView, Image, Text, TouchableOpacity, Animated } from 'react-native'; // Import Animated from react-native
+import { View, StyleSheet, ScrollView, Image, Text, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, sizes, spacing } from './theme';
-import departments from '../lists/departments'; // Adjust the import path as needed
+import departments from '../lists/departments';
 
-// Mapping object for department images
 const departmentImages = {
   'Physics': require('../assets/Virtual_labs/Physics.png'),
   'Chemistry': require('../assets/Virtual_labs/Chemistry.png'),
@@ -38,39 +37,44 @@ const departmentImages = {
 const LabScreen = () => {
   const navigation = useNavigation();
   const [labs, setLabs] = useState([]);
-  const [fadeAnim] = useState(new Animated.Value(0)); // Initialize fade animation value
+  const [fadeAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    // Simulate staggered appearance with setTimeout
     const timeoutIds = departments.map((department, index) => {
       return setTimeout(() => {
         setLabs((prevLabs) => [...prevLabs, department]);
       }, index * 200);
     });
 
-    // Clean up timeouts
     return () => {
       timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
     };
   }, []);
 
-  const renderLab = (lab, index) => {
-    return (
-      <TouchableOpacity
-        key={index}
-        style={styles.labContainer}
-        onPress={() => navigation.navigate('VirtualLab', { labId: lab.name, labDisplayName: lab.display })}
-      >
-        <Image source={departmentImages[lab.name]} style={styles.labImage} resizeMode="contain" />
-        <Text style={styles.labText}>{lab.display}</Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderLabRow = (rowLabs, rowIndex) => (
+    <View key={rowIndex} style={styles.labRow}>
+      {rowLabs.map((lab, index) => (
+        <TouchableOpacity
+          key={index}
+          style={styles.labContainer}
+          onPress={() => navigation.navigate('VirtualLab', { labId: lab.name, labDisplayName: lab.display })}
+        >
+          <Image source={departmentImages[lab.name]} style={styles.labImage} resizeMode="contain" />
+          <Text style={styles.labText}>{lab.display}</Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const groupedLabs = [];
+  for (let i = 0; i < labs.length; i += 2) {
+    groupedLabs.push(labs.slice(i, i + 2));
+  }
 
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollView}>
-        {labs.map(renderLab)}
+        {groupedLabs.map(renderLabRow)}
       </ScrollView>
     </View>
   );
@@ -80,34 +84,28 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
-    overflow: 'visible',
   },
   scrollView: {
-    alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: spacing.l,
     paddingHorizontal: spacing.m,
-    overflow: 'visible',
+  },
+  labRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.m,
   },
   labContainer: {
-    width: '90%',
-    minHeight: 100, 
+    width: '48%', // Adjusted to fit two items per row with some spacing
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.s,
-    marginVertical: spacing.m,
     backgroundColor: colors.primary,
-    marginLeft: spacing.s,
-    marginRight: spacing.s,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     borderRadius: sizes.radius,
-    overflow: 'visible',
     elevation: 5,
   },
   labImage: {
-    width: 100,
-    height: 100,
+    width: 80,
+    height: 80,
     resizeMode: 'contain',
   },
   labText: {
