@@ -83,7 +83,7 @@ const SignupScreen = ({ navigation }) => {
           'Content-Type': 'multipart/form-data',
         },
       });
-      Alert.alert('Signup successful', 'You can now log in with your credentials');
+      Alert.alert('Signup successful', 'Please check your email to verify your account');
       navigation.navigate('LoginScreen');
     } catch (error) {
       let errorMessage = 'Could not create account. Please try again.';

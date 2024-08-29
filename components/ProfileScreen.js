@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
-import PieChart from 'react-native-pie-chart'; // Import the PieChart component
+import PieChart from 'react-native-pie-chart';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,19 +31,16 @@ const ProfileScreen = () => {
 
   useEffect(() => {
     if (userId) {
-      // Fetch user data
       axios
         .get(`http://3.17.219.54/user/${userId}`)
         .then(response => setUserData(response.data))
         .catch(error => console.error('Error fetching user data:', error));
 
-      // Fetch user preferences
       axios
         .get(`http://3.17.219.54/user/${userId}/preferences`)
         .then(response => setUserPreferences(response.data.preferences))
         .catch(error => console.error('Error fetching user preferences:', error));
 
-      // Fetch tracking data
       axios
         .get(`http://3.17.219.54/user/${userId}/tracking`)
         .then(response => setTrackingData(response.data.tracking))
@@ -52,13 +49,32 @@ const ProfileScreen = () => {
   }, [userId]);
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userRole');
-    await AsyncStorage.removeItem('userUniversity');
-    setUserData(null);
-    setUserPreferences([]);
-    setTrackingData({ objective: '', progress: 0 });
-    navigation.navigate('LoginScreen');
+    Alert.alert(
+      "Log Out",
+      "Are you sure you want to log out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Yes",
+          onPress: async () => {
+            await AsyncStorage.removeItem('userId');
+            await AsyncStorage.removeItem('userRole');
+            await AsyncStorage.removeItem('userUniversity');
+            setUserData(null);
+            setUserPreferences([]);
+            setTrackingData({ objective: '', progress: 0 });
+            navigation.navigate('LoginScreen');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleEditProfile = () => {
+    navigation.navigate('EditProfileScreen');
   };
 
   const pieData = userPreferences.map(pref => pref.weight);
@@ -79,6 +95,15 @@ const ProfileScreen = () => {
       )}
       <View style={styles.lowerSection}>
         <ScrollView style={styles.lowerSectionScrollView}>
+        {userData && !userData.isVerified && (
+            <View style={[styles.lowerSectionContainer, styles.verificationContainer]}>
+              <Image 
+                source={require('../assets/Profile_icons/warning_icon.png')}
+                style={styles.warningIcon}
+              />
+              <Text style={styles.verificationText}>Verify your email</Text>
+            </View>
+          )}
           <View style={[styles.lowerSectionContainer, styles.shadow]}>
             <View style={styles.objectiveContainer}>
               <Text style={styles.preferencesTitle}>My Learning Path</Text>
@@ -115,12 +140,26 @@ const ProfileScreen = () => {
               <Text style={styles.noDataText}>No preferences set just yet..</Text>
             )}
           </View>
-          <TouchableOpacity 
-            style={styles.logoutContainer}
-            onPress={handleLogout}
-          >
-            <Text style={styles.buttonLogout}>Log Out</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity 
+              style={styles.roundButton}
+              onPress={handleLogout}
+            >
+              <Image 
+                source={require('../assets/Profile_icons/logout_icon.png')}
+                style={styles.buttonIcon}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.roundButton}
+              onPress={handleEditProfile}
+            >
+              <Image 
+                source={require('../assets/Profile_icons/edit_profile_icon.png')}
+                style={styles.buttonIcon}
+              />
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </View>
@@ -137,7 +176,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    height: height*2 / 7,
+    height: height * 1 / 8,
     backgroundColor: colors.secondary,
     elevation: 5,
   },
@@ -229,7 +268,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.secondary,
     fontFamily: 'MontserratBold',
-    elevation:5,
+    elevation: 5,
   },
   preferencesTitle: {
     fontSize: sizes.h2,
@@ -280,7 +319,48 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.l,
     marginBottom: spacing.xl
-  }
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: spacing.l,
+    marginBottom: spacing.l,
+  },
+  roundButton: {
+    width: 70,
+    height: 70,
+    borderRadius: 40,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+  },
+  buttonIcon: {
+    width: 40,
+    height: 40,
+    tintColor: colors.secondary,
+  },
+  verificationContainer: {
+    backgroundColor: colors.primary,
+    color: colors.red,
+    borderWidth: 2,
+    borderRadius: sizes.radius,
+    borderColor: colors.red,
+    padding: spacing.m,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  verificationText: {
+    fontSize: sizes.h3,
+    color: colors.red,
+    fontFamily: 'Montserrat',
+    marginLeft: spacing.s,
+    textAlign: 'center',
+  },
+  warningIcon: {
+    width: 35,
+    height: 35,
+  },
 });
 
 export default ProfileScreen;
