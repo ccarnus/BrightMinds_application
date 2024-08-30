@@ -34,6 +34,7 @@ const CastScreen = () => {
         setUserRole(storedUserRole);
       };
       getUserIdAndRole();
+      console.log(userId);
     }, [])
   );
   

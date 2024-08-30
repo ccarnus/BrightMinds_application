@@ -12,7 +12,7 @@ const CategoryScreen = ({ route, navigation }) => {
   const [casts, setCasts] = useState([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [videoStatus, setVideoStatus] = useState([]);
-  const [bookmarkedCasts, setBookmarkedCasts] = useState([]);
+  const [contentSubmitted, setContentSubmitted] = useState([]);
   const videoRefs = useRef([]);
   const userId = "6474e4001eec5ee1ecd40180";
 
@@ -33,19 +33,11 @@ const CategoryScreen = ({ route, navigation }) => {
         setCasts([dataWithLogos[selectedIndex], ...dataWithLogos.slice(0, selectedIndex), ...dataWithLogos.slice(selectedIndex + 1)]);
       })
       .catch(error => console.error(error));
-
-    axios
-      .get(`http://3.17.219.54/user/bookmarks/${userId}`)
-      .then(response => {
-        setBookmarkedCasts(response.data);
-      })
-      .catch(error => {
-        console.error(error);
-      });
   }, []);
 
   useEffect(() => {
     setVideoStatus(casts.map((_, index) => index === 0));
+    setContentSubmitted(casts.map(() => false));  // Initialize contentSubmitted array
   }, [casts]);
 
   const handleVideoPress = index => {
@@ -53,28 +45,16 @@ const CategoryScreen = ({ route, navigation }) => {
     setVideoStatus(prevStatus => prevStatus.map((status, idx) => (idx === index ? !status : false)));
   };
 
-  const handleBookmarkPress = () => {
-    const castId = casts[focusedIndex]._id;
+  const handleCastWatched = (index) => {
+    if (!casts[index] || contentSubmitted[index]) return;
 
-    if (bookmarkedCasts.some(cast => cast.castId === castId)) {
-      axios
-        .delete(`http://3.17.219.54/user/remove/bookmarks/${userId}/${castId}`)
-        .then(response => {
-          setBookmarkedCasts(bookmarkedCasts.filter(cast => cast.castId !== castId));
-          casts[focusedIndex].bookmarkIcon = require('../../assets/Cast_icons/bookmark_icon.png');
-        })
-        .catch(error => {
-          console.error(error);
-        });
-      return;
-    }
-
-    casts[focusedIndex].bookmarkIcon = require('../../assets/Cast_icons/bookmark_filled_icon.png');
+    const castId = casts[index]._id;
 
     axios
-      .post(`http://3.17.219.54/user/add/bookmarks/${userId}`, { castId: castId })
-      .then(response => {
-        setBookmarkedCasts([...bookmarkedCasts, { castId }]);
+      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .then(() => {
+        setContentSubmitted(prevSubmitted => prevSubmitted.map((submitted, idx) => idx === index ? true : submitted));
+        console.log("Content marked as watched at 85%");
       })
       .catch(error => {
         console.error(error);
@@ -82,16 +62,7 @@ const CategoryScreen = ({ route, navigation }) => {
   };
 
   const handleCastDonePlaying = () => {
-    const castId = casts[focusedIndex]._id;
-
-    axios
-      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
-      .then(response => {
-        setBookmarkedCasts([...bookmarkedCasts, { castId }]);
-      })
-      .catch(error => {
-        console.error(error);
-      });
+    navigation.goBack(); // Close the video and navigate back
   };
 
   useEffect(() => {
@@ -140,6 +111,12 @@ const CategoryScreen = ({ route, navigation }) => {
                 resizeMode="contain"
                 style={styles.video}
                 onPlaybackStatusUpdate={(status) => {
+                  const progress = status.positionMillis / status.durationMillis;
+
+                  if (progress >= 0.85 && !contentSubmitted[index]) {
+                    handleCastWatched(index); // Mark content as watched at 85%
+                  }
+
                   if (status.didJustFinish) {
                     videoRefs.current[index].setPositionAsync(0);
                     handleCastDonePlaying();
@@ -153,18 +130,6 @@ const CategoryScreen = ({ route, navigation }) => {
                 style={styles.universityIcon}
                 resizeMode="contain"
               />
-            </View>
-            <View style={styles.buttonBookmarkContainer}>
-              <TouchableOpacity style={styles.button} onPress={handleBookmarkPress}>
-                <Image
-                  source={
-                    bookmarkedCasts.some(cast => cast.castId === cast._id)
-                      ? require('../../assets/Cast_icons/bookmark_filled_icon.png')
-                      : require('../../assets/Cast_icons/bookmark_icon.png')
-                  }
-                  style={styles.icon}
-                />
-              </TouchableOpacity>
             </View>
           </TouchableOpacity>
         ))}
@@ -202,25 +167,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  icon: {
-    width: 32,
-    height: 32,
-    tintColor: colors.darkblue,
-    marginHorizontal: 12,
-  },
   universityIcon: {
     width: "100%",
     height: "100%",
     marginHorizontal: 12,
-  },
-  buttonBookmarkContainer: {
-    position: 'absolute',
-    bottom: spacing.m,
-    right: spacing.m,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 64,
-    backgroundColor: colors.primaryBis,
   },
   buttonUniversityContainer: {
     width: 54,

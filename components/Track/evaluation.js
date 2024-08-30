@@ -3,8 +3,8 @@ import { Animated , View, Text, StyleSheet, TouchableOpacity, ScrollView} from '
 import axios from 'axios';
 import Gauge from './Gauge';
 import { colors, sizes, spacing } from '../theme';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const USER_ID = "667b58469af159d9ea0041e8";
 let correctAnswerCount = 0;
 
 const TakeTest = ({ route, navigation }) => {
@@ -14,9 +14,19 @@ const TakeTest = ({ route, navigation }) => {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isCorrect, setIsCorrect] = useState(null);
   const [displayedQuestion, setDisplayedQuestion] = useState('');
+  const [userId, setUserId] = useState(null);
   const typingIntervalRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const getUserId = async () => {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      setUserId(storedUserId);
+    };
+    getUserId();
+    console.log(userId);
+  }, []);
   
   useEffect(() => {
     fetchQuestions();
@@ -44,22 +54,9 @@ const TakeTest = ({ route, navigation }) => {
     }, 50);
   };
 
-  const addPoints = async (points) => {
-    try {
-      const response = await axios.post(
-        'http://3.17.219.54/user/add/points/' + USER_ID,
-        {
-          Points: points,
-        }
-      );
-    } catch (error) {
-      console.error('Error adding points:', error);
-    }
-  };
-
   const removeContentFromEvaluationList = async (evaluation) => {
     try {
-      await axios.post(`http://3.17.219.54/user/mark/content/as/answered/${USER_ID}`, {
+      await axios.post(`http://3.17.219.54/user/mark/content/as/answered/${userId}`, {
         contentId: evaluation.contentid,
       });
     } catch (error) {
@@ -149,7 +146,6 @@ const TakeTest = ({ route, navigation }) => {
 
     if (isAnswerCorrect) {
       animateCorrectAnswer();
-      addPoints(10);
       correctAnswerCount = correctAnswerCount + 1 ;
       removeContentFromEvaluationList(evaluations[currentQuestionIndex]);
     } else {
