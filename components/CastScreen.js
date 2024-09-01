@@ -25,6 +25,7 @@ const CastScreen = () => {
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState('');
   const [watchedCastIds, setWatchedCastIds] = useState([]);
+  const [watchedArticleIds, setWatchedArticleIds] = useState([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -35,16 +36,14 @@ const CastScreen = () => {
         setUserRole(storedUserRole);
       };
       getUserIdAndRole();
-      console.log(userId);
     }, [])
   );
 
   useEffect(() => {
     if (userId) {
-      fetchWatchedCasts();
+      fetchWatchedCastsAndArticles();
       fetchSuggestedCastData();
       fetchTrendingCastData();
-      fetchAllCastData();
       fetchArticleData();
     }
   }, [userId]);
@@ -52,23 +51,24 @@ const CastScreen = () => {
   const onRefresh = React.useCallback(() => {
     if (userId) {
       setRefreshing(true);
-      fetchWatchedCasts();
+      fetchWatchedCastsAndArticles();
       fetchSuggestedCastData();
       fetchTrendingCastData();
-      fetchAllCastData();
       fetchArticleData();
       setRefreshing(false);
     }
   }, [userId]);
 
-  const fetchWatchedCasts = async () => {
+  const fetchWatchedCastsAndArticles = async () => {
     try {
       const response = await fetch(`http://3.17.219.54/user/${userId}`);
       const userData = await response.json();
       const watchedCasts = userData.evaluation_list.filter(item => item.type === 'cast' && item.watched).map(item => item.contentid);
+      const watchedArticles = userData.evaluation_list.filter(item => item.type === 'article' && item.watched).map(item => item.contentid);
       setWatchedCastIds(watchedCasts);
+      setWatchedArticleIds(watchedArticles);
     } catch (error) {
-      console.error('Error fetching watched casts:', error);
+      console.error('Error fetching watched casts and articles:', error);
     }
   };
 
@@ -91,28 +91,17 @@ const CastScreen = () => {
 
   const handleSearchResultPress = (id) => {
     navigation.navigate('SearchResult', { selectedCastId: id });
-    console.log(id)
-  };
-
-  const fetchAllCastData = async () => {
-    try {
-      const response = await fetch('http://3.17.219.54/cast');
-      const data = await response.json();
-      const formattedData = data.map(cast => ({
-        ...cast,
-        watched: watchedCastIds.includes(cast._id)
-      }));
-      setAllCasts(formattedData);
-    } catch (error) {
-      console.error(error);
-    }
   };
 
   const fetchArticleData = async () => {
     try {
       const response = await fetch('http://3.17.219.54/article');
       const data = await response.json();
-      setArticleData(data);
+      const formattedData = data.map(article => ({
+        ...article,
+        watched: watchedArticleIds.includes(article._id)
+      }));
+      setArticleData(formattedData);
     } catch (error) {
       console.error(error);
     }
@@ -174,7 +163,7 @@ const CastScreen = () => {
         console.error(error);
         setIsLoading(false);
       });
-  };
+  }; 
 
   return (
     <View style={styles.container}>
