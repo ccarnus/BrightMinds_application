@@ -44,6 +44,7 @@ const CastScreen = () => {
       fetchWatchedCastsAndArticles();
       fetchSuggestedCastData();
       fetchTrendingCastData();
+      fetchAllCastData();
       fetchArticleData();
     }
   }, [userId]);
@@ -54,6 +55,7 @@ const CastScreen = () => {
       fetchWatchedCastsAndArticles();
       fetchSuggestedCastData();
       fetchTrendingCastData();
+      fetchAllCastData();
       fetchArticleData();
       setRefreshing(false);
     }
@@ -67,9 +69,11 @@ const CastScreen = () => {
       const watchedArticles = userData.evaluation_list.filter(item => item.type === 'article' && item.watched).map(item => item.contentid);
       setWatchedCastIds(watchedCasts);
       setWatchedArticleIds(watchedArticles);
+      console.log(watchedCasts);
+      console.log(watchedArticles);
     } catch (error) {
       console.error('Error fetching watched casts and articles:', error);
-    }
+    } 
   };
 
   const handleSearch = (text) => {
@@ -91,6 +95,16 @@ const CastScreen = () => {
 
   const handleSearchResultPress = (id) => {
     navigation.navigate('SearchResult', { selectedCastId: id });
+  };
+
+  const fetchAllCastData = async () => {
+    try {
+      const response = await fetch('http://3.17.219.54/cast');
+      const data = await response.json();
+      setAllCasts(data);
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const fetchArticleData = async () => {
