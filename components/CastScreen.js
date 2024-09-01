@@ -24,6 +24,7 @@ const CastScreen = () => {
   const [articleData, setArticleData] = useState([]);
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState('');
+  const [watchedCastIds, setWatchedCastIds] = useState([]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -37,9 +38,10 @@ const CastScreen = () => {
       console.log(userId);
     }, [])
   );
-  
+
   useEffect(() => {
     if (userId) {
+      fetchWatchedCasts();
       fetchSuggestedCastData();
       fetchTrendingCastData();
       fetchAllCastData();
@@ -50,6 +52,7 @@ const CastScreen = () => {
   const onRefresh = React.useCallback(() => {
     if (userId) {
       setRefreshing(true);
+      fetchWatchedCasts();
       fetchSuggestedCastData();
       fetchTrendingCastData();
       fetchAllCastData();
@@ -57,6 +60,17 @@ const CastScreen = () => {
       setRefreshing(false);
     }
   }, [userId]);
+
+  const fetchWatchedCasts = async () => {
+    try {
+      const response = await fetch(`http://3.17.219.54/user/${userId}`);
+      const userData = await response.json();
+      const watchedCasts = userData.evaluation_list.filter(item => item.type === 'cast' && item.watched).map(item => item.contentid);
+      setWatchedCastIds(watchedCasts);
+    } catch (error) {
+      console.error('Error fetching watched casts:', error);
+    }
+  };
 
   const handleSearch = (text) => {
     setSearchQuery(text);
@@ -84,7 +98,11 @@ const CastScreen = () => {
     try {
       const response = await fetch('http://3.17.219.54/cast');
       const data = await response.json();
-      setAllCasts(data);
+      const formattedData = data.map(cast => ({
+        ...cast,
+        watched: watchedCastIds.includes(cast._id)
+      }));
+      setAllCasts(formattedData);
     } catch (error) {
       console.error(error);
     }
@@ -118,6 +136,7 @@ const CastScreen = () => {
           image: cast.castimageurl,
           title: cast.title,
           duration: cast.duration,
+          watched: watchedCastIds.includes(cast._id)
         }));
         setSuggestedCastData(formattedData);
         setIsLoading(false);
@@ -141,11 +160,12 @@ const CastScreen = () => {
           setIsLoading(false);
           return;
         }
-        const formattedData = data.map((cast) => ({
+        const formattedData = data.map(cast => ({
           id: cast._id,
           image: cast.castimageurl,
           title: cast.title,
           duration: cast.duration,
+          watched: watchedCastIds.includes(cast._id)
         }));
         setTrendingCastData(formattedData);
         setIsLoading(false);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
@@ -8,7 +8,7 @@ const CARD_WIDTH = CARD_HEIGHT * 1.75;
 const CARD_HEIGHT_TOTAL = 175;
 const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
 
-const Carousel = ({ list, carouselType}) => {
+const Carousel = ({ list, carouselType }) => {
   const navigation = useNavigation();
 
   return (
@@ -23,6 +23,7 @@ const Carousel = ({ list, carouselType}) => {
         const minutes = Math.floor(item.duration);
         const seconds = Math.round((item.duration - minutes) * 60);
         const durationString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
         return (
           <TouchableOpacity
             style={{
@@ -41,6 +42,13 @@ const Carousel = ({ list, carouselType}) => {
                   onError={() => console.log(`Error loading image for ${item.title}`)}
                 />
                 <Text style={styles.duration}>{durationString}</Text>
+                {/* Conditionally render the "already seen" icon */}
+                {item.watched && (
+                  <Image
+                    source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
+                    style={styles.alreadySeenIcon}
+                  />
+                )}
               </View>
               <View style={styles.titleBox}>
                 <Text style={styles.title}>{item.title}</Text>
@@ -95,6 +103,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     fontSize: sizes.h5,
+  },
+  alreadySeenIcon: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 24, // Adjust the size as needed
+    height: 24, // Adjust the size as needed
+    resizeMode: 'contain',
   },
 });
 
