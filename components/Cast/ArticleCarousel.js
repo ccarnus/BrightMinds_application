@@ -38,6 +38,12 @@ const ArticleCarousel = ({ list }) => {
                 onError={() => console.log(`Error loading image for ${item.title}`)}
               />
               <Text style={styles.duration}>{item.duration} min</Text>
+              {item.watched && (
+                <Image
+                  source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
+                  style={styles.watchedIcon}
+                />
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -47,47 +53,55 @@ const ArticleCarousel = ({ list }) => {
 };
 
 const styles = StyleSheet.create({
-    card: {
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT_TOTAL,
-        marginVertical: 10,
-        position: 'relative',
-      },
-      imageBox: {
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        borderRadius: sizes.radius,
-        overflow: 'hidden',
-        elevation: 5,
-      },
-      image: {
-        width: CARD_WIDTH,
-        height: CARD_HEIGHT,
-        resizeMode: 'cover',
-      },
-      titleBox: {
-        position: 'absolute',
-        top: CARD_HEIGHT_TOTAL - 30,
-        maxHeight: 50,
-        width: '100%',
-      },
-      title: {
-        fontSize: sizes.h45,
-        color: colors.white,
-        textAlign: 'left',
-        fontFamily: "Montserrat",
-      },
-      duration: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        color: 'white',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
-        paddingHorizontal: 4,
-        paddingVertical: 2,
-        borderRadius: 4,
-        fontSize: sizes.h5,
-      },
+  card: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT_TOTAL,
+    marginVertical: 10,
+    position: 'relative',
+  },
+  imageBox: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: sizes.radius,
+    overflow: 'hidden',
+    elevation: 5,
+    position: 'relative',
+  },
+  image: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    resizeMode: 'cover',
+  },
+  titleBox: {
+    position: 'absolute',
+    top: CARD_HEIGHT_TOTAL - 30,
+    maxHeight: 50,
+    width: '100%',
+  },
+  title: {
+    fontSize: sizes.h45,
+    color: colors.white,
+    textAlign: 'left',
+    fontFamily: "Montserrat",
+  },
+  duration: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    color: 'white',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontSize: sizes.h5,
+  },
+  watchedIcon: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 24,
+    height: 24,
+  },
 });
 
 export default ArticleCarousel;

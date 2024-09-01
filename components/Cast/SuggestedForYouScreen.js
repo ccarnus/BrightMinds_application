@@ -16,6 +16,7 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
   const [userId, setUserId] = useState(null);
   const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
   const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
+  const [contentSubmitted, setContentSubmitted] = useState(false);
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -45,19 +46,24 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
-  const handleCastDonePlaying = () => {
-    if (!video) return;
+  const handleCastWatched = () => {
+    if (!video || contentSubmitted) return;
 
     const castId = video._id;
 
     axios
       .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
-        // Handle successful completion
+        setContentSubmitted(true);
+        console.log("Content marked as watched at 85%");
       })
       .catch(error => {
         console.error(error);
       });
+  };
+
+  const handleCastDonePlaying = () => {
+    navigation.goBack();
   };
 
   useEffect(() => {
@@ -74,8 +80,13 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
       setPlaybackInstancePosition(status.positionMillis);
       setPlaybackInstanceDuration(status.durationMillis);
 
+      const progress = status.positionMillis / status.durationMillis;
+
+      if (progress >= 0.85 && !contentSubmitted) {
+        handleCastWatched();
+      }
+
       if (status.didJustFinish) {
-        videoRef.current.setPositionAsync(0);
         handleCastDonePlaying();
       }
     }

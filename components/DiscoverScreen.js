@@ -17,10 +17,37 @@ const DiscoverScreen = ({ navigation }) => {
   const [userId, setUserId] = useState(null);
   const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
   const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
+  const [contentSubmitted, setContentSubmitted] = useState([]);
   const videoRefs = useRef([]);
 
   const departmentIcons = {
-    //... (same as before)
+    MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
+    History: require('../assets/Virtual_labs/History.png'),
+    ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
+    Biology: require('../assets/Virtual_labs/Biology.png'),
+    Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
+    Physics: require('../assets/Virtual_labs/Physics.png'),
+    Robotics: require('../assets/Virtual_labs/Robotics.png'),
+    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
+    Geology: require('../assets/Virtual_labs/Geology.png'),
+    Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
+    AstronomyandSpaceScience: require('../assets/Virtual_labs/AstronomyandSpaceScience.png'),
+    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
+    Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
+    Statistics: require('../assets/Virtual_labs/Statistics.png'),
+    Psychology: require('../assets/Virtual_labs/Psychology.png'),
+    Sociology: require('../assets/Virtual_labs/Sociology.png'),
+    Anthropology: require('../assets/Virtual_labs/Anthropology.png'),
+    Economics: require('../assets/Virtual_labs/Economics.png'),
+    PoliticalScience: require('../assets/Virtual_labs/PoliticalScience.png'),
+    Engineering: require('../assets/Virtual_labs/Engineering.png'),
+    AgriculturalSciences: require('../assets/Virtual_labs/AgriculturalSciences.png'),
+    Philosophy: require('../assets/Virtual_labs/Philosophy.png'),
+    Linguistics: require('../assets/Virtual_labs/Linguistics.png'),
+    Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
+    Biophysics: require('../assets/Virtual_labs/Biophysics.png'),
+    DataScience: require('../assets/Virtual_labs/DataScience.png'),
+    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png')
   };
 
   useEffect(() => {
@@ -59,6 +86,7 @@ const DiscoverScreen = ({ navigation }) => {
       .then(dataWithLogosAndApproval => {
         setVideos(dataWithLogosAndApproval);
         setVideoStatus(dataWithLogosAndApproval.map(() => false));
+        setContentSubmitted(dataWithLogosAndApproval.map(() => false));  // Initialize contentSubmitted array
       })
       .catch(error => {
         console.error('Fetching error:', error);
@@ -74,6 +102,12 @@ const DiscoverScreen = ({ navigation }) => {
     setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? !status : status));
   };
 
+  const formatDuration = (duration) => {
+    const minutes = Math.floor(duration);
+    const seconds = Math.round((duration - minutes) * 60);
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
   const togglePlayVideoFocused = async () => {
     if (videoRefs.current[focusedIndex]) {
       const status = await videoRefs.current[focusedIndex].getStatusAsync();
@@ -85,32 +119,38 @@ const DiscoverScreen = ({ navigation }) => {
     }
   };
 
-  const handleCastDonePlaying = () => {
-    const castId = videos[focusedIndex]._id;
+  const handleCastWatched = (index) => {
+    if (!videos[index] || contentSubmitted[index]) return;
+
+    const castId = videos[index]._id;
 
     axios
       .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .then(() => {
+        setContentSubmitted(prevSubmitted => prevSubmitted.map((submitted, idx) => idx === index ? true : submitted));
+        console.log("Content marked as watched at 85%");
+      })
       .catch(error => {
         console.error(error);
       });
   };
 
-  const formatDuration = (duration) => {
-    const minutes = Math.floor(duration);
-    const seconds = Math.round((duration - minutes) * 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const handleNextVideoPress = () => {
-    const nextIndex = (focusedIndex + 1) % videos.length;
-    setFocusedIndex(nextIndex);
-    setVideoStatus(videoStatus.map((_, idx) => idx === nextIndex ? false : false));
+  const handleCastDonePlaying = () => {
+    setShowVideo(false);
+    setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? false : status));
+    navigation.goBack(); // Close the video and navigate back
   };
 
   const onPlaybackStatusUpdate = (status) => {
     if (status.isLoaded) {
       setPlaybackInstancePosition(status.positionMillis);
       setPlaybackInstanceDuration(status.durationMillis);
+
+      const progress = playbackInstancePosition / playbackInstanceDuration;
+
+      if (progress >= 0.85 && !contentSubmitted[focusedIndex]) {
+        handleCastWatched(focusedIndex); // Mark content as watched at 85%
+      }
 
       if (status.didJustFinish) {
         handleCastDonePlaying();
@@ -140,6 +180,12 @@ const DiscoverScreen = ({ navigation }) => {
     }
   };
 
+  const handleNextVideoPress = () => {
+    const nextIndex = (focusedIndex + 1) % videos.length;
+    setFocusedIndex(nextIndex);
+    setVideoStatus(videoStatus.map((_, idx) => idx === nextIndex ? false : false));
+  };
+
   return (
     <View style={styles.container}>
       {videos.length > 0 && videos[focusedIndex] && (
@@ -154,7 +200,7 @@ const DiscoverScreen = ({ navigation }) => {
           >
             <Image
               source={{ uri: videos[focusedIndex].castimageurl }}
-              style={{ width: width, height: width /1.5 }}
+              style={{ width: width, height: width / 1.5 }}
               resizeMode="contain"
             />
             {!videoStatus[focusedIndex] && (
@@ -166,12 +212,12 @@ const DiscoverScreen = ({ navigation }) => {
               </View>
             )}
             {videos[focusedIndex].isApproved && (
-                <Image
-                  source={require('../assets/Cast_icons/approved_badge.png')}
-                  style={styles.approvedIcon}
-                  resizeMode="contain"
-                />
-              )}
+              <Image
+                source={require('../assets/Cast_icons/approved_badge.png')}
+                style={styles.approvedIcon}
+                resizeMode="contain"
+              />
+            )}
           </TouchableOpacity>
           <Modal
             animationType="slide"

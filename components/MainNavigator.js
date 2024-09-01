@@ -21,7 +21,7 @@ import ArticleDetailsScreen from './Cast/ArticleDetailsScreen';
 import LoginScreen from './LoginScreen';
 import SignupScreen from './SignupScreen';
 import PreferencesScreen from './PreferencesScreen';
-import CategoryScreen from './VirtualLab/CategoryScreen';
+import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import CastPublicationsScreen from './Track/CastPublicationsScreen';
 import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
 
@@ -66,7 +66,7 @@ const MainNavigator = () => {
         <Stack.Screen name="SuggestedForYou" component={SuggestedForYou} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Trending" component={Trending} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="CategoryScreen" component={CategoryScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />

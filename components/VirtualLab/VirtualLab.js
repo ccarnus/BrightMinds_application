@@ -38,7 +38,7 @@ const VirtualLab = ({ route }) => {
   };
 
   const handleCastPress = (castId) => {
-    navigation.navigate('CategoryScreen', { selectedCastId: castId, category: labId });
+    navigation.navigate('VirtualLabVideoScreen', { selectedCastId: castId});
   };
 
   return (

@@ -55,7 +55,7 @@ const BottomNavigation = () => {
         initialRouteName="Cast"
         screenOptions={{
           headerShown: false,
-          tabBarShowLabel: true,
+          tabBarShowLabel: false,
           tabBarHideOnKeyboard: true,
           tabBarStyle: { 
             backgroundColor: colors.primary,
@@ -123,9 +123,9 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     width: 32,
-    height: 2,
+    height: 3,
     left: sizes.width / tabs.length / 2 - 15,
-    bottom: 50,
+    bottom: 47,
     backgroundColor: colors.darkblue,
     zIndex: 100,
   },
