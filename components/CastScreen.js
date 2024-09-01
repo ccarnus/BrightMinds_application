@@ -19,7 +19,7 @@ const CastScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const forYou = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
-  const articleIcon = require('../assets/Cast_screen_icons/article_logo.png');
+  const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const podcastIcon = require('../assets/Cast_screen_icons/podcast_logo.png');
   const [articleData, setArticleData] = useState([]);
   const [userId, setUserId] = useState(null);
@@ -323,6 +323,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     marginRight: spacing.s,
+    tintColor: colors.secondary,
   },
   noResultsText: {
     color: colors.secondary,
