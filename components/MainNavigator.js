@@ -6,6 +6,7 @@ import BottomNavigation from './BottomNavigation';
 import PostCast from './PostContent/PostCast';
 import PostArticle from './PostContent/PostArticle';
 import CastTypeChoice from './PostContent/CastTypeChoice';
+import LabChoiceScreen from './VirtualLab/LabChoiceScreen';
 import Ready from './Track/ready';
 import Evaluation from './Track/evaluation';
 import Banner from './Banner';
@@ -56,6 +57,7 @@ const MainNavigator = () => {
         <Stack.Screen name="Ready" component={Ready} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="Finish" component={Finish} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
