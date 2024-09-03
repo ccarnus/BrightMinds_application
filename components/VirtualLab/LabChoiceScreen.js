@@ -28,26 +28,6 @@ const LabChoiceScreen = ({ route }) => {
 
   }, [fadeAnim1, fadeAnim2]);
 
-  // Set the custom back behavior
-  useFocusEffect(
-    React.useCallback(() => {
-      const onBackPress = () => {
-        navigation.navigate('LabScreen'); // Navigate to LabScreen instead of going back
-        return true; // Return true to prevent the default back behavior
-      };
-
-      // Add event listener for hardware back press on Android
-      const backHandler = navigation.addListener('beforeRemove', (e) => {
-        e.preventDefault(); // Prevent default back action
-        onBackPress();
-      });
-
-      return () => {
-        backHandler(); // Cleanup the event listener on component unmount
-      };
-    }, [navigation])
-  );
-
   const handleChoice = (castType) => {
     switch (castType) {
       case 'Learn':

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import InfoIcon from '../../assets/Virtual_lab_icons/info_icon.png';
-import CompassIcon from '../../assets/Virtual_lab_icons/compass_icon.png';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
@@ -50,9 +49,6 @@ const VirtualLab = ({ route }) => {
           <TouchableOpacity>
             <Image source={InfoIcon} style={styles.topRightIcon} />
           </TouchableOpacity>
-          <TouchableOpacity>
-            <Image source={CompassIcon} style={styles.topRightIcon} />
-          </TouchableOpacity>
         </View>
       </LinearGradient>
       <ScrollView style={styles.bottomSection}>
@@ -80,14 +76,13 @@ const styles = StyleSheet.create({
   },
   topSection: {
     height: height / 4,
-    alignItems: 'center',
     backgroundColor: colors.secondary,
     elevation: 5,
   },
   titleOverlay: {
-    position: 'absolute',
-    top: spacing.m,
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   topRightButtons: {
     position: 'absolute',
@@ -99,8 +94,6 @@ const styles = StyleSheet.create({
     fontSize: sizes.title,
     color: colors.primary,
     textAlign: 'center',
-    marginTop: sizes.xl,
-    marginBottom: sizes.xl,
     marginLeft: 10,
     marginRight: 10,
     fontFamily: 'Montserrat',
@@ -109,6 +102,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
     paddingVertical: spacing.m,
     width: width,
+    marginBottom: spacing.m,
   },
   castContainer: {
     flexDirection: 'row',
@@ -119,6 +113,7 @@ const styles = StyleSheet.create({
   castTextContainer: {
     marginLeft: spacing.s,
     verticalAlign: 'top',
+    justifyContent: 'center',
     flex: 1,
   },
   castTitle: {
@@ -141,6 +136,7 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     marginVertical: spacing.s,
+    tintColor: colors.primary,
   },
 });
 

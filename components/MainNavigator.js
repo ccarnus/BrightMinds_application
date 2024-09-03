@@ -57,7 +57,7 @@ const MainNavigator = () => {
         <Stack.Screen name="Ready" component={Ready} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="Finish" component={Finish} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false, }}/>
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
@@ -70,7 +70,13 @@ const MainNavigator = () => {
         <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }}  
+          listeners={({ navigation }) => ({
+            beforeRemove: (e) => {
+              e.preventDefault();
+              navigation.navigate('Lab');
+            },
+          })}/>
         <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PreferencesScreen" component={PreferencesScreen} options={{ headerShown: false, tabBarVisible: false }} />
       </Stack.Navigator>
