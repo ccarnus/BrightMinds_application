@@ -43,7 +43,7 @@ const Banner = () => {
     <View style={styles.bannerContainer}>
       <TouchableOpacity onPress={handleProfilePress} style={styles.logoContainer}>
         <Image
-          source={require('../assets/Banner_icons/logo_polar_bear.png')}
+          source={require('../assets/BrightMinds/logo_round.png')}
           style={styles.logoImage}
         />
       </TouchableOpacity>
@@ -75,6 +75,8 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 48,
     height: 48,
+    resizeMode: 'contain',
+    
   },
   profileImage: {
     width: 46,

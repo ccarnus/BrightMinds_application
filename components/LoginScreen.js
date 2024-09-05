@@ -60,7 +60,7 @@ const LoginScreen = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Image source={require('../assets/BrightMinds_research_icon.png')} style={styles.titleImage} resizeMode="contain" />
+          <Image source={require('../assets/BrightMinds/BrightMinds_research_icon.png')} style={styles.titleImage} resizeMode="contain" />
           <Text style={styles.title}>Login</Text>
           <TextInput
             label="Email"
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: 15,
