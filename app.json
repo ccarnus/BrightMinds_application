@@ -4,7 +4,7 @@
     "slug": "BrightMindsBeta",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/BrightMinds/ios_icon.png",
+    "icon": "./assets/BrightMinds/android_icon.png",
     "userInterfaceStyle": "light",
     "platforms": [
       "ios",
@@ -19,7 +19,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/BrightMinds/ios_icon.png"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +30,7 @@
       "package": "com.ccarnus3.BrightMindsBeta"
     },
     "web": {
-      "favicon": "./assets/BrightMinds/brighios_icontminds_icon.png"
+      "favicon": "./assets/BrightMinds/ios_icon.png"
     },
     "extra": {
       "eas": {
