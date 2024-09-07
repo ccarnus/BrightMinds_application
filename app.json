@@ -15,6 +15,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#f1f1f1"
     },
+    "statusBar": {
+      "backgroundColor": "#ffffff",
+      "style": "light"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],

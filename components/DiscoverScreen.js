@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Image, StyleSheet, Modal } from 'react-native';
+import { View, TouchableOpacity, Text, Image, StyleSheet, Modal, ActivityIndicator } from 'react-native';
 import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
@@ -18,6 +18,7 @@ const DiscoverScreen = ({ navigation }) => {
   const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
   const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
   const [contentSubmitted, setContentSubmitted] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const videoRefs = useRef([]);
 
   const departmentIcons = {
@@ -65,6 +66,7 @@ const DiscoverScreen = ({ navigation }) => {
   }, [userId]);
 
   const fetchVideos = () => {
+    setIsLoading(true);
     fetch('http://3.17.219.54/cast')
       .then(response => response.json())
       .then(data => {
@@ -86,15 +88,16 @@ const DiscoverScreen = ({ navigation }) => {
       .then(dataWithLogosAndApproval => {
         setVideos(dataWithLogosAndApproval);
         setVideoStatus(dataWithLogosAndApproval.map(() => false));
-        setContentSubmitted(dataWithLogosAndApproval.map(() => false));  // Initialize contentSubmitted array
+        setContentSubmitted(dataWithLogosAndApproval.map(() => false));
+        setIsLoading(false);
       })
       .catch(error => {
         console.error('Fetching error:', error);
+        setIsLoading(false);
       });
   };
-
   const getDepartmentIcon = (department) => {
-    return departmentIcons[department] || null; // Return the icon if found, otherwise null
+    return departmentIcons[department] || null;
   };
 
   const togglePlay = () => {
@@ -188,122 +191,140 @@ const DiscoverScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {videos.length > 0 && videos[focusedIndex] && (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <Image
+            source={require('../assets/BrightMinds/BrightMinds_research_icon.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+      ) : (
         <>
-          <View style={styles.titleView}>
-            <Text style={styles.videoTitle}>{videos[focusedIndex] ? videos[focusedIndex].title : ''}</Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.imageContainer, { height: width / 1.5 }]}
-            onPress={togglePlay}
-            activeOpacity={1}
-          >
-            <Image
-              source={{ uri: videos[focusedIndex].castimageurl }}
-              style={{ width: width, height: width / 1.5 }}
-              resizeMode="contain"
-            />
-            {!videoStatus[focusedIndex] && (
-              <View style={styles.playIconContainer}>
-                <Image
-                  source={require('../assets/Cast_icons/play_icon.png')}
-                  style={styles.playIcon}
-                />
-              </View>
-            )}
-            {videos[focusedIndex].isApproved && (
-              <Image
-                source={require('../assets/Cast_icons/approved_badge.png')}
-                style={styles.approvedIcon}
-                resizeMode="contain"
-              />
-            )}
-          </TouchableOpacity>
-          <Modal
-            animationType="slide"
-            transparent={false}
-            visible={showVideo}
-            onRequestClose={() => {
-              setShowVideo(false);
-              setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? false : status));
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={1}
-              style={{ flex: 1 }}
-              onPress={togglePlayVideoFocused}
-            >
-              <View style={{ flex: 1, backgroundColor: colors.secondary }}>
-                <Video
-                  ref={ref => (videoRefs.current[focusedIndex] = ref)}
-                  source={{ uri: videos[focusedIndex].casturl }}
-                  shouldPlay={videoStatus[focusedIndex]}
-                  resizeMode="contain"
-                  style={{ width: '100%', height: '100%' }}
-                  onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                />
-                <Slider
-                  style={styles.progressSlider}
-                  value={playbackInstancePosition / playbackInstanceDuration}
-                  minimumValue={0}
-                  maximumValue={1}
-                  minimumTrackTintColor={colors.primary}
-                  maximumTrackTintColor={colors.secondary}
-                  thumbTintColor={colors.primary}
-                  onSlidingComplete={handleSliderValueChange}
-                />
-                <Text style={styles.duration}>
-                  {getMMSSFromMillis(playbackInstancePosition)} / {getMMSSFromMillis(playbackInstanceDuration)}
+          {videos.length > 0 && videos[focusedIndex] && (
+            <>
+              <View style={styles.titleView}>
+                <Text style={styles.videoTitle}>
+                  {videos[focusedIndex] ? videos[focusedIndex].title : ''}
                 </Text>
-                <View style={styles.buttonUniversityContainer}>
+              </View>
+              <TouchableOpacity
+                style={[styles.imageContainer, { height: width / 1.5 }]}
+                onPress={togglePlay}
+                activeOpacity={1}
+              >
+                <Image
+                  source={{ uri: videos[focusedIndex].castimageurl }}
+                  style={{ width: width, height: width / 1.5 }}
+                  resizeMode="contain"
+                />
+                {!videoStatus[focusedIndex] && (
+                  <View style={styles.playIconContainer}>
+                    <Image
+                      source={require('../assets/Cast_icons/play_icon.png')}
+                      style={styles.playIcon}
+                    />
+                  </View>
+                )}
+                {videos[focusedIndex].isApproved && (
                   <Image
-                    source={{ uri: videos[focusedIndex].universityLogo }}
-                    style={styles.universityIcon}
+                    source={require('../assets/Cast_icons/approved_badge.png')}
+                    style={styles.approvedIcon}
                     resizeMode="contain"
                   />
-                </View>
+                )}
+              </TouchableOpacity>
+              <Modal
+                animationType="slide"
+                transparent={false}
+                visible={showVideo}
+                onRequestClose={() => {
+                  setShowVideo(false);
+                  setVideoStatus(videoStatus.map((status, idx) =>
+                    idx === focusedIndex ? false : status
+                  ));
+                }}
+              >
+                <TouchableOpacity
+                  activeOpacity={1}
+                  style={{ flex: 1 }}
+                  onPress={togglePlayVideoFocused}
+                >
+                  <View style={{ flex: 1, backgroundColor: colors.secondary }}>
+                    <Video
+                      ref={ref => (videoRefs.current[focusedIndex] = ref)}
+                      source={{ uri: videos[focusedIndex].casturl }}
+                      shouldPlay={videoStatus[focusedIndex]}
+                      resizeMode="contain"
+                      style={{ width: '100%', height: '100%' }}
+                      onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+                    />
+                    <Slider
+                      style={styles.progressSlider}
+                      value={playbackInstancePosition / playbackInstanceDuration}
+                      minimumValue={0}
+                      maximumValue={1}
+                      minimumTrackTintColor={colors.primary}
+                      maximumTrackTintColor={colors.secondary}
+                      thumbTintColor={colors.primary}
+                      onSlidingComplete={handleSliderValueChange}
+                    />
+                    <Text style={styles.duration}>
+                      {getMMSSFromMillis(playbackInstancePosition)} /{' '}
+                      {getMMSSFromMillis(playbackInstanceDuration)}
+                    </Text>
+                    <View style={styles.buttonUniversityContainer}>
+                      <Image
+                        source={{ uri: videos[focusedIndex].universityLogo }}
+                        style={styles.universityIcon}
+                        resizeMode="contain"
+                      />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </Modal>
+            </>
+          )}
+  
+          <View style={styles.bottomSection}>
+            <View style={styles.middleband}>
+              <View style={styles.leftColumn}>
+                {videos[focusedIndex] && videos[focusedIndex].department && (
+                  <Image
+                    source={getDepartmentIcon(videos[focusedIndex].department)}
+                    style={styles.departmentIcon}
+                    resizeMode="contain"
+                  />
+                )}
               </View>
-            </TouchableOpacity>
-          </Modal>
+              <View style={styles.separator} />
+              <View style={styles.middleColumn}>
+                {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
+                  <Image
+                    source={{ uri: videos[focusedIndex].universityLogo }}
+                    style={styles.universityIconMain}
+                    resizeMode="contain"
+                  />
+                )}
+              </View>
+              <View style={styles.separator} />
+              <View style={styles.rightColumn}>
+                <Text style={styles.durationText}>
+                  {videos[focusedIndex] ? formatDuration(videos[focusedIndex].duration) : '00:00'}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.band}>
+              <TouchableOpacity style={styles.button} onPress={handleNextVideoPress}>
+                <Text style={styles.buttonText}>Find Next</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </>
       )}
-      <View style={styles.bottomSection}>
-        <View style={styles.middleband}>
-          <View style={styles.leftColumn}>
-            {videos[focusedIndex] && videos[focusedIndex].department && (
-              <Image
-                source={getDepartmentIcon(videos[focusedIndex].department)}
-                style={styles.departmentIcon}
-                resizeMode="contain"
-              />
-            )}
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.middleColumn}>
-            {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
-              <Image
-                source={{ uri: videos[focusedIndex].universityLogo }}
-                style={styles.universityIconMain}
-                resizeMode="contain"
-              />
-            )}
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.rightColumn}>
-            <Text style={styles.durationText}>
-              {videos[focusedIndex] ? formatDuration(videos[focusedIndex].duration) : '00:00'}
-            </Text>
-          </View>
-        </View>
-        <View style={styles.band}>
-          <TouchableOpacity style={styles.button} onPress={handleNextVideoPress}>
-            <Text style={styles.buttonText}>Find Next</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
     </View>
   );
-};
+};  
 
 const styles = StyleSheet.create({
   container: {
@@ -439,6 +460,14 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     width: '100%',
     fontFamily: 'Montserrat',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: width * 1, 
   },
 });
 

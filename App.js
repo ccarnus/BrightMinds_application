@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { StatusBar } from 'react-native';
 import { useFonts, Montserrat_400Regular, Montserrat_700Bold } from '@expo-google-fonts/montserrat';
 import * as SplashScreen from 'expo-splash-screen';
 import MainNavigator from './components/MainNavigator';
@@ -34,9 +35,16 @@ const App = () => {
   }
 
   return (
-    <PaperProvider theme={theme}>
-      <MainNavigator />
-    </PaperProvider>
+    <>
+      <StatusBar
+        barStyle="dark-content"
+        backgroundColor="transparent"
+        translucent={true}
+      />
+      <PaperProvider theme={theme}>
+        <MainNavigator />
+      </PaperProvider>
+    </>
   );
 };
 

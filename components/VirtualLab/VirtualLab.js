@@ -40,7 +40,7 @@ const VirtualLab = ({ route }) => {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[colors.secon, colors.darkblue, colors.darkblue]}
+        colors={[colors.secondary, colors.primaryBis]}
         style={styles.topSection}>
         <View style={styles.titleOverlay}>
           <Text style={styles.labTitle}>{labDisplayName || 'Virtual Laboratory'}</Text>

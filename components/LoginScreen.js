@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Image, Dimensions } from 'react-native';
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
+
+const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -60,7 +62,7 @@ const LoginScreen = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Image source={require('../assets/BrightMinds/BrightMinds_research_icon.png')} style={styles.titleImage} resizeMode="contain" />
+          <Image source={require('../assets/BrightMinds/logo_round.png')} style={styles.titleImage} resizeMode="contain" />
           <Text style={styles.title}>Login</Text>
           <TextInput
             label="Email"
@@ -110,10 +112,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   titleImage: {
-    width: "100%",
-    height: 150,
-    marginBottom: spacing.xl,
-    marginTop: spacing.l,
+    height: height*0.3,
+    width: width*0.3,
+    alignSelf: "center",
   },
   title: {
     fontSize: sizes.title,

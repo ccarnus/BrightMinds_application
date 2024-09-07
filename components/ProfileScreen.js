@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
 import PieChart from 'react-native-pie-chart';
+import { Modal, Portal, Button, Provider } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,6 +21,7 @@ const ProfileScreen = () => {
   const [userPreferences, setUserPreferences] = useState([]);
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
   const [userId, setUserId] = useState(null);
+  const [visible, setVisible] = useState(false); // Modal visibility
 
   useEffect(() => {
     const getUserId = async () => {
@@ -48,29 +50,18 @@ const ProfileScreen = () => {
     }
   }, [userId]);
 
+  const showModal = () => setVisible(true);
+  const hideModal = () => setVisible(false);
+
   const handleLogout = async () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
-        {
-          text: "Yes",
-          onPress: async () => {
-            await AsyncStorage.removeItem('userId');
-            await AsyncStorage.removeItem('userRole');
-            await AsyncStorage.removeItem('userUniversity');
-            setUserData(null);
-            setUserPreferences([]);
-            setTrackingData({ objective: '', progress: 0 });
-            navigation.navigate('LoginScreen');
-          }
-        }
-      ]
-    );
+    hideModal(); // Hide modal after logging out
+    await AsyncStorage.removeItem('userId');
+    await AsyncStorage.removeItem('userRole');
+    await AsyncStorage.removeItem('userUniversity');
+    setUserData(null);
+    setUserPreferences([]);
+    setTrackingData({ objective: '', progress: 0 });
+    navigation.navigate('LoginScreen');
   };
 
   const handleEditProfile = () => {
@@ -81,88 +72,115 @@ const ProfileScreen = () => {
   const pieColors = userPreferences.map((_, index) => `hsl(${index * 360 / userPreferences.length}, 70%, 50%)`);
 
   return (
-    <View style={styles.container}>
-      {userData && (
-        <View style={styles.upperSection}>
-          <View>
-            <Image
-              source={{ uri: userData.profilePictureUrl }}
-              style={styles.profileImage}
-            />
-            <Text style={styles.overlayUsername}>{userData.username}</Text>
-          </View>
-        </View>
-      )}
-      <View style={styles.lowerSection}>
-        <ScrollView style={styles.lowerSectionScrollView}>
-        {userData && !userData.isVerified && (
-            <View style={[styles.lowerSectionContainer, styles.verificationContainer]}>
-              <Image 
-                source={require('../assets/Profile_icons/warning_icon.png')}
-                style={styles.warningIcon}
+    <Provider>
+      <View style={styles.container}>
+        {userData && (
+          <View style={styles.upperSection}>
+            <View>
+              <Image
+                source={{ uri: userData.profilePictureUrl }}
+                style={styles.profileImage}
               />
-              <Text style={styles.verificationText}>Verify your email</Text>
+              <Text style={styles.overlayUsername}>{userData.username}</Text>
             </View>
-          )}
-          <View style={[styles.lowerSectionContainer, styles.shadow]}>
-            <View style={styles.objectiveContainer}>
-              <Text style={styles.preferencesTitle}>My Learning Path</Text>
-              <TouchableOpacity
-                style={styles.buttonObjectiveContainer}
-                onPress={() => navigation.navigate('Objective', { objective: trackingData.objective })}
+          </View>
+        )}
+        <View style={styles.lowerSection}>
+          <ScrollView style={styles.lowerSectionScrollView}>
+            {userData && !userData.isVerified && (
+              <View style={[styles.lowerSectionContainer, styles.verificationContainer]}>
+                <Image 
+                  source={require('../assets/Profile_icons/warning_icon.png')}
+                  style={styles.warningIcon}
+                />
+                <Text style={styles.verificationText}>Verify your email</Text>
+              </View>
+            )}
+            <View style={[styles.lowerSectionContainer, styles.shadow]}>
+              <View style={styles.objectiveContainer}>
+                <Text style={styles.preferencesTitle}>My Learning Path</Text>
+                <TouchableOpacity
+                  style={styles.buttonObjectiveContainer}
+                  onPress={() => navigation.navigate('Objective', { objective: trackingData.objective })}
+                >
+                  <Text style={styles.objectiveText}>{trackingData.objective}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.lowerSectionContainer}>
+              <Text style={styles.preferencesTitle}>Preferences</Text>
+              {userPreferences.length > 0 ? (
+                <View style={styles.pieContainer}>
+                  <PieChart
+                    widthAndHeight={250}
+                    series={pieData}
+                    sliceColor={pieColors}
+                    doughnut={true}
+                    coverRadius={0.6}
+                    coverFill={colors.primary}
+                  />
+                  <View style={styles.legendContainer}>
+                    {userPreferences.map((pref, index) => (
+                      <View key={index} style={styles.legendItem}>
+                        <View style={[styles.legendColor, { backgroundColor: pieColors[index] }]} />
+                        <Text style={styles.legendText}>{departmentMapping[pref.category]}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.noDataText}>No preferences set just yet..</Text>
+              )}
+            </View>
+            <View style={styles.buttonRow}>
+              <TouchableOpacity 
+                style={styles.roundButton}
+                onPress={showModal}
               >
-                <Text style={styles.objectiveText}>{trackingData.objective}</Text>
+                <Image 
+                  source={require('../assets/Profile_icons/logout_icon.png')}
+                  style={styles.buttonIcon}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.roundButton}
+                onPress={handleEditProfile}
+              >
+                <Image 
+                  source={require('../assets/Profile_icons/edit_profile_icon.png')}
+                  style={styles.buttonIcon}
+                />
               </TouchableOpacity>
             </View>
-          </View>
-          <View style={styles.lowerSectionContainer}>
-            <Text style={styles.preferencesTitle}>Preferences</Text>
-            {userPreferences.length > 0 ? (
-              <View style={styles.pieContainer}>
-                <PieChart
-                  widthAndHeight={250}
-                  series={pieData}
-                  sliceColor={pieColors}
-                  doughnut={true}
-                  coverRadius={0.6}
-                  coverFill={colors.primary}
-                />
-                <View style={styles.legendContainer}>
-                  {userPreferences.map((pref, index) => (
-                    <View key={index} style={styles.legendItem}>
-                      <View style={[styles.legendColor, { backgroundColor: pieColors[index] }]} />
-                      <Text style={styles.legendText}>{departmentMapping[pref.category]}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : (
-              <Text style={styles.noDataText}>No preferences set just yet..</Text>
-            )}
-          </View>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity 
-              style={styles.roundButton}
-              onPress={handleLogout}
-            >
-              <Image 
-                source={require('../assets/Profile_icons/logout_icon.png')}
-                style={styles.buttonIcon}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.roundButton}
-              onPress={handleEditProfile}
-            >
-              <Image 
-                source={require('../assets/Profile_icons/edit_profile_icon.png')}
-                style={styles.buttonIcon}
-              />
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
+          </ScrollView>
+        </View>
+
+        {/* Logout Confirmation Modal */}
+        <Portal>
+          <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
+            <Text style={styles.modalText}>Are you sure you want to log out?</Text>
+            <View style={styles.modalButtons}>
+              <Button 
+                mode="outlined" 
+                onPress={handleLogout} 
+                style={styles.modalButton}
+                textColor={colors.secondary}
+              >
+                Yes
+              </Button>
+              <Button 
+                mode="contained" 
+                onPress={hideModal} 
+                style={styles.modalButton}
+                buttonColor={colors.secondary}
+              >
+                No
+              </Button>
+            </View>
+          </Modal>
+        </Portal>
       </View>
-    </View>
+    </Provider>
   );
 };
 
@@ -360,6 +378,27 @@ const styles = StyleSheet.create({
   warningIcon: {
     width: 35,
     height: 35,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: sizes.radius,
+    alignItems: 'center',
+  },
+  modalText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    marginBottom: spacing.m,
+    fontFamily: 'Montserrat',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  modalButton: {
+    margin: spacing.s,
   },
 });
 

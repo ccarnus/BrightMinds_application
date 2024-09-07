@@ -35,7 +35,6 @@ const CastScreen = () => {
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
 
-  // Fetch user ID and role from AsyncStorage
   useEffect(() => {
     const getUserData = async () => {
       try {

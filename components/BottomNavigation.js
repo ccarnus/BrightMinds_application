@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {StyleSheet, Animated, Keyboard } from 'react-native';
+import {StyleSheet, Animated, Keyboard, BackHandler } from 'react-native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import { useFocusEffect } from '@react-navigation/native';
 import CastScreen from './CastScreen';
 import TrackScreen from './TrackScreen';
 import DiscoverScreen from './DiscoverScreen';
@@ -48,6 +49,19 @@ const useKeyboardVisibility = () => {
 const BottomNavigation = () => {
   const offsetAnimation = React.useRef(new Animated.Value(0)).current;
   const isKeyboardVisible = useKeyboardVisibility();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        // Prevent going back from any bottom tab screen
+        return true;
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [])
+  );
   
   return (
     <>
