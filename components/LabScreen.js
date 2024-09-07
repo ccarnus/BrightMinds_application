@@ -43,7 +43,7 @@ const LabScreen = () => {
     const timeoutIds = departments.map((department, index) => {
       return setTimeout(() => {
         setLabs((prevLabs) => [...prevLabs, department]);
-      }, index * 200);
+      }, index * 120);
     });
 
     return () => {

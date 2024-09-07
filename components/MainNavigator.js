@@ -53,7 +53,13 @@ const MainNavigator = () => {
         }}
       >
         <Stack.Screen name="BottomNav" component={BottomNavigation} options={{ headerShown: true, tabBarVisible: true }} />
-        <Stack.Screen name="Evaluation" component={Evaluation} options={{ headerShown: true, tabBarVisible: true }} />
+        <Stack.Screen name="Evaluation" component={Evaluation} options={{ headerShown: true, tabBarVisible: true }}
+          listeners={({ navigation }) => ({
+            beforeRemove: (e) => {
+              e.preventDefault();
+              navigation.navigate('Track');
+            },
+          })}/>
         <Stack.Screen name="Ready" component={Ready} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="Finish" component={Finish} options={{ headerShown: false, tabBarVisible: true }} />
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />

@@ -62,7 +62,6 @@ const styles = StyleSheet.create({
   imageBox: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    borderRadius: sizes.radius,
     overflow: 'hidden',
     elevation: 5,
     position: 'relative',
