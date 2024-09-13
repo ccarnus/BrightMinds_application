@@ -21,7 +21,7 @@ const ProfileScreen = () => {
   const [userPreferences, setUserPreferences] = useState([]);
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
   const [userId, setUserId] = useState(null);
-  const [visible, setVisible] = useState(false); // Modal visibility
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const getUserId = async () => {
@@ -155,7 +155,6 @@ const ProfileScreen = () => {
           </ScrollView>
         </View>
 
-        {/* Logout Confirmation Modal */}
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <Text style={styles.modalText}>Are you sure you want to log out?</Text>
@@ -283,7 +282,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: sizes.radius,
     fontSize: sizes.h3,
-    borderWidth: 1,
     color: colors.secondary,
     fontFamily: 'MontserratBold',
     elevation: 5,
@@ -361,10 +359,10 @@ const styles = StyleSheet.create({
   verificationContainer: {
     backgroundColor: colors.primary,
     color: colors.red,
-    borderWidth: 2,
+    borderWidth: 1,
     borderRadius: sizes.radius,
     borderColor: colors.red,
-    padding: spacing.m,
+    padding: spacing.s,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -376,8 +374,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   warningIcon: {
-    width: 35,
-    height: 35,
+    width: 30,
+    height: 30,
   },
   modalContainer: {
     backgroundColor: 'white',

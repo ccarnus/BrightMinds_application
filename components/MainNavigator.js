@@ -25,6 +25,8 @@ import PreferencesScreen from './PreferencesScreen';
 import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import CastPublicationsScreen from './Track/CastPublicationsScreen';
 import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
+import EditProfileScreen from './Profile/EditProfileScreen';
+import ProgressScreen from './VirtualLab/ProgressScreen';
 
 const Stack = createStackNavigator();
 
@@ -65,6 +67,7 @@ const MainNavigator = () => {
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false, }}/>
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="ProgressScreen" component={ProgressScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
@@ -76,6 +79,7 @@ const MainNavigator = () => {
         <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }}  
           listeners={({ navigation }) => ({
             beforeRemove: (e) => {

@@ -6,7 +6,7 @@ import { spacing, colors, sizes } from '../theme';
 const LabChoiceScreen = ({ route }) => {
   const { labId, labDisplayName } = route.params;
   const navigation = useNavigation();
-  const fadeInDuration = 600;
+  const fadeInDuration = 300;
 
   const fadeAnim1 = useState(new Animated.Value(0))[0];
   const fadeAnim2 = useState(new Animated.Value(0))[0];
@@ -14,7 +14,7 @@ const LabChoiceScreen = ({ route }) => {
   useEffect(() => {
     Animated.timing(fadeAnim1, {
       toValue: 1,
-      duration: fadeInDuration,
+      duration: fadeInDuration*2,
       useNativeDriver: true,
     }).start();
 
@@ -34,7 +34,7 @@ const LabChoiceScreen = ({ route }) => {
         navigation.navigate('VirtualLab', { labId: labId, labDisplayName: labDisplayName });
         break;
       case 'Where':
-        navigation.navigate('VirtualLab', { labId: labId, labDisplayName: labDisplayName });
+        navigation.navigate('ProgressScreen', { labId: labId, labDisplayName: labDisplayName });
         break;
       default:
         break;

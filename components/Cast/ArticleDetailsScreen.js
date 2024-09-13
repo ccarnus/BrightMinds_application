@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Linking } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Dimensions } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import departments from '../../lists/departments'; // Import the departments list
+import departments from '../../lists/departments';
+
+const { width, height } = Dimensions.get('window');
 
 const ArticleDetailsScreen = ({ route }) => {
   const { selectedArticleId } = route.params;
@@ -166,7 +168,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 300,
+    height: height * 0.3,
     resizeMode: 'cover',
     marginBottom: spacing.s,
   },
@@ -175,7 +177,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: sizes.h1,
-    marginBottom: spacing.m,
+    marginBottom: spacing.l,
     fontFamily: "MontserratBold",
     textAlign: "center",
   },
@@ -226,7 +228,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     width: '80%',
     marginVertical: spacing.s,
-    borderWidth: 1,
     backgroundColor: colors.primary,
     borderColor: colors.secondary,
     elevation: 5,
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontSize: sizes.title,
     textAlign: 'center',
-    fontFamily: "MontserratBold",
+    fontFamily: "Montserrat",
   },
   buttonAccessText: {
     color: colors.secondary,

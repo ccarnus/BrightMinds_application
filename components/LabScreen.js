@@ -10,6 +10,7 @@ const departmentImages = {
   'Robotics': require('../assets/Virtual_labs/Robotics.png'),
   'Biology': require('../assets/Virtual_labs/Biology.png'),
   'EarthSciences': require('../assets/Virtual_labs/EarthSciences.png'),
+  'CitiesoftheFuture': require('../assets/Virtual_labs/CitiesoftheFuture.png'),
   'Geology': require('../assets/Virtual_labs/Geology.png'),
   'Oceanography': require('../assets/Virtual_labs/Oceanography.png'),
   'AstronomyandSpaceScience': require('../assets/Virtual_labs/AstronomyandSpaceScience.png'),

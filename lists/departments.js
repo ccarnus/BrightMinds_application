@@ -3,6 +3,7 @@ const departments = [
   { display: 'Chemistry', name: 'Chemistry' },
   { display: 'Robotics', name: 'Robotics' },
   { display: 'Biology', name: 'Biology' },
+  { display: 'Cities of the Future', name: 'CitiesoftheFuture' },
   { display: 'Earth Sciences', name: 'EarthSciences' },
   { display: 'Geology', name: 'Geology' },
   { display: 'Oceanography', name: 'Oceanography' },
