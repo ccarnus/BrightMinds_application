@@ -23,33 +23,48 @@ const DiscoverScreen = ({ navigation }) => {
 
   const departmentIcons = {
     MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
-    History: require('../assets/Virtual_labs/History.png'),
+    HistoryandGeography: require('../assets/Virtual_labs/HistoryandGeography.png'),
     ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
     Biology: require('../assets/Virtual_labs/Biology.png'),
     Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
     Physics: require('../assets/Virtual_labs/Physics.png'),
     Robotics: require('../assets/Virtual_labs/Robotics.png'),
-    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
+    EarthScience: require('../assets/Virtual_labs/EarthSciences.png'),
     Geology: require('../assets/Virtual_labs/Geology.png'),
     Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
-    AstronomyandSpaceScience: require('../assets/Virtual_labs/AstronomyandSpaceScience.png'),
-    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
+    SpaceExploration: require('../assets/Virtual_labs/SpaceExploration.png'),
+    EnvironmentalSciences: require('../assets/Virtual_labs/EnvironmentalScience.png'),
     Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
     Statistics: require('../assets/Virtual_labs/Statistics.png'),
     Psychology: require('../assets/Virtual_labs/Psychology.png'),
     Sociology: require('../assets/Virtual_labs/Sociology.png'),
-    Anthropology: require('../assets/Virtual_labs/Anthropology.png'),
+    CulturalStudies: require('../assets/Virtual_labs/CulturalStudies.png'),
     Economics: require('../assets/Virtual_labs/Economics.png'),
     PoliticalScience: require('../assets/Virtual_labs/PoliticalScience.png'),
     Engineering: require('../assets/Virtual_labs/Engineering.png'),
-    AgriculturalSciences: require('../assets/Virtual_labs/AgriculturalSciences.png'),
+    Agriculture: require('../assets/Virtual_labs/Agriculture.png'),
     Philosophy: require('../assets/Virtual_labs/Philosophy.png'),
     Linguistics: require('../assets/Virtual_labs/Linguistics.png'),
     Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
-    Biophysics: require('../assets/Virtual_labs/Biophysics.png'),
-    DataScience: require('../assets/Virtual_labs/DataScience.png'),
-    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png')
-  };
+    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png'),
+    Law: require('../assets/Virtual_labs/Law.png'),
+    Materials: require('../assets/Virtual_labs/Materials.png'),
+    Mechanics: require('../assets/Virtual_labs/Mechanics.png'),
+    MedicalImaging: require('../assets/Virtual_labs/MedicalImaging.png'),
+    Meteorology: require('../assets/Virtual_labs/Meteorology.png'),
+    NanoTechnology: require('../assets/Virtual_labs/NanoTechnology.png'),
+    Nutrition: require('../assets/Virtual_labs/Nutrition.png'),
+    Paleontology: require('../assets/Virtual_labs/Paleontology.png'),
+    Pediatrics: require('../assets/Virtual_labs/Pediatrics.png'),
+    SportSciences: require('../assets/Virtual_labs/SportSciences.png'),
+    Transportation: require('../assets/Virtual_labs/Transportation.png'),
+    Literature: require('../assets/Virtual_labs/Literature.png'),
+    Genetics: require('../assets/Virtual_labs/Genetics.png'),
+    Education: require('../assets/Virtual_labs/Education.png'),
+    Astronomy: require('../assets/Virtual_labs/Astronomy.png'),
+    Archaeology: require('../assets/Virtual_labs/Archaeology.png'),
+    Art: require('../assets/Virtual_labs/Art.png'),
+};
 
   useEffect(() => {
     const getUserId = async () => {
@@ -194,7 +209,7 @@ const DiscoverScreen = ({ navigation }) => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <Image
-            source={require('../assets/BrightMinds/BrightMinds_research_icon.png')}
+            source={require('../assets/BrightMinds/logo_round.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -430,7 +445,7 @@ const styles = StyleSheet.create({
   videoTitle: {
     fontSize: sizes.h1,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     textAlign: 'center',
   },
   buttonUniversityContainer: {
@@ -467,7 +482,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: width * 1, 
+    width: width * 0.5, 
   },
 });
 

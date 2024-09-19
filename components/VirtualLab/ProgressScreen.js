@@ -34,13 +34,13 @@ const ProgressScreen = ({ route }) => {
           <Text style={styles.labTitle}>{labDisplayName || 'Virtual Laboratory'}</Text>
         </View>
       </LinearGradient>
-      <ScrollView style={styles.bottomSection}>
+      <View style={styles.bottomSection}>
         <View style={styles.gaugeContainer}>
           <Animated.View style={[styles.fillGauge, { height: gaugeHeight }]} />    
           <Image source={require('../../assets/Virtual_lab_icons/Gauge.png')} style={styles.gaugeImage} />
         </View>
         <Text style={styles.progressText}>Progress: {(progress * 100).toFixed(0)}%</Text>
-      </ScrollView>
+      </View>
     </View>
   );
 };
@@ -55,9 +55,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     backgroundColor: colors.primaryBis,
-    paddingVertical: spacing.m,
     width: width,
-    marginBottom: spacing.m,
   },
   labTitle: {
     fontSize: sizes.title,
@@ -73,20 +71,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gaugeContainer: {
-    position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
-    width: "100%",
   },
   gaugeImage: {
-    width: "80%",
     resizeMode: 'contain',
-    bottom: 0,
   },
   fillGauge: {
     position: 'absolute',
-    bottom: 0,
     width: '80%',
+    height: '100%',
     backgroundColor: colors.darkblue,
   },
   progressText: {
