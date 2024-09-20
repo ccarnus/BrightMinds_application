@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, Animated, Dimensions } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ScrollView } from 'react-native-gesture-handler';
 
 const { width, height } = Dimensions.get('window');
 
 const ProgressScreen = ({ route }) => {
   const { labId, labDisplayName } = route.params;
-  const [progress] = useState(0.7);  // Example progress (70%)
+  const [progress] = useState(1);
   const [fillAnim] = useState(new Animated.Value(0));
 
   useEffect(() => {
-    // Animate the gauge filling based on the progress value
     Animated.timing(fillAnim, {
       toValue: progress,
       duration: 1000,
@@ -22,7 +20,7 @@ const ProgressScreen = ({ route }) => {
 
   const gaugeHeight = fillAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [0, 500], // Assuming the image height is 200px
+    outputRange: [0, height * 0.559],
   });
 
   return (
@@ -35,15 +33,16 @@ const ProgressScreen = ({ route }) => {
         </View>
       </LinearGradient>
       <View style={styles.bottomSection}>
+        <Text style={styles.gaugeTitle}>Lab Progress</Text>
         <View style={styles.gaugeContainer}>
           <Animated.View style={[styles.fillGauge, { height: gaugeHeight }]} />    
           <Image source={require('../../assets/Virtual_lab_icons/Gauge.png')} style={styles.gaugeImage} />
         </View>
-        <Text style={styles.progressText}>Progress: {(progress * 100).toFixed(0)}%</Text>
       </View>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -56,6 +55,8 @@ const styles = StyleSheet.create({
   bottomSection: {
     backgroundColor: colors.primaryBis,
     width: width,
+    justifyContent: 'center',
+    height: 3 * height / 4,
   },
   labTitle: {
     fontSize: sizes.title,
@@ -73,22 +74,26 @@ const styles = StyleSheet.create({
   gaugeContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.primaryBis,
   },
   gaugeImage: {
+    width: '80%',
+    height: height * 0.6,
     resizeMode: 'contain',
+    marginBottom: 0,
   },
   fillGauge: {
     position: 'absolute',
-    width: '80%',
-    height: '100%',
-    backgroundColor: colors.darkblue,
+    bottom: 0,
+    width: '60%',
+    backgroundColor: colors.darkblue
   },
-  progressText: {
+  gaugeTitle: {
     fontSize: sizes.h2,
     color: colors.secondary,
-    fontFamily: 'Montserrat',
+    marginBottom: spacing.s,
     textAlign: 'center',
-    marginTop: spacing.m,
+    fontFamily: 'Montserrat',
   },
 });
 
