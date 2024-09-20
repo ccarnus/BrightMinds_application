@@ -7,8 +7,32 @@ const { width, height } = Dimensions.get('window');
 
 const ProgressScreen = ({ route }) => {
   const { labId, labDisplayName } = route.params;
-  const [progress] = useState(1);
+  const [progress, setProgress] = useState(0);
+  const [gaugeTitle, setGaugeTitle] = useState('');
   const [fillAnim] = useState(new Animated.Value(0));
+  const [dataAvailable, setDataAvailable] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`http://3.17.219.54/topic/department/${labId}`);
+        const data = await response.json();
+
+        if (data.length > 0) {
+          const firstElement = data[0];
+          setProgress(firstElement.progress*0.01);
+          setGaugeTitle(firstElement.name);
+        } else {
+          setDataAvailable(false);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setDataAvailable(false); // Handle error by showing no data available
+      }
+    };
+
+    fetchData();
+  }, [labId]);
 
   useEffect(() => {
     Animated.timing(fillAnim, {
@@ -33,11 +57,17 @@ const ProgressScreen = ({ route }) => {
         </View>
       </LinearGradient>
       <View style={styles.bottomSection}>
-        <Text style={styles.gaugeTitle}>Lab Progress</Text>
-        <View style={styles.gaugeContainer}>
-          <Animated.View style={[styles.fillGauge, { height: gaugeHeight }]} />    
-          <Image source={require('../../assets/Virtual_lab_icons/Gauge.png')} style={styles.gaugeImage} />
-        </View>
+        {dataAvailable ? (
+          <>
+            <Text style={styles.gaugeTitle}>{gaugeTitle || 'Lab Progress'}</Text>
+            <View style={styles.gaugeContainer}>
+              <Animated.View style={[styles.fillGauge, { height: gaugeHeight }]} />    
+              <Image source={require('../../assets/Virtual_lab_icons/Gauge.png')} style={styles.gaugeImage} />
+            </View>
+          </>
+        ) : (
+          <Text style={styles.noDataText}>No data available.</Text>
+        )}
       </View>
     </View>
   );
@@ -94,6 +124,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
     textAlign: 'center',
     fontFamily: 'Montserrat',
+  },
+  noDataText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginTop: spacing.s,
+    marginBottom: spacing.s,
   },
 });
 
