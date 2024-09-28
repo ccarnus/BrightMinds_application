@@ -23,7 +23,7 @@ const DiscoverScreen = ({ navigation }) => {
 
   const departmentIcons = {
     MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
-    HistoryandGeography: require('../assets/Virtual_labs/HistoryandGeography.png'),
+    History: require('../assets/Virtual_labs/History.png'),
     ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
     Biology: require('../assets/Virtual_labs/Biology.png'),
     Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
@@ -33,7 +33,7 @@ const DiscoverScreen = ({ navigation }) => {
     Geology: require('../assets/Virtual_labs/Geology.png'),
     Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
     SpaceExploration: require('../assets/Virtual_labs/SpaceExploration.png'),
-    EnvironmentalSciences: require('../assets/Virtual_labs/EnvironmentalScience.png'),
+    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
     Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
     Statistics: require('../assets/Virtual_labs/Statistics.png'),
     Psychology: require('../assets/Virtual_labs/Psychology.png'),
@@ -209,7 +209,7 @@ const DiscoverScreen = ({ navigation }) => {
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <Image
-            source={require('../assets/BrightMinds/logo_round.png')}
+            source={require('../assets/BrightMinds/black_bear.png')}
             style={styles.logo}
             resizeMode="contain"
           />

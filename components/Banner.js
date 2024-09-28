@@ -43,7 +43,7 @@ const Banner = () => {
     <View style={styles.bannerContainer}>
       <TouchableOpacity onPress={handleProfilePress} style={styles.logoContainer}>
         <Image
-          source={require('../assets/BrightMinds/logo_round.png')}
+          source={require('../assets/BrightMinds/black_bear.png')}
           style={styles.logoImage}
         />
       </TouchableOpacity>

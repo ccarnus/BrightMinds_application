@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ScrollView, Image, Text, TouchableOpacity, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
-import departments from '../lists/departments';
+import departmentsList from '../lists/departments';  // Import the department list with display names
 
 const departmentImages = {
   'Physics': require('../assets/Virtual_labs/Physics.png'),
@@ -14,7 +15,7 @@ const departmentImages = {
   'Geology': require('../assets/Virtual_labs/Geology.png'),
   'Oceanography': require('../assets/Virtual_labs/Oceanography.png'),
   'SpaceExploration': require('../assets/Virtual_labs/SpaceExploration.png'),
-  'EnvironmentalSciences': require('../assets/Virtual_labs/EnvironmentalScience.png'),
+  'EnvironmentalScience': require('../assets/Virtual_labs/EnvironmentalScience.png'),
   'Mathematics': require('../assets/Virtual_labs/Mathematics.png'),
   'ComputerScience': require('../assets/Virtual_labs/ComputerScience.png'),
   'Statistics': require('../assets/Virtual_labs/Statistics.png'),
@@ -26,7 +27,7 @@ const departmentImages = {
   'Engineering': require('../assets/Virtual_labs/Engineering.png'),
   'MedicineandHealthSciences': require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
   'Agriculture': require('../assets/Virtual_labs/Agriculture.png'),
-  'HistoryandGeography': require('../assets/Virtual_labs/HistoryandGeography.png'),
+  'History': require('../assets/Virtual_labs/History.png'),
   'Philosophy': require('../assets/Virtual_labs/Philosophy.png'),
   'Linguistics': require('../assets/Virtual_labs/Linguistics.png'),
   'Neuroscience': require('../assets/Virtual_labs/Neuroscience.png'),
@@ -55,18 +56,41 @@ const LabScreen = () => {
   const [labs, setLabs] = useState([]);
   const [fadeAnim] = useState(new Animated.Value(0));
 
-  useEffect(() => {
-    const timeoutIds = departments.map((department, index) => {
-      return setTimeout(() => {
-        setLabs((prevLabs) => [...prevLabs, department]);
-      }, index * 120);
-    });
+  const getDisplayName = (name) => {
+    const department = departmentsList.find(dept => dept.name === name);
+    return department ? department.display : name;
+  };
 
-    return () => {
-      timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await axios.get('http://3.17.219.54/cast/popular/department');
+        const departments = response.data.map(dept => ({
+          name: dept._id,  // Dept name from API
+          display: getDisplayName(dept._id),  // Get display name from your static list
+          count: dept.count 
+        }));
+
+        // Progressively add departments for animation effect
+        const timeoutIds = departments.map((department, index) => {
+          return setTimeout(() => {
+            setLabs((prevLabs) => [...prevLabs, department]);
+          }, index * 120);
+        });
+
+        // Cleanup timeouts if component unmounts
+        return () => {
+          timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
+        };
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+      }
     };
+
+    fetchDepartments();
   }, []);
 
+  // Render the rows of labs as before
   const renderLabRow = (rowLabs, rowIndex) => (
     <View key={rowIndex} style={styles.labRow}>
       {rowLabs.map((lab, index) => (
@@ -111,7 +135,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
   },
   labContainer: {
-    width: '48%', // Adjusted to fit two items per row with some spacing
+    width: '48%',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.s,

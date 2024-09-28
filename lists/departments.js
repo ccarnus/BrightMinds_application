@@ -15,7 +15,7 @@ const departments = [
   { display: 'Environmental Sciences', name: 'EnvironmentalSciences' },
   { display: 'Genetics', name: 'Genetics' },
   { display: 'Geology', name: 'Geology' },
-  { display: 'History and Geography', name: 'HistoryandGeography' },
+  { display: 'History', name: 'History' },
   { display: 'Law', name: 'Law' },
   { display: 'Linguistics', name: 'Linguistics' },
   { display: 'Literature', name: 'Literature' },
