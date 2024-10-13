@@ -5,7 +5,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, sizes, spacing } from './theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import departments from '../lists/departments';  // Import the departments list
+import departments from '../lists/departments';
+
+const { width } = Dimensions.get('window');
 
 const TrackScreen = () => {
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
@@ -173,23 +175,25 @@ const TrackScreen = () => {
             history.map((item, index) => {
               const department = departments.find(dep => dep.name === item.category);
               return (
-                <View key={index} style={styles.circularGaugeItem}>
-                  <Text style={styles.departmentName}>{department ? department.display : item.category}</Text>
-                  <AnimatedCircularProgress
-                    size={120}
-                    width={10}
-                    fill={(item.progress / trackingData.target) * 100}
-                    tintColor={colors.secondary}
-                    backgroundColor={colors.primaryBis}
-                    lineCap="round"
-                    rotation={0}
-                  >
-                    {fill => (
-                      <Text style={styles.gaugeText}>
-                        {`${Math.round((item.progress / trackingData.target) * 100)}%`}
-                      </Text>
-                    )}
-                  </AnimatedCircularProgress>
+                <View style={styles.ChartandTextContainer}>
+                  <View key={index} style={styles.circularGaugeItem}>
+                    <AnimatedCircularProgress
+                      size={width * 0.25}  // Gauge size is 25% of the screen width
+                      width={10}
+                      fill={(item.progress / trackingData.target) * 100}
+                      tintColor={colors.secondary}
+                      backgroundColor={colors.primaryBis}
+                      lineCap="round"
+                      rotation={0}
+                    >
+                      {fill => (
+                        <Text style={styles.gaugeText}>
+                          {`${Math.round((item.progress / trackingData.target) * 100)}%`}
+                        </Text>
+                      )}
+                    </AnimatedCircularProgress>
+                    <Text style={styles.departmentName}>{department ? department.display : item.category}</Text>
+                  </View>
                 </View>
               );
             })
@@ -330,10 +334,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.s,
   },
-  gaugeText: {
-    fontSize: sizes.h2,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+  ChartandTextContainer: {
+    marginTop: spacing.s,
   },
   WatchTimeText: {
     fontSize: 16,
@@ -367,19 +369,25 @@ const styles = StyleSheet.create({
   circularGaugesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    marginVertical: spacing.m,
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.s,
   },
   circularGaugeItem: {
     alignItems: 'center',
-    marginVertical: spacing.m,
-    width: '45%',
+    width: width * 0.25,
+    marginBottom: spacing.m,
   },
   departmentName: {
-    fontSize: sizes.h4,
+    fontSize: sizes.h5,
     fontFamily: 'Montserrat',
     color: colors.secondary,
     marginBottom: spacing.s,
+    textAlign: 'center',
+  },
+  gaugeText: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
   },
   noDataText: {
     color: colors.secondary,

@@ -12,7 +12,7 @@ const departments = [
   { display: 'Economics', name: 'Economics' },
   { display: 'Education', name: 'Education' },
   { display: 'Engineering', name: 'Engineering' },
-  { display: 'Environmental Sciences', name: 'EnvironmentalSciences' },
+  { display: 'Environmental Science', name: 'EnvironmentalScience' },
   { display: 'Genetics', name: 'Genetics' },
   { display: 'Geology', name: 'Geology' },
   { display: 'History', name: 'History' },
