@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
+import LottieView from 'lottie-react-native';
 
 const CastScreen = () => {
   const navigation = useNavigation();
@@ -210,11 +211,15 @@ const CastScreen = () => {
     console.log(id)
   };
 
-  // Render loading indicator
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.white} />
+        <LottieView
+          source={require('../assets/Loader/loader.json')} // Path to your Lottie JSON file
+          autoPlay
+          loop
+          style={styles.lottie} // You can style the loader accordingly
+        />
       </View>
     );
   }
@@ -349,9 +354,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
   },
   searchResultItem: {
-    paddingVertical: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.secondary,
+    paddingVertical: spacing.m,
   },
   searchResultText: {
     color: colors.white,
@@ -407,6 +410,16 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'contain',
     tintColor: colors.secondary,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBis,
+  },
+  lottie: {
+    width: 200,
+    height: 200,
   },
 });
 

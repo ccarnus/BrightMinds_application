@@ -6,6 +6,7 @@ import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LottieView from 'lottie-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -208,12 +209,14 @@ const DiscoverScreen = ({ navigation }) => {
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <Image
-            source={require('../assets/BrightMinds/black_bear.png')}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-        </View>
+        {console.log('Loader should be visible, state is: ' + isLoading)}
+        <LottieView
+          source={require('../assets/Loader/loader.json')}
+          autoPlay
+          loop
+          style={{ width: 200, height: 200 }}
+        />
+      </View>
       ) : (
         <>
           {videos.length > 0 && videos[focusedIndex] && (
@@ -483,6 +486,14 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: width * 0.5, 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottie: {
+    width: width*0.25,
   },
 });
 
