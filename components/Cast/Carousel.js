@@ -39,7 +39,10 @@ const Carousel = ({ list, carouselType }) => {
                 <Image
                   source={{ uri: item.image }}
                   style={styles.image}
-                  onError={() => console.log(`Error loading image for ${item.title}`)}
+                  onError={(e) => {
+                    console.log(`Error loading image for ${item.title}`);
+                    e.target.source = require('../../assets/Cast_screen_icons/fallback-image.png');
+                  }}
                 />
                 <Text style={styles.duration}>{durationString}</Text>
                 {/* Conditionally render the "already seen" icon */}
