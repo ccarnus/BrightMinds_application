@@ -291,7 +291,7 @@ const DiscoverScreen = ({ navigation }) => {
                       {getMMSSFromMillis(playbackInstancePosition)} /{' '}
                       {getMMSSFromMillis(playbackInstanceDuration)}
                     </Text>
-                    <View style={styles.buttonUniversityContainer}>
+                    <View style={styles.UniversityContainer}>
                       <Image
                         source={{ uri: videos[focusedIndex].universityLogo }}
                         style={styles.universityIcon}
@@ -451,15 +451,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  buttonUniversityContainer: {
-    width: 62,
-    height: 62,
+  UniversityContainer: {
+    width: width/4,
+    height: width/4,
     position: 'absolute',
-    bottom: spacing.m + 64,
-    right: spacing.m,
+    bottom: spacing.xl*2,
+    right: spacing.l,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 50,
   },
   universityIcon: {
     width: "100%",

@@ -151,7 +151,7 @@ const TrendingScreen = ({ route, navigation }) => {
         <Text style={styles.duration}>
           {getMMSSFromMillis(playbackInstancePosition)} / {getMMSSFromMillis(playbackInstanceDuration)}
         </Text>
-        <View style={styles.buttonUniversityContainer}>
+        <View style={styles.UniversityContainer}>
           <Image
             source={{ uri: video.universityLogo }}
             style={styles.universityIcon}
@@ -213,15 +213,13 @@ const styles = StyleSheet.create({
     height: "100%",
     marginHorizontal: 12,
   },
-  buttonUniversityContainer: {
-    width: 54,
-    height: 54,
+  UniversityContainer: {
+    width: width/4,
+    height: width/4,
     position: 'absolute',
-    bottom: spacing.m + 64,
-    right: spacing.m,
+    bottom: spacing.xl*2,
+    right: spacing.l,
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 50,
   },
 });
 

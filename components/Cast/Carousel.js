@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +10,14 @@ const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
 
 const Carousel = ({ list, carouselType }) => {
   const navigation = useNavigation();
+  const [errorStates, setErrorStates] = useState({});
+
+  const handleImageError = (id) => {
+    setErrorStates((prevState) => ({
+      ...prevState,
+      [id]: true, // Mark the image with the specific `id` as having an error
+    }));
+  };
 
   return (
     <FlatList
@@ -18,11 +26,13 @@ const Carousel = ({ list, carouselType }) => {
       snapToInterval={CARD_WIDTH_SPACING}
       decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
-      keyExtractor={i => i.id}
+      keyExtractor={(item) => item.id}
       renderItem={({ item, index }) => {
         const minutes = Math.floor(item.duration);
         const seconds = Math.round((item.duration - minutes) * 60);
         const durationString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        const hasError = errorStates[item.id];
 
         return (
           <TouchableOpacity
@@ -30,18 +40,25 @@ const Carousel = ({ list, carouselType }) => {
               marginLeft: spacing.l,
               marginRight: index === list.length - 1 ? spacing.l : 0,
             }}
-            onPress={() => navigation.navigate(
-              carouselType === 'trending' ? 'Trending' : 'SuggestedForYou', 
-              { selectedVideoId: item.id }
-            )}>
+            onPress={() =>
+              navigation.navigate(
+                carouselType === 'trending' ? 'Trending' : 'SuggestedForYou',
+                { selectedVideoId: item.id }
+              )
+            }
+          >
             <View style={[styles.card, shadow.dark]}>
               <View style={styles.imageBox}>
                 <Image
-                  source={{ uri: item.image }}
+                  source={
+                    hasError
+                      ? require('../../assets/Cast_screen_icons/fallback-image.png') // Use fallback image if error
+                      : { uri: item.image }
+                  }
                   style={styles.image}
-                  onError={(e) => {
+                  onError={() => {
                     console.log(`Error loading image for ${item.title}`);
-                    e.target.source = require('../../assets/Cast_screen_icons/fallback-image.png');
+                    handleImageError(item.id); // Set error for this image
                   }}
                 />
                 <Text style={styles.duration}>{durationString}</Text>
@@ -75,7 +92,7 @@ const styles = StyleSheet.create({
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     overflow: 'hidden',
-    position: "relative",
+    position: 'relative',
     elevation: 5,
   },
   image: {
@@ -93,7 +110,7 @@ const styles = StyleSheet.create({
     fontSize: sizes.h45,
     color: colors.white,
     textAlign: 'left',
-    fontFamily: "Montserrat",
+    fontFamily: 'Montserrat',
   },
   duration: {
     position: 'absolute',
