@@ -10,7 +10,7 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import Carousel from './Cast/Carousel';
@@ -29,6 +29,7 @@ const CastScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
 
@@ -85,7 +86,7 @@ const CastScreen = () => {
     }
   };
 
-  // Fetch all content (suggested casts, trending casts, articles)
+  // Fetch all content and prefetch images
   const fetchAllContent = async () => {
     setIsLoading(true);
     try {
@@ -95,8 +96,27 @@ const CastScreen = () => {
         fetchAllCastData(),
         fetchArticleData(),
       ]);
+      prefetchImages();
     } catch (error) {
       console.error('Error fetching content:', error);
+    }
+  };
+
+  // Prefetch all images for suggested, trending, and articles
+  const prefetchImages = async () => {
+    const allImageUrls = [
+      ...suggestedCastData.map(item => item.image),
+      ...trendingCastData.map(item => item.image),
+      ...articleData.map(item => item.image)
+    ];
+
+    const imagePrefetchPromises = allImageUrls.map(url => Image.prefetch(url));
+
+    try {
+      await Promise.all(imagePrefetchPromises);
+      setImagesLoaded(true);
+    } catch (error) {
+      console.error('Error prefetching images:', error);
     } finally {
       setIsLoading(false);
     }
@@ -214,12 +234,7 @@ const CastScreen = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('../assets/Loader/loader.json')} // Path to your Lottie JSON file
-          autoPlay
-          loop
-          style={styles.lottie} // You can style the loader accordingly
-        />
+        <ActivityIndicator size="large" color={colors.white} />
       </View>
     );
   }

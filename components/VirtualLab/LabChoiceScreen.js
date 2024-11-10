@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: sizes.h1,
     color: colors.primary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
@@ -105,8 +105,8 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
   },
   icon: {
-    width: 74,
-    height: 74,
+    width: 68,
+    height: 68,
   },
   buttonText: {
     fontSize: sizes.h2,
