@@ -2,6 +2,7 @@ import React from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
+import FastImage from 'react-native-fast-image';
 
 const CARD_HEIGHT = 140;
 const CARD_WIDTH = CARD_HEIGHT * 1.75;
@@ -32,14 +33,15 @@ const ArticleCarousel = ({ list }) => {
               <Text style={styles.title}>{item.title}</Text>
             </View>
             <View style={styles.imageBox}>
-              <Image
-                source={{ uri: item.articleimageurl }}
+              <FastImage
+                source={{ uri: item.articleimageurl, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable, }}
                 style={styles.image}
+                resizeMode={FastImage.resizeMode.cover}
                 onError={() => console.log(`Error loading image for ${item.title}`)}
               />
               <Text style={styles.duration}>{item.duration} min</Text>
               {item.watched && (
-                <Image
+                <FastImage
                   source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
                   style={styles.watchedIcon}
                 />
