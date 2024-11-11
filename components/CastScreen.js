@@ -234,7 +234,12 @@ const CastScreen = () => {
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.white} />
+        <LottieView
+          source={require('../assets/Loader/loader.json')} // Path to your Lottie JSON file
+          autoPlay
+          loop
+          style={styles.lottie} // You can style the loader accordingly
+        />
       </View>
     );
   }
@@ -337,12 +342,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.primaryBis,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -375,6 +374,16 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBis,
+  },
+  lottie: {
+    width: 200,
+    height: 200,
   },
   noResultsText: {
     textAlign: 'center',
@@ -425,16 +434,6 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'contain',
     tintColor: colors.secondary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
   },
 });
 

@@ -12,7 +12,6 @@ const departmentImages = {
   'Biology': require('../assets/Virtual_labs/Biology.png'),
   'EarthSciences': require('../assets/Virtual_labs/EarthSciences.png'),
   'Oceanography': require('../assets/Virtual_labs/Oceanography.png'),
-  'SpaceExploration': require('../assets/Virtual_labs/SpaceExploration.png'),
   'EnvironmentalScience': require('../assets/Virtual_labs/EnvironmentalScience.png'),
   'Mathematics': require('../assets/Virtual_labs/Mathematics.png'),
   'ComputerScience': require('../assets/Virtual_labs/ComputerScience.png'),

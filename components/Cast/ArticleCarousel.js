@@ -33,15 +33,14 @@ const ArticleCarousel = ({ list }) => {
               <Text style={styles.title}>{item.title}</Text>
             </View>
             <View style={styles.imageBox}>
-              <FastImage
-                source={{ uri: item.articleimageurl, priority: FastImage.priority.high, cache: FastImage.cacheControl.immutable, }}
+              <Image
+                source={{ uri: item.articleimageurl }}
                 style={styles.image}
-                resizeMode={FastImage.resizeMode.cover}
                 onError={() => console.log(`Error loading image for ${item.title}`)}
               />
               <Text style={styles.duration}>{item.duration} min</Text>
               {item.watched && (
-                <FastImage
+                <Image
                   source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
                   style={styles.watchedIcon}
                 />

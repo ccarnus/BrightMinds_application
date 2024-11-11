@@ -58,7 +58,7 @@ const Carousel = ({ list, carouselType }) => {
                 <Text style={styles.duration}>{durationString}</Text>
                 {/* Conditionally render the "already seen" icon */}
                 {item.watched && (
-                  <FastImage
+                  <Image
                     source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
                     style={styles.alreadySeenIcon}
                   />
