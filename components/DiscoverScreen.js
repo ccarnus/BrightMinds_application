@@ -59,7 +59,7 @@ const DiscoverScreen = ({ navigation }) => {
     Astronomy: require('../assets/Virtual_labs/Astronomy.png'),
     Archaeology: require('../assets/Virtual_labs/Archaeology.png'),
     Art: require('../assets/Virtual_labs/Art.png'),
-};
+  };
 
   useEffect(() => {
     const getUserId = async () => {
@@ -81,24 +81,20 @@ const DiscoverScreen = ({ navigation }) => {
       .then(response => response.json())
       .then(data => {
         if (data && data.length > 0) {
-          const fetchUniversityLogosAndApprovalStatus = data.map(cast =>
-            Promise.all([
-              fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
-                .then(res => res.json())
-                .then(universityData => ({ ...cast, universityLogo: universityData.iconurl })),
-              fetch(`http://3.17.219.54/cast/verification/${cast._id}`)
-                .then(res => res.json())
-                .then(verificationData => ({ ...cast, isApproved: verificationData.approvals >= 5 }))
-            ]).then(results => Object.assign({}, ...results))
+          const fetchUniversityLogos = data.map(cast =>
+            fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
+              .then(res => res.json())
+              .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
+              .catch(() => ({ ...cast, universityLogo: null }))
           );
-          return Promise.all(fetchUniversityLogosAndApprovalStatus);
+          return Promise.all(fetchUniversityLogos);
         }
         return [];
       })
-      .then(dataWithLogosAndApproval => {
-        setVideos(dataWithLogosAndApproval);
-        setVideoStatus(dataWithLogosAndApproval.map(() => false));
-        setContentSubmitted(dataWithLogosAndApproval.map(() => false));
+      .then(dataWithLogos => {
+        setVideos(dataWithLogos);
+        setVideoStatus(dataWithLogos.map(() => false));
+        setContentSubmitted(dataWithLogos.map(() => false));
         setIsLoading(false);
       })
       .catch(error => {
@@ -106,6 +102,7 @@ const DiscoverScreen = ({ navigation }) => {
         setIsLoading(false);
       });
   };
+
   const getDepartmentIcon = (department) => {
     return departmentIcons[department] || null;
   };
@@ -237,13 +234,6 @@ const DiscoverScreen = ({ navigation }) => {
                       style={styles.playIcon}
                     />
                   </View>
-                )}
-                {videos[focusedIndex].isApproved && (
-                  <Image
-                    source={require('../assets/Cast_icons/approved_badge.png')}
-                    style={styles.approvedIcon}
-                    resizeMode="contain"
-                  />
                 )}
               </TouchableOpacity>
               <Modal
@@ -413,13 +403,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: width,
     height: width / 1.75,
-  },
-  approvedIcon: {
-    position: 'absolute',
-    bottom: 10,
-    right: 10,
-    width: 50,
-    height: 50,
   },
   playIconContainer: {
     position: 'absolute',
