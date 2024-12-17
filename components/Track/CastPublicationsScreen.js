@@ -145,7 +145,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.s,
     backgroundColor: colors.red,
     borderRadius: sizes.radius,
   },
