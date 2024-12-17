@@ -1,4 +1,4 @@
-package com.ccarnus3.BrightMindsBeta
+package com.ccarnus3.brightminds
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

@@ -1,4 +1,4 @@
-package com.ccarnus3.BrightMindsBeta
+package com.ccarnus3.brightminds
 
 import android.app.Application
 import android.content.res.Configuration

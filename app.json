@@ -31,7 +31,7 @@
         "foregroundImage": "./assets/BrightMinds/android_icon.png",
         "backgroundColor": "#f1f1f1"
       },
-      "package": "com.ccarnus3.BrightMindsBeta",
+      "package": "com.ccarnus3.brightminds",
       "newArchEnabled": true
     },
     "web": {

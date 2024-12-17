@@ -8,6 +8,7 @@ import departmentsList from '../lists/departments';  // Import the department li
 const departmentImages = {
   'Physics': require('../assets/Virtual_labs/Physics.png'),
   'Chemistry': require('../assets/Virtual_labs/Chemistry.png'),
+  'SpaceExploration': require('../assets/Virtual_labs/SpaceExploration.png'),
   'Robotics': require('../assets/Virtual_labs/Robotics.png'),
   'Biology': require('../assets/Virtual_labs/Biology.png'),
   'EarthSciences': require('../assets/Virtual_labs/EarthSciences.png'),

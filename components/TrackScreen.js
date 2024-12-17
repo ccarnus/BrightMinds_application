@@ -118,7 +118,7 @@ const TrackScreen = () => {
             <Text style={styles.questionsansweredText}>Things learned</Text>
           </View>
           <View style={styles.infoBottomContainerRight}>
-            <Image source={BrightMindsMascot} style={styles.infoImage} />
+            <Image source={BrightMindsMascot} style={style2s.infoImage} />
           </View>
         </View>
       </LinearGradient>

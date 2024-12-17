@@ -28,6 +28,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="com.ccarnus3.BrightMindsBeta"/>
         <data android:scheme="exp+brightmindsbeta"/>
+        <data android:scheme="com.ccarnus3.brightminds"/>
       </intent-filter>
     </activity>
     <activity android:name="com.facebook.react.devsupport.DevSettingsActivity" android:exported="false"/>

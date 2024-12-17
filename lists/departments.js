@@ -1,6 +1,7 @@
 const departments = [
   { display: 'Agriculture', name: 'Agriculture' },
   { display: 'Artificial Intelligence', name: 'ArtificialIntelligence' },
+  { display: 'Space Exploration', name: 'SpaceExploration' },
   { display: 'Archaeology', name: 'Archaeology' },
   { display: 'Art', name: 'Art' },
   { display: 'Astronomy', name: 'Astronomy' },
