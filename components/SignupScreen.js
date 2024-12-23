@@ -119,6 +119,7 @@ const SignupScreen = ({ navigation }) => {
       if (error.response && error.response.data && error.response.data.message) {
         errorMessage = error.response.data.message;
       }
+      console.log(formData);
       Alert.alert('Signup failed', errorMessage);
     } finally {
       setLoading(false);
