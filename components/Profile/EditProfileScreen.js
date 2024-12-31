@@ -56,12 +56,16 @@ const EditProfileScreen = ({ navigation }) => {
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true, // Allow user to edit the image (crop, etc.)
+      aspect: [1, 1], // Maintain square aspect ratio
+      quality: 0.5, // Compress the image quality
     });
-
+  
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setProfilePicture(result.assets[0]);
     }
   };
+  
 
   const handleSaveProfile = async () => {
     if (!userId) return;
