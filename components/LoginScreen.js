@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, KeyboardAvoidingView, Image, Dimensions } from 'react-native';
+import { 
+  View, Text, StyleSheet, TouchableOpacity, ScrollView, 
+  Platform, KeyboardAvoidingView, Image, Dimensions 
+} from 'react-native';
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +13,7 @@ const { width, height } = Dimensions.get('window');
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false); // NEW state to toggle password visibility
   const [loading, setLoading] = useState(false);
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState("");
@@ -61,9 +65,17 @@ const LoginScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Image source={require('../assets/BrightMinds/black_bear.png')} style={styles.titleImage} resizeMode="contain" />
+        <ScrollView 
+          contentContainerStyle={styles.container} 
+          keyboardShouldPersistTaps="handled"
+        >
+          <Image 
+            source={require('../assets/BrightMinds/black_bear.png')} 
+            style={styles.titleImage} 
+            resizeMode="contain" 
+          />
           <Text style={styles.title}>Login</Text>
+
           <TextInput
             label="Email"
             style={styles.input}
@@ -72,29 +84,57 @@ const LoginScreen = ({ navigation }) => {
             mode="outlined"
             autoCapitalize="none"
           />
+
           <TextInput
             label="Password"
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry
+            secureTextEntry={!showPassword} 
             mode="outlined"
             autoCapitalize="none"
+            // The Icon button on the right side to toggle show/hide password
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye' : 'eye-off'}
+                onPress={() => setShowPassword(!showPassword)}
+              />
+            }
           />
-          <Button 
-            mode="contained" 
-            onPress={handleLogin} 
-            loading={loading} 
-            style={styles.button} 
+
+          <Button
+            mode="contained"
+            onPress={handleLogin}
+            loading={loading}
+            style={styles.button}
             disabled={!email || !password}
           >
             Login
           </Button>
-          <TouchableOpacity onPress={() => navigation.navigate('SignupScreen')}>
-            <Text style={styles.signupText}>Don't have an account? Sign up</Text>
+
+          {/* Forgot password link */}
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('ForgotPasswordScreen')} 
+            style={{ marginTop: 10 }}
+          >
+            <Text style={styles.forgotText}>Forgot password?</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('SignupScreen')}
+            style={{ marginTop: 20 }}
+          >
+            <Text style={styles.signupText}>
+              Don't have an account? <Text style={styles.underline}>Sign up</Text>
+            </Text>
+          </TouchableOpacity>
+
           <Portal>
-            <Modal visible={customAlertVisible} onDismiss={() => setCustomAlertVisible(false)} contentContainerStyle={styles.modalContainer}>
+            <Modal 
+              visible={customAlertVisible} 
+              onDismiss={() => setCustomAlertVisible(false)} 
+              contentContainerStyle={styles.modalContainer}
+            >
               <Text>{customAlertMessage}</Text>
               <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
             </Modal>
@@ -112,9 +152,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   titleImage: {
-    height: height*0.3,
-    width: width*0.3,
-    alignSelf: "center",
+    height: height * 0.3,
+    width: width * 0.3,
+    alignSelf: 'center',
   },
   title: {
     fontSize: sizes.title,
@@ -132,11 +172,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.secondary,
     marginTop: 20,
   },
-  signupText: {
-    marginTop: 20,
+  forgotText: {
+    marginTop: 10,
     textAlign: 'center',
     color: colors.secondary,
     fontFamily: 'Montserrat',
+  },
+  signupText: {
+    textAlign: 'center',
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+  },
+  underline: {
+    textDecorationLine: 'underline',
   },
   modalContainer: {
     backgroundColor: 'white',
