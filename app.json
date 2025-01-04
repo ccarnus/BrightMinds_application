@@ -27,6 +27,7 @@
       "icon": "./assets/BrightMinds/ios_icon.png"
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/BrightMinds/android_icon.png",
         "backgroundColor": "#f1f1f1"

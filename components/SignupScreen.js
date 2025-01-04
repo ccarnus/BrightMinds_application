@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: 15,
