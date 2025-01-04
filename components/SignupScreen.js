@@ -8,6 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -21,23 +22,9 @@ const SignupScreen = ({ navigation }) => {
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [universities, setUniversities] = useState([]);
-
-  // We'll store the entire university object here (for icon, displayedName, etc.)
   const [selectedUniversity, setSelectedUniversity] = useState(null);
-
   const [passwordsMatch, setPasswordsMatch] = useState(true);
-
-  // For opening/closing the custom university modal
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
-
-  // A small array of role options for the horizontal scroll
-  const roleOptions = [
-    'College Student',
-    'Professor',
-    'Researcher',
-    'Learning Enthusiast',
-    'PhD Student',
-  ];
 
   useEffect(() => {
     // Fetch universities from your API
@@ -60,7 +47,11 @@ const SignupScreen = ({ navigation }) => {
       setPasswordsMatch(true);
     }
 
-    const roleNeedsUniversity =
+    // "Enable" the Sign Up button only if:
+    // 1) all required fields are filled,
+    // 2) passwords match,
+    // 3) if the role needs a university, ensure one is selected
+    const needsUniversity =
       role === 'Professor' || role === 'PhD Student' || role === 'Researcher';
 
     const allFieldsOk =
@@ -69,9 +60,8 @@ const SignupScreen = ({ navigation }) => {
       confirmPassword &&
       passwordsMatch &&
       username &&
-      role &&
       profilePicture &&
-      (!roleNeedsUniversity || selectedUniversity);
+      (!needsUniversity || selectedUniversity);
 
     setIsButtonDisabled(!allFieldsOk);
   }, [
@@ -93,9 +83,9 @@ const SignupScreen = ({ navigation }) => {
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true, // Allow user to edit the image (crop, etc.)
-      aspect: [1, 1], // Maintain square aspect ratio
-      quality: 0.5, // Compress the image quality
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
     });
 
     if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -104,7 +94,6 @@ const SignupScreen = ({ navigation }) => {
   };
 
   const handleSignup = async () => {
-    // Additional check to ensure passwords match
     if (!passwordsMatch) {
       showCustomAlert('Passwords do not match. Please try again.');
       return;
@@ -120,7 +109,7 @@ const SignupScreen = ({ navigation }) => {
       role,
     };
 
-    // Only set user.university if needed by role
+    // If role requires a university, set user.university
     if (role === 'Professor' || role === 'PhD Student' || role === 'Researcher') {
       user.university = selectedUniversity ? selectedUniversity.name : '';
     }
@@ -154,7 +143,7 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
-  // ** Render each university item in the modal **
+  // Render each university item in the modal
   const renderUniversityItem = ({ item }) => {
     return (
       <TouchableOpacity
@@ -165,7 +154,9 @@ const SignupScreen = ({ navigation }) => {
         }}
       >
         <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
-        <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
+        <Text style={styles.universityText}>
+          {item.displayedName || item.name}
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -183,7 +174,7 @@ const SignupScreen = ({ navigation }) => {
         >
           <Text style={styles.title}>Sign Up</Text>
 
-          {/* Email Input */}
+          {/* Email */}
           <TextInput
             label="Email"
             style={styles.input}
@@ -194,7 +185,7 @@ const SignupScreen = ({ navigation }) => {
             keyboardType="email-address"
           />
 
-          {/* Username Input */}
+          {/* Username */}
           <TextInput
             label="Username"
             style={styles.input}
@@ -204,7 +195,7 @@ const SignupScreen = ({ navigation }) => {
             autoCapitalize="none"
           />
 
-          {/* Password Input */}
+          {/* Password */}
           <TextInput
             label="Password"
             style={styles.input}
@@ -215,7 +206,7 @@ const SignupScreen = ({ navigation }) => {
             autoCapitalize="none"
           />
 
-          {/* Confirm Password Input */}
+          {/* Confirm Password */}
           <TextInput
             label="Confirm Password"
             style={styles.input}
@@ -226,38 +217,29 @@ const SignupScreen = ({ navigation }) => {
             autoCapitalize="none"
             error={!passwordsMatch}
           />
-          {/* Helper text for password mismatch */}
           {!passwordsMatch && (
             <HelperText type="error" visible={!passwordsMatch}>
               Passwords do not match
             </HelperText>
           )}
 
-          {/* Role Selector (horizontal scroll) */}
-          <View style={styles.roleSelector}>
-            <Text style={styles.roleLabel}>Select Your Role:</Text>
-            <ScrollView horizontal>
-              {roleOptions.map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  onPress={() => setRole(r)}
-                  style={styles.roleOption}
-                >
-                  <Text
-                    style={[
-                      styles.roleOptionText,
-                      role === r && styles.roleSelected,
-                    ]}
-                  >
-                    {r}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+          {/* ROLE */}
+          <View style={styles.pickerContainer}>
+            <Picker
+              selectedValue={role}
+              style={styles.picker}
+              onValueChange={(itemValue) => setRole(itemValue)}
+            >
+              <Picker.Item label="College Student" value="College Student" />
+              <Picker.Item label="Professor" value="Professor" />
+              <Picker.Item label="Researcher" value="Researcher" />
+              <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
+              <Picker.Item label="PhD Student" value="PhD Student" />
+            </Picker>
           </View>
 
-          {/* University Selector - only if needed */}
-          {(role === 'Professor' || role === 'PhD Student' || role === 'Researcher') && (
+          {/* UNIVERSITY (Custom Modal Approach) */}
+          {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
             <TouchableOpacity
               style={styles.universitySelector}
               onPress={() => setUniversityModalVisible(true)}
@@ -278,7 +260,7 @@ const SignupScreen = ({ navigation }) => {
             </TouchableOpacity>
           )}
 
-          {/* Profile Picture Picker */}
+          {/* Profile Picture */}
           <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
             {profilePicture ? (
               <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
@@ -287,7 +269,7 @@ const SignupScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          {/* Signup Button */}
+          {/* Sign Up Button */}
           <Button
             mode="contained"
             onPress={handleSignup}
@@ -298,7 +280,7 @@ const SignupScreen = ({ navigation }) => {
             Sign Up
           </Button>
 
-          {/* Navigate to Login */}
+          {/* Go to Login */}
           <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
             <Text style={styles.signupText}>Already have an account? Login</Text>
           </TouchableOpacity>
@@ -352,10 +334,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   title: {
-    paddingTop: spacing.m,
     fontSize: sizes.title,
     textAlign: 'center',
     marginBottom: spacing.l,
+    marginTop: spacing.l,
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
@@ -364,30 +346,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
   },
-  roleSelector: {
-    marginBottom: spacing.m,
-  },
-  roleLabel: {
-    fontSize: sizes.h3,
-    marginBottom: spacing.s,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  roleOption: {
-    marginRight: spacing.m,
-    paddingVertical: spacing.s,
-    paddingHorizontal: spacing.m,
-    backgroundColor: 'white',
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: colors.secondary,
     borderRadius: sizes.radius,
+    marginBottom: spacing.l,
+    marginTop: spacing.m,
+    overflow: 'hidden',
   },
-  roleOptionText: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    fontSize: sizes.h3,
-  },
-  roleSelected: {
-    color: colors.secondary,
-    fontWeight: 'bold',
+  picker: {
+    height: 60,
+    width: '100%',
   },
   universitySelector: {
     marginBottom: spacing.m,
@@ -424,6 +393,7 @@ const styles = StyleSheet.create({
   },
   imagePicker: {
     marginBottom: spacing.m,
+    marginTop: spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
