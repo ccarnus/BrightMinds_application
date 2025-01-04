@@ -1,10 +1,10 @@
-// screens/ForgotPasswordScreen.js
-
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Dimensions } from 'react-native';
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
 import { colors, sizes } from '../theme';
+
+const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -26,8 +26,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setLoading(true);
     try {
       // Make sure you have your server endpoint set correctly:
-      const response = await axios.post('http://3.17.219.54/user/reset-password-request', { email });
-      showCustomAlert('Please check your email for further instructions.');
+      await axios.post('http://3.17.219.54/user/reset-password-request', { email });
+      showCustomAlert('Please check your email to reset your password.');
     } catch (error) {
       console.log(error);
       const errorMessage = error.response?.data?.message || 'Error sending reset email.';
@@ -35,6 +35,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAlertDismiss = () => {
+    setCustomAlertVisible(false);
+    navigation.navigate('LoginScreen', { email });
   };
 
   return (
@@ -64,11 +69,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
           <Portal>
             <Modal
               visible={customAlertVisible}
-              onDismiss={() => setCustomAlertVisible(false)}
+              onDismiss={handleAlertDismiss}  // when the modal is dismissed
               contentContainerStyle={styles.modalContainer}
             >
               <Text>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
+              <Button onPress={handleAlertDismiss}>OK</Button>
             </Modal>
           </Portal>
         </View>
@@ -82,7 +87,7 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: colors.primaryBis,
-    justifyContent: 'center',
+    marginTop: height * 0.3,
   },
   title: {
     fontSize: sizes.title,

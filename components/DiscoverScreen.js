@@ -30,8 +30,7 @@ const DiscoverScreen = ({ navigation }) => {
     Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
     Physics: require('../assets/Virtual_labs/Physics.png'),
     Robotics: require('../assets/Virtual_labs/Robotics.png'),
-    EarthScience: require('../assets/Virtual_labs/EarthSciences.png'),
-    Geology: require('../assets/Virtual_labs/Geology.png'),
+    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
     Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
     EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
     Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
@@ -59,6 +58,7 @@ const DiscoverScreen = ({ navigation }) => {
     Astronomy: require('../assets/Virtual_labs/Astronomy.png'),
     Archaeology: require('../assets/Virtual_labs/Archaeology.png'),
     Art: require('../assets/Virtual_labs/Art.png'),
+    SpaceExploration: require('../assets/Virtual_labs/SpaceExploration.png'),
   };
 
   useEffect(() => {

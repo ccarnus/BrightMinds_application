@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, Image, ScrollView, Platform, KeyboardAvoidingView } from 'react-native';
-import { Button, TextInput, Modal, Portal, Provider, HelperText } from 'react-native-paper';
+import {
+  View, Text, StyleSheet, TouchableOpacity, Image, ScrollView,
+  Platform, KeyboardAvoidingView, Alert, Modal, FlatList
+} from 'react-native';
+import { Button, TextInput, Portal, Provider, HelperText } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import { Picker } from '@react-native-picker/picker';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -16,12 +19,28 @@ const SignupScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertMessage, setCustomAlertMessage] = useState("");
+  const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [universities, setUniversities] = useState([]);
-  const [selectedUniversity, setSelectedUniversity] = useState('');
+
+  // We'll store the entire university object here (for icon, displayedName, etc.)
+  const [selectedUniversity, setSelectedUniversity] = useState(null);
+
   const [passwordsMatch, setPasswordsMatch] = useState(true);
 
+  // For opening/closing the custom university modal
+  const [universityModalVisible, setUniversityModalVisible] = useState(false);
+
+  // A small array of role options for the horizontal scroll
+  const roleOptions = [
+    'College Student',
+    'Professor',
+    'Researcher',
+    'Learning Enthusiast',
+    'PhD Student',
+  ];
+
   useEffect(() => {
+    // Fetch universities from your API
     const fetchUniversities = async () => {
       try {
         const response = await axios.get('http://3.17.219.54/university');
@@ -30,7 +49,6 @@ const SignupScreen = ({ navigation }) => {
         console.error('Error fetching universities:', error);
       }
     };
-
     fetchUniversities();
   }, []);
 
@@ -42,8 +60,10 @@ const SignupScreen = ({ navigation }) => {
       setPasswordsMatch(true);
     }
 
-    // Enable the button only if all fields are filled correctly
-    if (
+    const roleNeedsUniversity =
+      role === 'Professor' || role === 'PhD Student' || role === 'Researcher';
+
+    const allFieldsOk =
       email &&
       password &&
       confirmPassword &&
@@ -51,15 +71,19 @@ const SignupScreen = ({ navigation }) => {
       username &&
       role &&
       profilePicture &&
-      (role === 'College Student' ||
-        role === 'Learning Enthusiast' ||
-        (role !== 'College Student' && selectedUniversity))
-    ) {
-      setIsButtonDisabled(false);
-    } else {
-      setIsButtonDisabled(true);
-    }
-  }, [email, password, confirmPassword, username, role, profilePicture, selectedUniversity, passwordsMatch]);
+      (!roleNeedsUniversity || selectedUniversity);
+
+    setIsButtonDisabled(!allFieldsOk);
+  }, [
+    email,
+    password,
+    confirmPassword,
+    username,
+    role,
+    profilePicture,
+    selectedUniversity,
+    passwordsMatch,
+  ]);
 
   const showCustomAlert = (message) => {
     setCustomAlertMessage(message);
@@ -80,13 +104,15 @@ const SignupScreen = ({ navigation }) => {
   };
 
   const handleSignup = async () => {
-    // Additional check to ensure passwords match before proceeding
-    if (password !== confirmPassword) {
-      showCustomAlert("Passwords do not match. Please try again.");
+    // Additional check to ensure passwords match
+    if (!passwordsMatch) {
+      showCustomAlert('Passwords do not match. Please try again.');
       return;
     }
 
     setLoading(true);
+
+    // Build user object
     const user = {
       email,
       password,
@@ -94,10 +120,12 @@ const SignupScreen = ({ navigation }) => {
       role,
     };
 
+    // Only set user.university if needed by role
     if (role === 'Professor' || role === 'PhD Student' || role === 'Researcher') {
-      user.university = selectedUniversity;
+      user.university = selectedUniversity ? selectedUniversity.name : '';
     }
 
+    // Prepare form data
     const formData = new FormData();
     formData.append('user', JSON.stringify(user));
     formData.append('image', {
@@ -107,7 +135,7 @@ const SignupScreen = ({ navigation }) => {
     });
 
     try {
-      const response = await axios.post('http://3.17.219.54/user/signup', formData, {
+      await axios.post('http://3.17.219.54/user/signup', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -126,6 +154,22 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+  // ** Render each university item in the modal **
+  const renderUniversityItem = ({ item }) => {
+    return (
+      <TouchableOpacity
+        style={styles.universityItemWrapper}
+        onPress={() => {
+          setSelectedUniversity(item);
+          setUniversityModalVisible(false);
+        }}
+      >
+        <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
+        <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <Provider>
       <KeyboardAvoidingView
@@ -133,9 +177,12 @@ const SignupScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.title}>Sign Up</Text>
-          
+
           {/* Email Input */}
           <TextInput
             label="Email"
@@ -186,35 +233,49 @@ const SignupScreen = ({ navigation }) => {
             </HelperText>
           )}
 
-          {/* Role Picker */}
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={role}
-              style={styles.picker}
-              onValueChange={(itemValue) => setRole(itemValue)}
-            >
-              <Picker.Item label="College Student" value="College Student" />
-              <Picker.Item label="Professor" value="Professor" />
-              <Picker.Item label="Researcher" value="Researcher" />
-              <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
-              <Picker.Item label="PhD Student" value="PhD Student" />
-            </Picker>
+          {/* Role Selector (horizontal scroll) */}
+          <View style={styles.roleSelector}>
+            <Text style={styles.roleLabel}>Select Your Role:</Text>
+            <ScrollView horizontal>
+              {roleOptions.map((r) => (
+                <TouchableOpacity
+                  key={r}
+                  onPress={() => setRole(r)}
+                  style={styles.roleOption}
+                >
+                  <Text
+                    style={[
+                      styles.roleOptionText,
+                      role === r && styles.roleSelected,
+                    ]}
+                  >
+                    {r}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
-          {/* University Picker (conditionally rendered) */}
-          {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedUniversity}
-                style={styles.picker}
-                onValueChange={(itemValue) => setSelectedUniversity(itemValue)}
-              >
-                <Picker.Item label="Select University" value="" />
-                {universities.map((university) => (
-                  <Picker.Item key={university._id} label={university.name} value={university.name} />
-                ))}
-              </Picker>
-            </View>
+          {/* University Selector - only if needed */}
+          {(role === 'Professor' || role === 'PhD Student' || role === 'Researcher') && (
+            <TouchableOpacity
+              style={styles.universitySelector}
+              onPress={() => setUniversityModalVisible(true)}
+            >
+              {selectedUniversity ? (
+                <View style={styles.universitySelectedWrapper}>
+                  <Image
+                    source={{ uri: selectedUniversity.iconurl }}
+                    style={styles.universityIcon}
+                  />
+                  <Text style={styles.universityText}>
+                    {selectedUniversity.displayedName || selectedUniversity.name}
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.universityPlaceholder}>Select University</Text>
+              )}
+            </TouchableOpacity>
           )}
 
           {/* Profile Picture Picker */}
@@ -227,11 +288,11 @@ const SignupScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           {/* Signup Button */}
-          <Button 
-            mode="contained" 
-            onPress={handleSignup} 
-            loading={loading} 
-            style={styles.button} 
+          <Button
+            mode="contained"
+            onPress={handleSignup}
+            loading={loading}
+            style={styles.button}
             disabled={isButtonDisabled}
           >
             Sign Up
@@ -242,11 +303,36 @@ const SignupScreen = ({ navigation }) => {
             <Text style={styles.signupText}>Already have an account? Login</Text>
           </TouchableOpacity>
 
+          {/* University Modal */}
+          <Modal
+            transparent={false}
+            animationType="slide"
+            visible={universityModalVisible}
+            onRequestClose={() => setUniversityModalVisible(false)}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select a University</Text>
+              <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={universities}
+              keyExtractor={(item) => item._id}
+              renderItem={renderUniversityItem}
+              contentContainerStyle={styles.flatListContainer}
+            />
+          </Modal>
+
           {/* Custom Alert Modal */}
           <Portal>
-            <Modal 
-              visible={customAlertVisible} 
-              onDismiss={() => setCustomAlertVisible(false)} 
+            <Modal
+              visible={customAlertVisible}
+              onDismiss={() => setCustomAlertVisible(false)}
               contentContainerStyle={styles.modalContainer}
             >
               <Text>{customAlertMessage}</Text>
@@ -261,47 +347,94 @@ const SignupScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     padding: 20,
     backgroundColor: colors.primaryBis,
   },
   title: {
+    paddingTop: spacing.m,
     fontSize: sizes.title,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: spacing.l,
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
   input: {
-    marginBottom: 15,
+    marginBottom: spacing.m,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: sizes.radius,
+  roleSelector: {
     marginBottom: spacing.m,
-    overflow: 'hidden',
   },
-  picker: {
-    height: 60,
-    width: '100%',
+  roleLabel: {
+    fontSize: sizes.h3,
+    marginBottom: spacing.s,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+  },
+  roleOption: {
+    marginRight: spacing.m,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
+    backgroundColor: 'white',
+    borderRadius: sizes.radius,
+  },
+  roleOptionText: {
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    fontSize: sizes.h3,
+  },
+  roleSelected: {
+    color: colors.secondary,
+    fontWeight: 'bold',
+  },
+  universitySelector: {
+    marginBottom: spacing.m,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.m,
+    borderWidth: 1,
+    borderColor: 'gray',
+    borderRadius: sizes.radius,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+  },
+  universitySelectedWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  universityPlaceholder: {
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+  },
+  universityItemWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
+  },
+  universityIcon: {
+    width: 40,
+    height: 40,
+    marginRight: spacing.m,
+    resizeMode: 'contain',
+  },
+  universityText: {
+    fontFamily: 'Montserrat',
+    fontSize: sizes.h4,
   },
   imagePicker: {
-    marginBottom: 15,
+    marginBottom: spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'gray',
     padding: 10,
     borderRadius: sizes.radius,
-    backgroundColor: colors.primaryBis,
   },
   profileImage: {
     width: 150,
     height: 150,
-    borderRadius: 150,
+    borderRadius: 75,
   },
   imagePickerText: {
     color: 'gray',
@@ -309,13 +442,27 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: colors.secondary,
-    marginTop: 20,
+    marginTop: spacing.l,
   },
   signupText: {
-    marginTop: 20,
+    marginTop: spacing.l,
     textAlign: 'center',
     color: colors.secondary,
     fontFamily: 'Montserrat',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.l,
+    marginHorizontal: spacing.m,
+  },
+  modalTitle: {
+    fontSize: sizes.h1,
+    fontFamily: 'Montserrat',
+  },
+  flatListContainer: {
+    paddingVertical: spacing.m,
   },
   modalContainer: {
     backgroundColor: 'white',

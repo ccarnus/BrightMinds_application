@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, Text, StyleSheet, TouchableOpacity, ScrollView, 
   Platform, KeyboardAvoidingView, Image, Dimensions 
@@ -7,16 +7,24 @@ import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
+import { useRoute } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }) => {
+  const route = useRoute();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState("");
+
+  useEffect(() => {
+    if (route.params?.email) {
+      setEmail(route.params.email);
+    }
+  }, [route.params?.email]);
 
   const showCustomAlert = (message) => {
     setCustomAlertMessage(message);
@@ -79,7 +87,7 @@ const LoginScreen = ({ navigation }) => {
           <TextInput
             label="Email"
             style={styles.input}
-            value={email}
+            value={email}               // email state
             onChangeText={setEmail}
             mode="outlined"
             autoCapitalize="none"

@@ -61,6 +61,7 @@
     "react-native-snap-carousel": "^3.9.1",
     "react-native-svg": "15.8.0",
     "react-native-thumbnail-video": "^0.1.2",
+    "react-native-vector-icons": "^10.2.0",
     "react-native-web": "~0.19.13",
     "react-test-renderer": "18.2.0",
     "victory-native": "^36.7.0"
