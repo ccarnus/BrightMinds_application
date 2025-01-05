@@ -17,7 +17,7 @@ import LottieView from 'lottie-react-native';
 import categories from '../../lists/categories';
 import departments from '../../lists/departments';
 import { colors, sizes, spacing } from '../theme';
-import Slider from '@react-native-community/slider';
+import { Slider } from '@miblanchard/react-native-slider';
 import visibilityCategories from '../../lists/visibilityCategories';
 
 const PostCast = ({ navigation }) => {
@@ -402,16 +402,21 @@ const PostCast = ({ navigation }) => {
           {visibilityCategories[visibility - 1].label}
         </Text>
         <Slider
-          style={{ width: '100%', height: 20 }}
+          value={visibility}
+          onValueChange={(val) => setVisibility(val)}
           minimumValue={1}
           maximumValue={5}
           step={1}
-          value={visibility}
-          onValueChange={(value) => setVisibility(value)}
-          thumbTintColor={colors.darkblue}
-          minimumTrackTintColor={colors.darkblue}
-          maximumTrackTintColor={colors.lightblue}
+          containerStyle={{ width: '100%', marginTop: 8 }}
+          trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
+          thumbStyle={{
+            height: 20,
+            width: 20,
+            backgroundColor: colors.darkblue,
+            borderRadius: 10,
+          }}
         />
+
 
         {/* Video Picker + Thumbnail below */}
         <View style={styles.videoPicker}>
