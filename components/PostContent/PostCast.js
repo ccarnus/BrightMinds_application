@@ -30,15 +30,23 @@ const PostCast = ({ navigation }) => {
   const [video, setVideo] = useState(null);
   const [thumbnailUri, setThumbnailUri] = useState(null);
   const [visibility, setVisibility] = useState(1);
+
+  // Loading
   const [loading, setLoading] = useState(false);
   const [topicLoading, setTopicLoading] = useState(false);
+
+  // Modals
   const [isModalVisible, setModalVisible] = useState(false);
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isDepartmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [isTopicModalVisible, setTopicModalVisible] = useState(false);
+
+  // Topic-related
   const [topicOptions, setTopicOptions] = useState([]);
   const [isManualTopicEntry, setManualTopicEntry] = useState(false);
   const [manualTopicText, setManualTopicText] = useState('');
+
+  // Custom alert
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
   const [customAlertMessage, setCustomAlertMessage] = useState('');
 
@@ -70,7 +78,7 @@ const PostCast = ({ navigation }) => {
   const fetchTopicsForDepartment = async (deptName) => {
     try {
       setTopicLoading(true);
-      setTopicOptions([]); 
+      setTopicOptions([]);
       setTopic('');
       const response = await fetch(
         `http://3.17.219.54/topic/department/${deptName}`
@@ -183,7 +191,7 @@ const PostCast = ({ navigation }) => {
 
       if (response.ok) {
         Alert.alert('Success', 'Cast posted successfully!');
-        navigation.navigate('Cast');
+        navigation.navigate('CastScreen');
       } else {
         const errorData = await response.text();
         Alert.alert('Error', `Failed to post cast. Error: ${errorData}`);
@@ -231,6 +239,8 @@ const PostCast = ({ navigation }) => {
     </TouchableOpacity>
   );
 
+  const isNonEmpty = (val) => val && val.trim().length > 0;
+
   return (
     <ScrollView
       style={styles.container}
@@ -254,7 +264,7 @@ const PostCast = ({ navigation }) => {
       <View style={styles.content}>
         <Text style={styles.Maintitle}>Post a Cast</Text>
 
-        {/* Title */}
+        {/* 1) TITLE (always visible) */}
         <TextInput
           label="Title"
           style={styles.input}
@@ -264,178 +274,200 @@ const PostCast = ({ navigation }) => {
           autoCapitalize="none"
         />
 
-        {/* Link */}
-        <TextInput
-          label="Link"
-          style={styles.input}
-          value={link}
-          onChangeText={setLink}
-          mode="outlined"
-          autoCapitalize="none"
-        />
+        {/* 2) LINK (only if title is not empty) */}
+        {isNonEmpty(title) && (
+          <TextInput
+            label="Link"
+            style={styles.input}
+            value={link}
+            onChangeText={setLink}
+            mode="outlined"
+            autoCapitalize="none"
+          />
+        )}
 
-        {/* Category Selector */}
-        <TouchableOpacity
-          style={styles.selectorContainer}
-          onPress={() => setCategoryModalVisible(true)}
-        >
-          <Text style={styles.selectorText}>
-            {category || 'Select Category'}
-          </Text>
-        </TouchableOpacity>
-        <Portal>
-          <Modal
-            visible={isCategoryModalVisible}
-            onDismiss={() => setCategoryModalVisible(false)}
-            contentContainerStyle={styles.modalContainer}
-          >
-            {categories.map((item, index) => (
-              <Button
-                key={index}
-                onPress={() => {
-                  setCategory(item);
-                  setCategoryModalVisible(false);
-                }}
-                style={styles.modalItem}
-                labelStyle={styles.modalItemLabel}
+        {/* 3) CATEGORY (only if link is not empty) */}
+        {isNonEmpty(link) && (
+          <>
+            <TouchableOpacity
+              style={styles.selectorContainer}
+              onPress={() => setCategoryModalVisible(true)}
+            >
+              <Text style={styles.selectorText}>
+                {category || 'Select Category'}
+              </Text>
+            </TouchableOpacity>
+            <Portal>
+              <Modal
+                visible={isCategoryModalVisible}
+                onDismiss={() => setCategoryModalVisible(false)}
+                contentContainerStyle={styles.modalContainer}
               >
-                {item}
-              </Button>
-            ))}
-          </Modal>
-        </Portal>
-
-        {/* Department Selector */}
-        <TouchableOpacity
-          style={styles.selectorContainer}
-          onPress={() => setDepartmentModalVisible(true)}
-        >
-          <Text style={styles.selectorText}>
-            {department
-              ? departments.find((dept) => dept.name === department)?.display
-              : 'Select Department'}
-          </Text>
-        </TouchableOpacity>
-        <Portal>
-          <Modal
-            visible={isDepartmentModalVisible}
-            onDismiss={() => setDepartmentModalVisible(false)}
-            contentContainerStyle={styles.modalContainer}
-          >
-            <FlatList
-              data={departments}
-              renderItem={renderDepartmentItem}
-              keyExtractor={(item) => item.name}
-            />
-          </Modal>
-        </Portal>
-
-        {/* Topic Selector */}
-        <TouchableOpacity
-          style={styles.selectorContainer}
-          onPress={() => setTopicModalVisible(true)}
-        >
-          <Text style={styles.selectorText}>{topic || 'Select Topic'}</Text>
-        </TouchableOpacity>
-        <Portal>
-          <Modal
-            visible={isTopicModalVisible}
-            onDismiss={() => setTopicModalVisible(false)}
-            contentContainerStyle={styles.modalContainer}
-          >
-            {topicLoading ? (
-              <LottieView
-                source={require('../../assets/Loader/loader.json')}
-                autoPlay
-                loop
-                style={{ width: 100, height: 100, alignSelf: 'center' }}
-              />
-            ) : (
-              <>
-                <FlatList
-                  data={topicOptions}
-                  renderItem={renderTopicItem}
-                  keyExtractor={(item) => item._id}
-                />
-                {!isManualTopicEntry && (
+                {categories.map((item, index) => (
                   <Button
-                    onPress={() => setManualTopicEntry(true)}
-                    style={[styles.modalItem, { marginTop: 10 }]}
+                    key={index}
+                    onPress={() => {
+                      setCategory(item);
+                      setCategoryModalVisible(false);
+                    }}
+                    style={styles.modalItem}
                     labelStyle={styles.modalItemLabel}
                   >
-                    Enter Custom Topic
+                    {item}
                   </Button>
-                )}
+                ))}
+              </Modal>
+            </Portal>
+          </>
+        )}
 
-                {isManualTopicEntry && (
-                  <View>
-                    <TextInput
-                      label="Custom Topic"
-                      value={manualTopicText}
-                      onChangeText={(text) => setManualTopicText(text)}
-                      mode="outlined"
-                      style={styles.input}
-                    />
-                    <Button
-                      onPress={() => {
-                        if (manualTopicText.trim().length > 0) {
-                          setTopic(manualTopicText.trim());
-                          setTopicModalVisible(false);
-                        }
-                        setManualTopicEntry(false);
-                        setManualTopicText('');
-                      }}
-                      style={styles.modalItem}
-                      labelStyle={styles.modalItemLabel}
-                    >
-                      Save Topic
-                    </Button>
-                  </View>
-                )}
-              </>
-            )}
-          </Modal>
-        </Portal>
-
-        {/* Visibility Slider */}
-        <Text style={styles.visibilityLabel}>
-          {visibilityCategories[visibility - 1].label}
-        </Text>
-        <Slider
-          value={visibility}
-          onValueChange={(val) => setVisibility(val)}
-          minimumValue={1}
-          maximumValue={5}
-          step={1}
-          containerStyle={{ width: '100%', marginTop: 8 }}
-          trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
-          thumbStyle={{
-            height: 20,
-            width: 20,
-            backgroundColor: colors.darkblue,
-            borderRadius: 10,
-          }}
-        />
-
-
-        {/* Video Picker + Thumbnail below */}
-        <View style={styles.videoPicker}>
-          <TouchableOpacity onPress={toggleModal} style={styles.imagePicker}>
-            <Text style={styles.imagePickerText}>Select Video</Text>
-          </TouchableOpacity>
-
-          {video && (
+        {/* 4) DEPARTMENT (only if category is chosen) */}
+        {isNonEmpty(category) && (
+          <>
             <TouchableOpacity
-              onPress={handlePlayVideo}
-              style={styles.thumbnailContainer}
+              style={styles.selectorContainer}
+              onPress={() => setDepartmentModalVisible(true)}
             >
-              <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
-              <View style={styles.playButton}>
-                <Text style={styles.playButtonText}>▶</Text>
-              </View>
+              <Text style={styles.selectorText}>
+                {department
+                  ? departments.find((dept) => dept.name === department)?.display
+                  : 'Select Department'}
+              </Text>
             </TouchableOpacity>
-          )}
+            <Portal>
+              <Modal
+                visible={isDepartmentModalVisible}
+                onDismiss={() => setDepartmentModalVisible(false)}
+                contentContainerStyle={styles.modalContainer}
+              >
+                <FlatList
+                  data={departments}
+                  renderItem={renderDepartmentItem}
+                  keyExtractor={(item) => item.name}
+                />
+              </Modal>
+            </Portal>
+          </>
+        )}
 
+        {/* 5) TOPIC (only if department is selected) */}
+        {isNonEmpty(department) && (
+          <>
+            <TouchableOpacity
+              style={styles.selectorContainer}
+              onPress={() => setTopicModalVisible(true)}
+            >
+              <Text style={styles.selectorText}>{topic || 'Select Topic'}</Text>
+            </TouchableOpacity>
+            <Portal>
+              <Modal
+                visible={isTopicModalVisible}
+                onDismiss={() => setTopicModalVisible(false)}
+                contentContainerStyle={styles.modalContainer}
+              >
+                {topicLoading ? (
+                  <LottieView
+                    source={require('../../assets/Loader/loader.json')}
+                    autoPlay
+                    loop
+                    style={{ width: 100, height: 100, alignSelf: 'center' }}
+                  />
+                ) : (
+                  <>
+                    <FlatList
+                      data={topicOptions}
+                      renderItem={renderTopicItem}
+                      keyExtractor={(item) => item._id}
+                    />
+                    {!isManualTopicEntry && (
+                      <Button
+                        onPress={() => setManualTopicEntry(true)}
+                        style={[styles.modalItem, { marginTop: 10 }]}
+                        labelStyle={styles.modalItemLabel}
+                      >
+                        Enter Custom Topic
+                      </Button>
+                    )}
+
+                    {isManualTopicEntry && (
+                      <View>
+                        <TextInput
+                          label="Custom Topic"
+                          value={manualTopicText}
+                          onChangeText={(text) => setManualTopicText(text)}
+                          mode="outlined"
+                          style={styles.input}
+                        />
+                        <Button
+                          onPress={() => {
+                            if (manualTopicText.trim().length > 0) {
+                              setTopic(manualTopicText.trim());
+                              setTopicModalVisible(false);
+                            }
+                            setManualTopicEntry(false);
+                            setManualTopicText('');
+                          }}
+                          style={styles.modalItem}
+                          labelStyle={styles.modalItemLabel}
+                        >
+                          Save Topic
+                        </Button>
+                      </View>
+                    )}
+                  </>
+                )}
+              </Modal>
+            </Portal>
+          </>
+        )}
+
+        {/* 6) VISIBILITY SLIDER (only if topic is selected) */}
+        {isNonEmpty(topic) && (
+          <>
+            <Text style={styles.visibilityLabel}>
+              {visibilityCategories[visibility - 1].label}
+            </Text>
+            <Slider
+              value={visibility}
+              onValueChange={(val) => setVisibility(val)}
+              minimumValue={1}
+              maximumValue={5}
+              step={1}
+              containerStyle={{ width: '100%', marginTop: 8 }}
+              trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
+              thumbStyle={{
+                height: 20,
+                width: 20,
+                backgroundColor: colors.darkblue,
+                borderRadius: 10,
+              }}
+            />
+          </>
+        )}
+
+        {/* 7) Video Picker + 8) Thumbnail (only if topic is selected) */}
+        {isNonEmpty(topic) && (
+          <View style={styles.videoPicker}>
+            <TouchableOpacity onPress={toggleModal} style={styles.imagePicker}>
+              <Text style={styles.imagePickerText}>Select Video</Text>
+            </TouchableOpacity>
+
+            {video && (
+              <TouchableOpacity
+                onPress={handlePlayVideo}
+                style={styles.thumbnailContainer}
+              >
+                <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
+                <View style={styles.playButton}>
+                  <Text style={styles.playButtonText}>▶</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+
+        {/* POST Button (only if a video is chosen => "At the end") */}
+        {video && (
           <TouchableOpacity
             style={styles.postButton}
             onPress={sendCast}
@@ -443,7 +475,7 @@ const PostCast = ({ navigation }) => {
           >
             <Text style={styles.postButtonText}>POST</Text>
           </TouchableOpacity>
-        </View>
+        )}
       </View>
 
       {/* Modal for picking/recording video */}
@@ -503,7 +535,6 @@ const PostCast = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // Overall container style
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
@@ -514,7 +545,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
-  // Title style
   Maintitle: {
     fontSize: sizes.title,
     textAlign: 'center',
@@ -523,13 +553,11 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
-  // TextInput styling
   input: {
     marginBottom: spacing.m,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
   },
-  // Selector styling
   selectorContainer: {
     marginBottom: spacing.m,
     borderWidth: 1,
@@ -544,7 +572,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     color: colors.secondary,
   },
-  // Modals
   modalContainer: {
     backgroundColor: 'white',
     padding: 20,
@@ -558,7 +585,6 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
-  // Thumbnail
   thumbnailContainer: {
     width: '70%',
     height: 200,
@@ -589,7 +615,6 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 24,
   },
-  // Visibility label
   visibilityLabel: {
     fontSize: sizes.h3,
     textAlign: 'center',
@@ -597,12 +622,10 @@ const styles = StyleSheet.create({
     color: colors.darkblue,
     fontFamily: 'Montserrat',
   },
-  // Video picking row
   videoPicker: {
     marginTop: spacing.l,
     width: '100%',
   },
-  // "Select Video" styling
   imagePicker: {
     marginBottom: spacing.m,
     alignItems: 'center',
@@ -617,7 +640,6 @@ const styles = StyleSheet.create({
     color: 'gray',
     fontFamily: 'Montserrat',
   },
-  // "POST" button styling
   postButton: {
     backgroundColor: colors.secondary,
     alignItems: 'center',
@@ -631,7 +653,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontFamily: 'MontserratBold',
   },
-  // Lottie-based loading overlay
   loadingOverlay: {
     position: 'absolute',
     zIndex: 1000,
@@ -651,7 +672,6 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  // Video source modal
   centeredView: {
     flex: 1,
     justifyContent: 'center',
@@ -695,12 +715,9 @@ const styles = StyleSheet.create({
   cancelButton: {
     backgroundColor: colors.secondary,
   },
-  recordButtonText: {},
-  galleryButtonText: {},
   cancelButtonText: {
     color: colors.primaryBis,
   },
-  // Custom alert modal
   customAlertModalView: {
     margin: 20,
     backgroundColor: 'white',
