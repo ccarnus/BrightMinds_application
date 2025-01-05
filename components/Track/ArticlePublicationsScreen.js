@@ -68,7 +68,7 @@ const ArticlePublicationsScreen = () => {
   return (
     <Provider>
       <View style={styles.container}>
-        <Text style={styles.sectionTitle}>ARTICLES</Text>
+        <Text style={styles.sectionTitle}>Your Articles</Text>
         <FlatList
           data={articles}
           renderItem={renderItem}
@@ -110,13 +110,12 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   sectionTitle: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
+    fontSize: sizes.title,
     textAlign: 'center',
     marginBottom: spacing.l,
-    marginTop: spacing.l,
-    elevation: 5,
+    marginTop: spacing.xl,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
   },
   articleItem: {
     flexDirection: 'row',
@@ -145,13 +144,12 @@ const styles = StyleSheet.create({
   deleteButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.s,
-    backgroundColor: colors.red,
     borderRadius: sizes.radius,
   },
   deleteIcon: {
     width: 24,
     height: 24,
+    tintColor: colors.red,
   },
   noDataText: {
     fontSize: sizes.h3,

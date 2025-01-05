@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
     marginTop: spacing.xl,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: spacing.m,

@@ -110,13 +110,12 @@ const styles = StyleSheet.create({
     width: '100%'
   },
   sectionTitle: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
+    fontSize: sizes.title,
     textAlign: 'center',
     marginBottom: spacing.l,
-    marginTop: spacing.l,
-    elevation: 5,
+    marginTop: spacing.xl,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
   },
   castItem: {
     flexDirection: 'row',
@@ -145,12 +144,12 @@ const styles = StyleSheet.create({
   deleteButton: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.red,
     borderRadius: sizes.radius,
   },
   deleteIcon: {
     width: 24,
     height: 24,
+    tintColor: colors.red,
   },
   noDataText: {
     fontSize: sizes.h3,

@@ -107,7 +107,7 @@ const PostArticle = ({ navigation }) => {
         </View>
       )}
       <View style={styles.content}>
-        <Text style={styles.heading}>Post an Article</Text>
+        <Text style={styles.MainTitle}>Post an Article</Text>
         <TextInput
           label="Title"
           value={title}
@@ -196,11 +196,13 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
   },
-  heading: {
+  MainTitle: {
     fontSize: sizes.title,
+    textAlign: 'center',
+    marginBottom: spacing.l,
+    marginTop: spacing.xl,
     color: colors.secondary,
-    marginTop: 40,
-    marginBottom: 20,
+    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: 15,

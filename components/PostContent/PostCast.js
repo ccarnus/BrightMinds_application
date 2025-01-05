@@ -164,7 +164,7 @@ const PostCast = ({ navigation }) => {
         </View>
       )}
       <View style={styles.content}>
-        <Text style={styles.heading}>Post a Cast</Text>
+        <Text style={styles.Maintitle}>Post a Cast</Text>
         <TextInput
           label="Title"
           style={styles.input}
@@ -330,12 +330,13 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
   },
-  heading: {
+  Maintitle: {
     fontSize: sizes.title,
+    textAlign: 'center',
+    marginBottom: spacing.l,
+    marginTop: spacing.xl,
     color: colors.secondary,
-    marginTop: 40,
-    marginBottom: 20,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
   },
   fieldDescription: {
     fontSize: sizes.h2,

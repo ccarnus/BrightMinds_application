@@ -337,7 +337,7 @@ const styles = StyleSheet.create({
     fontSize: sizes.title,
     textAlign: 'center',
     marginBottom: spacing.l,
-    marginTop: spacing.l,
+    marginTop: spacing.xl,
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
