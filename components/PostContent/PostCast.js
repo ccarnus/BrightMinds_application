@@ -80,9 +80,7 @@ const PostCast = ({ navigation }) => {
       setTopicLoading(true);
       setTopicOptions([]);
       setTopic('');
-      const response = await fetch(
-        `http://3.17.219.54/topic/department/${deptName}`
-      );
+      const response = await fetch(`http://3.17.219.54/topic/department/${deptName}`);
       if (!response.ok) {
         throw new Error('Failed to fetch topics from the server');
       }
@@ -140,6 +138,17 @@ const PostCast = ({ navigation }) => {
     setModalVisible(!isModalVisible);
   };
 
+  // Make sure we always store an integer for `visibility`
+  const handleVisibilityChange = (val) => {
+    // The slider might return an array like [3]
+    // or a single value if there's only one knob
+    if (Array.isArray(val)) {
+      setVisibility(parseInt(val[0], 10));
+    } else {
+      setVisibility(parseInt(val, 10));
+    }
+  };
+
   // Send cast to API
   const sendCast = async () => {
     let missingFields = [];
@@ -153,8 +162,7 @@ const PostCast = ({ navigation }) => {
 
     if (missingFields.length > 0) {
       let errorMessage =
-        'Please fill in all the required fields:\n\n ' +
-        missingFields.join('\n\n ');
+        'Please fill in all the required fields:\n\n ' + missingFields.join('\n\n ');
       showCustomAlert(errorMessage);
       return;
     }
@@ -191,7 +199,7 @@ const PostCast = ({ navigation }) => {
 
       if (response.ok) {
         Alert.alert('Success', 'Cast posted successfully!');
-        navigation.navigate('CastScreen');
+        navigation.navigate('Cast');
       } else {
         const errorData = await response.text();
         Alert.alert('Error', `Failed to post cast. Error: ${errorData}`);
@@ -264,7 +272,7 @@ const PostCast = ({ navigation }) => {
       <View style={styles.content}>
         <Text style={styles.Maintitle}>Post a Cast</Text>
 
-        {/* 1) TITLE (always visible) */}
+        {/* Title (always visible) */}
         <TextInput
           label="Title"
           style={styles.input}
@@ -274,7 +282,7 @@ const PostCast = ({ navigation }) => {
           autoCapitalize="none"
         />
 
-        {/* 2) LINK (only if title is not empty) */}
+        {/* Link (only if title is not empty) */}
         {isNonEmpty(title) && (
           <TextInput
             label="Link"
@@ -286,7 +294,7 @@ const PostCast = ({ navigation }) => {
           />
         )}
 
-        {/* 3) CATEGORY (only if link is not empty) */}
+        {/* Category (only if link is not empty) */}
         {isNonEmpty(link) && (
           <>
             <TouchableOpacity
@@ -321,7 +329,7 @@ const PostCast = ({ navigation }) => {
           </>
         )}
 
-        {/* 4) DEPARTMENT (only if category is chosen) */}
+        {/* Department (only if category is chosen) */}
         {isNonEmpty(category) && (
           <>
             <TouchableOpacity
@@ -350,7 +358,7 @@ const PostCast = ({ navigation }) => {
           </>
         )}
 
-        {/* 5) TOPIC (only if department is selected) */}
+        {/* Topic (only if department is selected) */}
         {isNonEmpty(department) && (
           <>
             <TouchableOpacity
@@ -421,7 +429,7 @@ const PostCast = ({ navigation }) => {
           </>
         )}
 
-        {/* 6) VISIBILITY SLIDER (only if topic is selected) */}
+        {/* Visibility slider (only if topic is selected) */}
         {isNonEmpty(topic) && (
           <>
             <Text style={styles.visibilityLabel}>
@@ -429,7 +437,7 @@ const PostCast = ({ navigation }) => {
             </Text>
             <Slider
               value={visibility}
-              onValueChange={(val) => setVisibility(val)}
+              onValueChange={handleVisibilityChange}
               minimumValue={1}
               maximumValue={5}
               step={1}
@@ -445,7 +453,7 @@ const PostCast = ({ navigation }) => {
           </>
         )}
 
-        {/* 7) Video Picker + 8) Thumbnail (only if topic is selected) */}
+        {/* Video Picker + Thumbnail below (only if topic is selected) */}
         {isNonEmpty(topic) && (
           <View style={styles.videoPicker}>
             <TouchableOpacity onPress={toggleModal} style={styles.imagePicker}>
@@ -466,7 +474,7 @@ const PostCast = ({ navigation }) => {
           </View>
         )}
 
-        {/* POST Button (only if a video is chosen => "At the end") */}
+        {/* POST button (only if a video is chosen => "at the end") */}
         {video && (
           <TouchableOpacity
             style={styles.postButton}
