@@ -235,10 +235,10 @@ const CastScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <LottieView
-          source={require('../assets/Loader/loader.json')} // Path to your Lottie JSON file
+          source={require('../assets/Loader/loader.json')}
           autoPlay
           loop
-          style={styles.lottie} // You can style the loader accordingly
+          style={styles.lottie}
         />
       </View>
     );
