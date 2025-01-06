@@ -1,5 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions } from 'react-native';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ScrollView, 
+  Image, 
+  TouchableOpacity, 
+  Dimensions 
+} from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import InfoIcon from '../../assets/Virtual_lab_icons/info_icon.png';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,30 +28,26 @@ const VirtualLab = ({ route }) => {
     try {
       const response = await fetch(`http://3.17.219.54/cast/department/${labId}`);
       const data = await response.json();
-
-      const dataWithLogos = await Promise.all(data.map(async (cast) => {
-        const universityResponse = await fetch(`http://3.17.219.54/university/by/name/${cast.university}`);
-        const universityData = await universityResponse.json();
-        return { ...cast, universityLogo: universityData.iconurl };
-      }));
-
-      setLabData(dataWithLogos);
+      setLabData(data);
     } catch (error) {
       console.error('Error fetching lab data:', error);
     }
   };
 
   const handleCastPress = (castId) => {
-    navigation.navigate('VirtualLabVideoScreen', { selectedCastId: castId});
+    navigation.navigate('VirtualLabVideoScreen', { selectedCastId: castId });
   };
 
   return (
     <View style={styles.container}>
       <LinearGradient
         colors={[colors.secondary, colors.primaryBis]}
-        style={styles.topSection}>
+        style={styles.topSection}
+      >
         <View style={styles.titleOverlay}>
-          <Text style={styles.labTitle}>{labDisplayName || 'Virtual Laboratory'}</Text>
+          <Text style={styles.labTitle}>
+            {labDisplayName || 'Virtual Laboratory'}
+          </Text>
         </View>
         <View style={styles.topRightButtons}>
           <TouchableOpacity>
@@ -51,16 +55,24 @@ const VirtualLab = ({ route }) => {
           </TouchableOpacity>
         </View>
       </LinearGradient>
+
       <ScrollView style={styles.bottomSection}>
         {labData.length === 0 ? (
           <Text style={styles.noDataText}>No data available.</Text>
         ) : (
           labData.map((cast, index) => (
-            <TouchableOpacity key={index} style={styles.castContainer} onPress={() => handleCastPress(cast._id)}>
+            <TouchableOpacity
+              key={index}
+              style={styles.castContainer}
+              onPress={() => handleCastPress(cast._id)}
+            >
               <Image source={{ uri: cast.castimageurl }} style={styles.castImage} />
+              
               <View style={styles.castTextContainer}>
+                {/* Title in bold, left-aligned */}
                 <Text style={styles.castTitle}>{cast.title}</Text>
-                <Image source={{ uri: cast.universityLogo }} style={styles.universityLogo} />
+                {/* Topic just underneath the title */}
+                <Text style={styles.castTopic}>{cast.topic}</Text>
               </View>
             </TouchableOpacity>
           ))
@@ -80,9 +92,9 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   titleOverlay: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
   },
   topRightButtons: {
     position: 'absolute',
@@ -93,10 +105,8 @@ const styles = StyleSheet.create({
   labTitle: {
     fontSize: sizes.title,
     color: colors.primary,
+    fontFamily: 'Montserrat', 
     textAlign: 'center',
-    marginLeft: 10,
-    marginRight: 10,
-    fontFamily: 'Montserrat',
   },
   bottomSection: {
     backgroundColor: colors.primaryBis,
@@ -110,21 +120,29 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
     paddingHorizontal: spacing.m,
   },
+  castImage: {
+    width: 150,
+    height: 100,
+    resizeMode: 'cover',
+  },
   castTextContainer: {
     marginLeft: spacing.s,
-    verticalAlign: 'top',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     flex: 1,
   },
   castTitle: {
     fontSize: sizes.h4,
     color: colors.secondary,
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
+    textAlign: 'left',
+    marginBottom: spacing.s,
   },
-  castImage: {
-    width: 150,
-    height: 100,
-    resizeMode: 'cover',
+  castTopic: {
+    fontSize: sizes.body,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+    textAlign: 'left',
+    marginBottom: spacing.xs,
   },
   noDataText: {
     fontSize: sizes.body,
