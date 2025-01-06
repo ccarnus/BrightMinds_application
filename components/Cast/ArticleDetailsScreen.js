@@ -139,7 +139,7 @@ const ArticleDetailsScreen = ({ route }) => {
       )}
       
       <View style={styles.infoDisplay}>
-        <Text style={styles.infoText}>{getDaysSincePosted(article.dateAdded)}</Text>
+        <Text style={styles.infoText}>{getDaysSincePosted(article.dateadded)}</Text>
         <Text style={styles.separator}> · </Text>
         <Text style={styles.infoText}>{getDepartmentDisplayName(article.department)}</Text>
       </View>
