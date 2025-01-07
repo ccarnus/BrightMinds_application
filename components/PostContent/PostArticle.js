@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
   FlatList,
   Modal as ModalReact,
   Platform,
@@ -15,7 +14,7 @@ import {
 import { Button, TextInput, Portal, Modal } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Slider } from '@miblanchard/react-native-slider';
-
+import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '../theme';
 import departments from '../../lists/departments';
 import categories from '../../lists/categories';
@@ -225,7 +224,12 @@ const PostArticle = ({ navigation }) => {
         {loading && (
           <View style={styles.loadingOverlay}>
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#fff" />
+              <LottieView
+                source={require('../../assets/Loader/loader.json')}
+                autoPlay
+                loop
+                style={styles.lottie}
+              />
             </View>
           </View>
         )}
@@ -322,7 +326,12 @@ const PostArticle = ({ navigation }) => {
                   contentContainerStyle={styles.modalContainer}
                 >
                   {topicLoading ? (
-                    <ActivityIndicator size="large" color={colors.secondary} />
+                    <LottieView
+                      source={require('../../assets/Loader/loader.json')}
+                      autoPlay
+                      loop
+                      style={{ width: 100, height: 100, alignSelf: 'center' }}
+                    />
                   ) : (
                     <>
                       <FlatList
@@ -530,12 +539,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingContainer: {
-    padding: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    width: 200,
+    height: 200,
   },
-
-  /* Custom Alert Modal */
   centeredView: {
     flex: 1,
     justifyContent: 'center',

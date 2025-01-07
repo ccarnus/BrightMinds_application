@@ -336,6 +336,8 @@ const styles = StyleSheet.create({
   },
   ChartandTextContainer: {
     marginTop: spacing.s,
+    marginInlineStart: 2,
+    marginRight: 2,
   },
   WatchTimeText: {
     fontSize: 16,
