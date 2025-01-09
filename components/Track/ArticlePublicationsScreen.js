@@ -4,17 +4,23 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
+import LottieView from 'lottie-react-native';  // Ensure you have imported LottieView
 
 const ArticlePublicationsScreen = () => {
   const [articles, setArticles] = useState([]);
   const [userId, setUserId] = useState(null);
   const [visible, setVisible] = useState(false);
   const [selectedArticleId, setSelectedArticleId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);  // State for managing the loading indicator
 
   useEffect(() => {
     const fetchUserArticles = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
+        if (!storedUserId) {
+          setIsLoading(false);
+          return;
+        }
         setUserId(storedUserId);
         const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
         const articleDetails = await Promise.all(
@@ -26,6 +32,8 @@ const ArticlePublicationsScreen = () => {
         setArticles(articleDetails);
       } catch (error) {
         console.error('Error fetching user articles:', error);
+      } finally {
+        setIsLoading(false); // Hide loader after the fetch operation
       }
     };
 
@@ -69,12 +77,23 @@ const ArticlePublicationsScreen = () => {
     <Provider>
       <View style={styles.container}>
         <Text style={styles.sectionTitle}>Your Articles</Text>
-        <FlatList
-          data={articles}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
-        />
+        {isLoading ? (
+          <View style={styles.loaderContainer}>
+            <LottieView
+              source={require('../../assets/Loader/loader.json')}  // Make sure the path is correct
+              autoPlay
+              loop
+              style={{ width: 100, height: 100 }}  // Adjust size as needed
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={articles}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id.toString()}  // Ensure that keyExtractor is using unique keys
+            ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
+          />
+        )}
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <Text style={styles.modalText}>Are you sure you want to delete this article?</Text>
@@ -112,10 +131,16 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: sizes.title,
     textAlign: 'center',
-    marginBottom: spacing.l,
+    marginBottom: spacing.m,
     marginTop: spacing.xl,
     color: colors.secondary,
     fontFamily: 'Montserrat',
+  },
+  loaderContainer: {
+    height: 100,  // Adjust height to contain the loader
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.m,
   },
   articleItem: {
     flexDirection: 'row',

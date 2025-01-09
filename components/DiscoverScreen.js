@@ -12,6 +12,7 @@ const { width, height } = Dimensions.get('window');
 
 const DiscoverScreen = ({ navigation }) => {
   const [videos, setVideos] = useState([]);
+  const [apiError, setApiError] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [videoStatus, setVideoStatus] = useState([]);
   const [showVideo, setShowVideo] = useState(false);
@@ -21,6 +22,7 @@ const DiscoverScreen = ({ navigation }) => {
   const [contentSubmitted, setContentSubmitted] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const videoRefs = useRef([]);
+  const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
   const departmentIcons = {
     MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
@@ -75,33 +77,44 @@ const DiscoverScreen = ({ navigation }) => {
     }
   }, [userId]);
 
-  const fetchVideos = () => {
+  const fetchVideos = async () => {
     setIsLoading(true);
-    fetch('http://3.17.219.54/cast')
-      .then(response => response.json())
-      .then(data => {
-        if (data && data.length > 0) {
-          const fetchUniversityLogos = data.map(cast =>
-            fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
-              .then(res => res.json())
-              .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
-              .catch(() => ({ ...cast, universityLogo: null }))
-          );
-          return Promise.all(fetchUniversityLogos);
-        }
-        return [];
-      })
-      .then(dataWithLogos => {
-        setVideos(dataWithLogos);
-        setVideoStatus(dataWithLogos.map(() => false));
-        setContentSubmitted(dataWithLogos.map(() => false));
+    try {
+      const response = await fetch('http://3.17.219.54/cast');
+      if (!response.ok) throw new Error('Failed to fetch');
+      const data = await response.json();
+      if (data && data.length > 0) {
+        const fetchUniversityLogos = data.map(cast =>
+          fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
+            .then(res => res.json())
+            .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
+            .catch(() => ({ ...cast, universityLogo: null }))
+        );
+        Promise.all(fetchUniversityLogos).then(dataWithLogos => {
+          setVideos(dataWithLogos);
+          setVideoStatus(dataWithLogos.map(() => false));
+          setIsLoading(false);
+        });
+      } else {
+        setVideos([]);
         setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Fetching error:', error);
-        setIsLoading(false);
-      });
+      }
+    } catch (error) {
+      console.error('Fetching error:', error);
+      setApiError(true);
+      setIsLoading(false);
+    }
   };
+
+  if (apiError) {
+      return (
+        <View style={styles.errorContainer}>
+          <Image source={serverError} style={styles.errorImage} />
+          <Text style={styles.errorText}>Whoops!</Text>
+          <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
+        </View>
+      );
+    }
 
   const getDepartmentIcon = (department) => {
     return departmentIcons[department] || null;
@@ -469,6 +482,30 @@ const styles = StyleSheet.create({
   },
   lottie: {
     width: width*0.25,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorImage: {
+    width: width*0.5,
+    height: width*0.5,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'MontserratBold',
+  },
+  errorDetail: {
+    fontSize: sizes.h4,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginTop: 10,
   },
 });
 
