@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
-import LottieView from 'lottie-react-native'; // Make sure LottieView is imported
+import LottieView from 'lottie-react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const PublicationsScreen = () => {
   const [casts, setCasts] = useState([]);
@@ -33,7 +35,7 @@ const PublicationsScreen = () => {
       } catch (error) {
         console.error('Error fetching user casts:', error);
       } finally {
-        setIsLoading(false); // Hide loader after the fetch operation
+        setIsLoading(false);
       }
     };
 
@@ -80,10 +82,10 @@ const PublicationsScreen = () => {
         {isLoading ? (
           <View style={styles.loaderContainer}>
             <LottieView
-              source={require('../../assets/Loader/loader.json')} // Adjust the path to your Lottie file
+              source={require('../../assets/Loader/loader.json')}
               autoPlay
               loop
-              style={{ width: 100, height: 100 }} // Smaller size for the loader
+              style={{ width: width*0.5, height: width*0.5}}
             />
           </View>
         ) : (
@@ -212,7 +214,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   loaderContainer: {
-    height: 100,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.m,

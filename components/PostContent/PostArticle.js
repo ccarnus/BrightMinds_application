@@ -32,6 +32,7 @@ const PostArticle = ({ navigation }) => {
   // Basic fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [link, setLink] = useState('');
 
   const [category, setCategory] = useState('');
   const [department, setDepartment] = useState('');
@@ -183,6 +184,7 @@ const PostArticle = ({ navigation }) => {
     const articleData = {
       title,
       articleDescription: description,
+      link,
       department,
       university,
       category,
@@ -258,8 +260,18 @@ const PostArticle = ({ navigation }) => {
             />
           )}
 
-          {/* Category (only if Description is non-empty) */}
           {isNonEmpty(description) && (
+            <TextInput
+              label="Link"
+              value={link}
+              onChangeText={setLink}
+              mode="outlined"
+              style={styles.input}
+            />
+          )}
+
+          {/* Category (only if Description is non-empty) */}
+          {isNonEmpty(link) && (
             <>
               <TouchableOpacity
                 style={styles.selectorContainer}
