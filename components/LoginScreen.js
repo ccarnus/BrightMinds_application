@@ -8,7 +8,6 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import { useRoute } from '@react-navigation/native';
-import buttonStyles from '../styles/buttonStyles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -88,10 +87,13 @@ const LoginScreen = ({ navigation }) => {
           <TextInput
             label="Email"
             style={styles.input}
-            value={email}               // email state
+            value={email}
             onChangeText={setEmail}
             mode="outlined"
             autoCapitalize="none"
+            underlineColor={colors.darkGreen}
+            activeOutlineColor={colors.darkGreen}
+            underlineColorAndroid={colors.darkGreen}
           />
 
           <TextInput
@@ -99,10 +101,11 @@ const LoginScreen = ({ navigation }) => {
             style={styles.input}
             value={password}
             onChangeText={setPassword}
-            secureTextEntry={!showPassword} 
+            secureTextEntry={!showPassword}
             mode="outlined"
             autoCapitalize="none"
-            // The Icon button on the right side to toggle show/hide password
+            underlineColor={colors.darkGreen}
+            activeOutlineColor={colors.darkGreen}
             right={
               <TextInput.Icon
                 icon={showPassword ? 'eye' : 'eye-off'}
@@ -115,8 +118,9 @@ const LoginScreen = ({ navigation }) => {
             mode="contained"
             onPress={handleLogin}
             loading={loading}
-            style={buttonStyles.primary}
             disabled={!email || !password}
+            buttonColor={colors.darkGreen}
+            icon={require('../assets/Login_icons/log-in.png')}
           >
             Login
           </Button>
@@ -145,7 +149,10 @@ const LoginScreen = ({ navigation }) => {
               contentContainerStyle={styles.modalContainer}
             >
               <Text>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
+              <Button 
+                onPress={() => setCustomAlertVisible(false)}
+                textColor={colors.darkGreen}  
+              >OK</Button>
             </Modal>
           </Portal>
         </ScrollView>
@@ -176,10 +183,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
-  },
-  button: {
-    backgroundColor: colors.secondary,
-    marginTop: 20,
   },
   forgotText: {
     marginTop: 10,

@@ -57,12 +57,14 @@ const ForgotPasswordScreen = ({ navigation }) => {
             onChangeText={setEmail}
             mode="outlined"
             autoCapitalize="none"
+            activeOutlineColor={colors.darkGreen}
           />
           <Button 
             mode="contained" 
             onPress={handlePasswordResetRequest} 
-            loading={loading} 
-            style={styles.button}
+            loading={loading}
+            disabled={!email}
+                        buttonColor={colors.darkGreen}
           >
             Send Reset Link
           </Button>
@@ -73,7 +75,10 @@ const ForgotPasswordScreen = ({ navigation }) => {
               contentContainerStyle={styles.modalContainer}
             >
               <Text>{customAlertMessage}</Text>
-              <Button onPress={handleAlertDismiss}>OK</Button>
+              <Button 
+                onPress={handleAlertDismiss}
+                textColor={colors.darkGreen}  
+              >OK</Button>
             </Modal>
           </Portal>
         </View>
@@ -100,10 +105,6 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
-  },
-  button: {
-    backgroundColor: colors.secondary,
-    marginTop: 20,
   },
   modalContainer: {
     backgroundColor: 'white',

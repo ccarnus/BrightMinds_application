@@ -183,6 +183,7 @@ const SignupScreen = ({ navigation }) => {
             mode="outlined"
             autoCapitalize="none"
             keyboardType="email-address"
+            activeOutlineColor={colors.darkGreen}
           />
 
           {/* Username */}
@@ -193,6 +194,7 @@ const SignupScreen = ({ navigation }) => {
             onChangeText={setUsername}
             mode="outlined"
             autoCapitalize="none"
+            activeOutlineColor={colors.darkGreen}
           />
 
           {/* Password */}
@@ -204,6 +206,7 @@ const SignupScreen = ({ navigation }) => {
             secureTextEntry
             mode="outlined"
             autoCapitalize="none"
+            activeOutlineColor={colors.darkGreen}
           />
 
           {/* Confirm Password */}
@@ -216,6 +219,7 @@ const SignupScreen = ({ navigation }) => {
             mode="outlined"
             autoCapitalize="none"
             error={!passwordsMatch}
+            activeOutlineColor={colors.darkGreen}
           />
           {!passwordsMatch && (
             <HelperText type="error" visible={!passwordsMatch}>
@@ -274,8 +278,9 @@ const SignupScreen = ({ navigation }) => {
             mode="contained"
             onPress={handleSignup}
             loading={loading}
-            style={styles.button}
             disabled={isButtonDisabled}
+            buttonColor={colors.darkGreen}
+            icon={require('../assets/Login_icons/sign-up.png')}
           >
             Sign Up
           </Button>
@@ -318,7 +323,10 @@ const SignupScreen = ({ navigation }) => {
               contentContainerStyle={styles.modalContainer}
             >
               <Text>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
+              <Button 
+                onPress={() => setCustomAlertVisible(false)}
+                textColor={colors.darkGreen}  
+              >OK</Button>
             </Modal>
           </Portal>
         </ScrollView>
@@ -409,10 +417,6 @@ const styles = StyleSheet.create({
   imagePickerText: {
     color: 'gray',
     fontFamily: 'Montserrat',
-  },
-  button: {
-    backgroundColor: colors.secondary,
-    marginTop: spacing.l,
   },
   signupText: {
     marginTop: spacing.l,
