@@ -8,6 +8,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import { useRoute } from '@react-navigation/native';
+import buttonStyles from '../styles/buttonStyles';
 
 const { width, height } = Dimensions.get('window');
 
@@ -82,7 +83,7 @@ const LoginScreen = ({ navigation }) => {
             style={styles.titleImage} 
             resizeMode="contain" 
           />
-          <Text style={styles.title}>Login</Text>
+          <Text style={styles.title}>Log In</Text>
 
           <TextInput
             label="Email"
@@ -114,7 +115,7 @@ const LoginScreen = ({ navigation }) => {
             mode="contained"
             onPress={handleLogin}
             loading={loading}
-            style={styles.button}
+            style={buttonStyles.primary}
             disabled={!email || !password}
           >
             Login

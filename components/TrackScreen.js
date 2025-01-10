@@ -19,7 +19,7 @@ const TrackScreen = () => {
   const [articleCount, setArticleCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false); // Add refreshing state
   const navigation = useNavigation();
-  const BrightMindsMascot = require('../assets/Track_icons/BrightMindsMascot.png');
+  const Learning = require('../assets/Track_icons/learning.png');
 
   const handleReadyScreenPress = () => {
     navigation.navigate('Ready');
@@ -115,10 +115,10 @@ const TrackScreen = () => {
         <View style={styles.infoBottomContainer}>
           <View style={styles.infoBottomContainerLeft}>
             <Text style={styles.questionsansweredNumber}>{answeredCount}</Text>
-            <Text style={styles.questionsansweredText}>Things learned</Text>
+            <Text style={styles.questionsansweredText}>Topic Learned</Text>
           </View>
           <View style={styles.infoBottomContainerRight}>
-            <Image source={BrightMindsMascot} style={styles.infoImage} />
+            <Image source={Learning} style={styles.infoImage} />
           </View>
         </View>
       </LinearGradient>
