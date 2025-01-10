@@ -334,14 +334,6 @@ const DiscoverScreen = ({ navigation }) => {
               <TouchableOpacity style={styles.button} onPress={handleNextVideoPress}>
                 <Text style={styles.buttonText}>Find Next</Text>
               </TouchableOpacity>
-              <Button
-                mode="contained"
-                onPress={() => console.log('Pressed')}
-                style={{ margin: 10 }}
-              >
-                Click Me
-              </Button>
-
             </View>
           </View>
         </>

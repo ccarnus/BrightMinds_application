@@ -25,8 +25,8 @@ const CastScreen = () => {
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
-  const [watchedCastIds, setWatchedCastIds] = useState(null);
-  const [watchedArticleIds, setWatchedArticleIds] = useState(null);
+  const [watchedCastIds, setWatchedCastIds] = useState([]);
+  const [watchedArticleIds, setWatchedArticleIds] = useState([]);
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -73,16 +73,18 @@ const CastScreen = () => {
       const response = await fetch(`http://3.17.219.54/user/${userId}`);
       const userData = await response.json();
 
-      const watchedCasts = userData.evaluation_list
-        .filter(item => item.type === 'cast' && item.watched)
-        .map(item => item.contentid);
+      setWatchedCastIds(
+        userData.evaluation_list
+          ?.filter(item => item.type === 'cast' && item.watched)
+          .map(item => item.contentid) || []
+      );
+      setWatchedArticleIds(
+        userData.evaluation_list
+          ?.filter(item => item.type === 'article' && item.watched)
+          .map(item => item.contentid) || []
+      );
 
-      const watchedArticles = userData.evaluation_list
-        .filter(item => item.type === 'article' && item.watched)
-        .map(item => item.contentid);
-
-      setWatchedCastIds(watchedCasts);
-      setWatchedArticleIds(watchedArticles);
+      fetchAllContent();
     } catch (error) {
       console.error('Error fetching watched content:', error);
       setApiError(true);
@@ -95,32 +97,12 @@ const CastScreen = () => {
       await Promise.all([
         fetchSuggestedCastData(),
         fetchTrendingCastData(),
-        fetchAllCastData(),
         fetchArticleData(),
       ]);
-      prefetchImages();
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching content:', error);
       setApiError(true);
-    }
-  };
-
-  const prefetchImages = async () => {
-    const allImageUrls = [
-      ...suggestedCastData.map(item => item.image),
-      ...trendingCastData.map(item => item.image),
-      ...articleData.map(item => item.image)
-    ];
-
-    const imagePrefetchPromises = allImageUrls.map(url => Image.prefetch(url));
-
-    try {
-      await Promise.all(imagePrefetchPromises);
-      setImagesLoaded(true);
-    } catch (error) {
-      console.error('Error prefetching images:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
