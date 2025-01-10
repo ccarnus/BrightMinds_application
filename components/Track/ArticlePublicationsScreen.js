@@ -1,20 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
+import LottieView from 'lottie-react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const ArticlePublicationsScreen = () => {
   const [articles, setArticles] = useState([]);
   const [userId, setUserId] = useState(null);
   const [visible, setVisible] = useState(false);
   const [selectedArticleId, setSelectedArticleId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); 
 
   useEffect(() => {
     const fetchUserArticles = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
+        if (!storedUserId) {
+          setIsLoading(false);
+          return;
+        }
         setUserId(storedUserId);
         const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
         const articleDetails = await Promise.all(
@@ -26,6 +34,8 @@ const ArticlePublicationsScreen = () => {
         setArticles(articleDetails);
       } catch (error) {
         console.error('Error fetching user articles:', error);
+      } finally {
+        setIsLoading(false); // Hide loader after the fetch operation
       }
     };
 
@@ -69,12 +79,23 @@ const ArticlePublicationsScreen = () => {
     <Provider>
       <View style={styles.container}>
         <Text style={styles.sectionTitle}>Your Articles</Text>
-        <FlatList
-          data={articles}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
-        />
+        {isLoading ? (
+          <View style={styles.loaderContainer}>
+            <LottieView
+              source={require('../../assets/Loader/loader.json')}  // Make sure the path is correct
+              autoPlay
+              loop
+              style={{ width: width*0.5, height: width*0.5 }}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={articles}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id.toString()}  // Ensure that keyExtractor is using unique keys
+            ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
+          />
+        )}
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <Text style={styles.modalText}>Are you sure you want to delete this article?</Text>
@@ -112,10 +133,15 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: sizes.title,
     textAlign: 'center',
-    marginBottom: spacing.l,
+    marginBottom: spacing.m,
     marginTop: spacing.xl,
     color: colors.secondary,
     fontFamily: 'Montserrat',
+  },
+  loaderContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.m,
   },
   articleItem: {
     flexDirection: 'row',

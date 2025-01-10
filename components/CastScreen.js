@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   TextInput,
   RefreshControl,
+  Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +17,8 @@ import { colors, sizes, spacing } from './theme';
 import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
 import LottieView from 'lottie-react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const CastScreen = () => {
   const navigation = useNavigation();
@@ -31,11 +34,13 @@ const CastScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [imagesLoaded, setImagesLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [apiError, setApiError] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
 
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
+  const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
   useEffect(() => {
     const getUserData = async () => {
@@ -51,21 +56,18 @@ const CastScreen = () => {
     getUserData();
   }, []);
 
-  // Fetch watched IDs when userId is available
   useEffect(() => {
     if (userId) {
       fetchWatchedContent();
     }
   }, [userId]);
 
-  // Fetch casts and articles when watched IDs are available
   useEffect(() => {
     if (watchedCastIds !== null && watchedArticleIds !== null) {
       fetchAllContent();
     }
   }, [watchedCastIds, watchedArticleIds]);
 
-  // Fetch watched casts and articles
   const fetchWatchedContent = async () => {
     try {
       const response = await fetch(`http://3.17.219.54/user/${userId}`);
@@ -83,10 +85,10 @@ const CastScreen = () => {
       setWatchedArticleIds(watchedArticles);
     } catch (error) {
       console.error('Error fetching watched content:', error);
+      setApiError(true);
     }
   };
 
-  // Fetch all content and prefetch images
   const fetchAllContent = async () => {
     setIsLoading(true);
     try {
@@ -99,10 +101,10 @@ const CastScreen = () => {
       prefetchImages();
     } catch (error) {
       console.error('Error fetching content:', error);
+      setApiError(true);
     }
   };
 
-  // Prefetch all images for suggested, trending, and articles
   const prefetchImages = async () => {
     const allImageUrls = [
       ...suggestedCastData.map(item => item.image),
@@ -201,13 +203,34 @@ const CastScreen = () => {
     }
   };
 
-  // Handle pull-to-refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    setApiError(false);
     fetchWatchedContent();
     fetchAllContent();
     setRefreshing(false);
   }, [userId]);
+
+  if (apiError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Image source={serverError} style={styles.errorImage} />
+        <Text style={styles.errorText}>Whoops!</Text>
+        <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={() => {
+            setApiError(false);
+            setIsLoading(true);
+            fetchWatchedContent();
+            fetchAllContent();
+          }}
+        >
+          <Text style={styles.refreshButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   const handleSearch = (text) => {
     setSearchQuery(text);
@@ -434,6 +457,42 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'contain',
     tintColor: colors.secondary,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorImage: {
+    width: width*0.5,
+    height: width*0.5,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'MontserratBold',
+  },
+  errorDetail: {
+    fontSize: sizes.h4,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginTop: 10,
+  },
+  refreshButton: {
+    marginTop: 20,
+    backgroundColor: colors.secondary,
+    padding: 10,
+    borderRadius: sizes.radius,
+  },
+  refreshButtonText: {
+    color: colors.primary,
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
   },
 });
 

@@ -1,20 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Image, Dimensions } from 'react-native';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
+import LottieView from 'lottie-react-native';
+
+const { width, height } = Dimensions.get('window');
 
 const PublicationsScreen = () => {
   const [casts, setCasts] = useState([]);
   const [userId, setUserId] = useState(null);
   const [visible, setVisible] = useState(false);
   const [selectedCastId, setSelectedCastId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // State to manage loading indicator
 
   useEffect(() => {
     const fetchUserCasts = async () => {
       try {
         const storedUserId = await AsyncStorage.getItem('userId');
+        if (!storedUserId) {
+          setIsLoading(false);
+          return;
+        }
         setUserId(storedUserId);
         const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
         const castDetails = await Promise.all(
@@ -26,6 +34,8 @@ const PublicationsScreen = () => {
         setCasts(castDetails);
       } catch (error) {
         console.error('Error fetching user casts:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -68,13 +78,24 @@ const PublicationsScreen = () => {
   return (
     <Provider>
       <View style={styles.container}>
-        <Text style={styles.sectionTitle}>Your Cast</Text>
-        <FlatList
-          data={casts}
-          renderItem={renderItem}
-          keyExtractor={(item) => item._id}
-          ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
-        />
+        <Text style={styles.sectionTitle}>Your Casts</Text>
+        {isLoading ? (
+          <View style={styles.loaderContainer}>
+            <LottieView
+              source={require('../../assets/Loader/loader.json')}
+              autoPlay
+              loop
+              style={{ width: width*0.5, height: width*0.5}}
+            />
+          </View>
+        ) : (
+          <FlatList
+            data={casts}
+            renderItem={renderItem}
+            keyExtractor={(item) => item._id.toString()} // Ensure that keyExtractor is using unique keys
+            ListEmptyComponent={<Text style={styles.noDataText}>No publications found.</Text>}
+          />
+        )}
         <Portal>
           <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
             <Text style={styles.modalText}>Are you sure you want to delete this cast?</Text>
@@ -178,6 +199,24 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     margin: spacing.s,
+  },
+  container: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+    width: '100%'
+  },
+  sectionTitle: {
+    fontSize: sizes.title,
+    textAlign: 'center',
+    marginBottom: spacing.m,
+    marginTop: spacing.xl,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+  },
+  loaderContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.m,
   },
 });
 
