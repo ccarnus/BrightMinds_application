@@ -280,6 +280,7 @@ const PostCast = ({ navigation }) => {
           onChangeText={setTitle}
           mode="outlined"
           autoCapitalize="none"
+          activeOutlineColor={colors.darkGreen}
         />
 
         {/* Link (only if title is not empty) */}
@@ -291,6 +292,7 @@ const PostCast = ({ navigation }) => {
             onChangeText={setLink}
             mode="outlined"
             autoCapitalize="none"
+            activeOutlineColor={colors.darkGreen}
           />
         )}
 
@@ -441,12 +443,12 @@ const PostCast = ({ navigation }) => {
               minimumValue={1}
               maximumValue={5}
               step={1}
-              containerStyle={{ width: '100%', marginTop: 8 }}
+              containerStyle={{ width: '100%', marginTop: 8 , marginBottom: 20}}
               trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
               thumbStyle={{
                 height: 20,
                 width: 20,
-                backgroundColor: colors.darkblue,
+                backgroundColor: colors.darkGreen,
                 borderRadius: 10,
               }}
             />
@@ -474,19 +476,18 @@ const PostCast = ({ navigation }) => {
           </View>
         )}
 
-        {/* POST button (only if a video is chosen => "at the end") */}
         {video && (
-          <TouchableOpacity
-            style={styles.postButton}
+          <Button
             onPress={sendCast}
             disabled={loading}
+            mode="contained"
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Postcontent_icons/send.png')}
           >
-            <Text style={styles.postButtonText}>POST</Text>
-          </TouchableOpacity>
+            POST
+          </Button>
         )}
       </View>
-
-      {/* Modal for picking/recording video */}
       <ModalReact
         animationType="slide"
         transparent={true}
@@ -524,7 +525,6 @@ const PostCast = ({ navigation }) => {
         </View>
       </ModalReact>
 
-      {/* Custom alert modal */}
       <ModalReact
         visible={customAlertVisible}
         transparent={true}
@@ -534,7 +534,7 @@ const PostCast = ({ navigation }) => {
         <View style={styles.centeredView}>
           <View style={styles.customAlertModalView}>
             <Text style={styles.customAlertText}>{customAlertMessage}</Text>
-            <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
+            <Button onPress={() => setCustomAlertVisible(false)} textColor={colors.darkGreen}>OK</Button>
           </View>
         </View>
       </ModalReact>
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: spacing.m,
-    marginBottom: spacing.m,
+    marginBottom: spacing.xl,
     borderRadius: 10,
     overflow: 'hidden',
   },

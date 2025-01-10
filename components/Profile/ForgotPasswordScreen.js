@@ -64,7 +64,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
             onPress={handlePasswordResetRequest} 
             loading={loading}
             disabled={!email}
-                        buttonColor={colors.darkGreen}
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Login_icons/reset-password.png')}
           >
             Send Reset Link
           </Button>

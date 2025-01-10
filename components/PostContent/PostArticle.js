@@ -252,6 +252,7 @@ const PostArticle = ({ navigation }) => {
           style={styles.input}
           autoCapitalize="none"
           fontFamily="Montserrat"
+          activeOutlineColor={colors.darkGreen}
         />
 
         {/* Description (only if Title is non-empty) */}
@@ -265,6 +266,7 @@ const PostArticle = ({ navigation }) => {
             style={[styles.input, styles.multilineInput]}
             autoCapitalize="none"
             fontFamily="Montserrat"
+            activeOutlineColor={colors.darkGreen}
           />
         )}
 
@@ -278,6 +280,7 @@ const PostArticle = ({ navigation }) => {
             style={styles.input}
             autoCapitalize="none"
             fontFamily="Montserrat"
+            activeOutlineColor={colors.darkGreen}
           />
         )}
 
@@ -418,27 +421,28 @@ const PostArticle = ({ navigation }) => {
               minimumValue={1}
               maximumValue={5}
               step={1}
-              containerStyle={{ width: '100%', marginTop: 8 }}
+              containerStyle={{ width: '100%', marginTop: 8, marginBottom: 20 }}
               trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
               thumbStyle={{
                 height: 20,
                 width: 20,
-                backgroundColor: colors.darkblue,
+                backgroundColor: colors.darkGreen,
                 borderRadius: 10,
               }}
             />
           </>
         )}
 
-        {/* Post Button (only if all required fields are filled) */}
         {isNonEmpty(topic) && (
-          <TouchableOpacity
-            style={styles.postButton}
+          <Button
             onPress={handlePostArticle}
             disabled={loading}
+            mode="contained"
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Postcontent_icons/send.png')}
           >
-            <Text style={styles.postButtonText}>POST</Text>
-          </TouchableOpacity>
+            POST
+          </Button>
         )}
       </View>
 
@@ -452,7 +456,7 @@ const PostArticle = ({ navigation }) => {
         <View style={styles.centeredView}>
           <View style={styles.customAlertModalView}>
             <Text style={styles.customAlertText}>{customAlertMessage}</Text>
-            <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
+            <Button onPress={() => setCustomAlertVisible(false)} textColor={colors.darkGreen}>OK</Button>
           </View>
         </View>
       </ModalReact>
@@ -535,23 +539,6 @@ const styles = StyleSheet.create({
     color: colors.darkblue,
     fontFamily: 'Montserrat',
   },
-
-  /* Post Button */
-  postButton: {
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    borderRadius: sizes.radius,
-    padding: spacing.m,
-    marginTop: spacing.s,
-  },
-  postButtonText: {
-    fontSize: sizes.h2,
-    color: colors.primaryBis,
-    fontWeight: 'bold',
-    fontFamily: 'MontserratBold',
-  },
-
-  /* Loading Overlay */
   loadingOverlay: {
     position: 'absolute',
     zIndex: 1000,

@@ -112,7 +112,7 @@ const DiscoverScreen = ({ navigation }) => {
         <View style={styles.errorContainer}>
           <Image source={serverError} style={styles.errorImage} />
           <Text style={styles.errorText}>Whoops!</Text>
-          <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
+          <Text style={styles.errorDetail}>Please try to come back later!</Text>
         </View>
       );
     }
@@ -334,6 +334,14 @@ const DiscoverScreen = ({ navigation }) => {
               <TouchableOpacity style={styles.button} onPress={handleNextVideoPress}>
                 <Text style={styles.buttonText}>Find Next</Text>
               </TouchableOpacity>
+              <Button
+                mode="contained"
+                onPress={() => console.log('Pressed')}
+                style={{ margin: 10 }}
+              >
+                Click Me
+              </Button>
+
             </View>
           </View>
         </>
