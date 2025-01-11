@@ -6,6 +6,7 @@ import { colors, sizes, spacing } from './theme';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
+import { Button } from 'react-native-paper';
 
 const { width } = Dimensions.get('window');
 
@@ -202,9 +203,22 @@ const TrackScreen = () => {
           )}
         </View>
       </View>
-      <TouchableOpacity style={styles.buttonStartWeeklyEvaluation} onPress={handleReadyScreenPress}>
-        <Text style={styles.buttonText}>Take Test</Text>
-      </TouchableOpacity>
+      <Button
+        mode="contained"
+        onPress={handleReadyScreenPress}
+        buttonColor={colors.darkGreen}
+        icon={require('../assets/Track_icons/test.png')}
+        labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+        style={{ 
+          marginLeft: spacing.m,
+          marginRight: spacing.m,
+          marginBottom: spacing.xl,
+          marginTop: spacing.l,
+          paddingHorizontal: spacing.s
+        }}
+      >
+        Take Test
+      </Button>
     </ScrollView>
   );
 };
@@ -311,23 +325,6 @@ const styles = StyleSheet.create({
   ProgressText: {
     fontFamily: 'MontserratBold',
     color: colors.secondary,
-  },
-  buttonStartWeeklyEvaluation: {
-    backgroundColor: colors.secondary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.l,
-    elevation: 5,
-    width: '80%',
-    marginLeft: '10%',
-    padding: 15,
-    borderRadius: sizes.radius,
-    marginTop: spacing.m,
-  },
-  buttonText: {
-    fontSize: sizes.h3,
-    color: colors.primaryBis,
-    fontFamily: 'MontserratBold',
   },
   gaugeContainer: {
     alignItems: 'center',

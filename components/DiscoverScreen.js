@@ -7,7 +7,7 @@ import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
-import Button from 'react-native-paper';
+import { Button } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -331,9 +331,23 @@ const DiscoverScreen = ({ navigation }) => {
               </View>
             </View>
             <View style={styles.band}>
-              <TouchableOpacity style={styles.button} onPress={handleNextVideoPress}>
-                <Text style={styles.buttonText}>Find Next</Text>
-              </TouchableOpacity>
+              <Button
+                mode="contained"
+                onPress={handleNextVideoPress}
+                buttonColor={colors.darkGreen}
+                icon={require('../assets/Discover_icons/next.png')}
+                contentStyle={{ flexDirection: 'row-reverse'}}
+                labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+                style={{ 
+                  marginLeft: spacing.m,
+                  marginRight: spacing.m,
+                  marginBottom: spacing.xl,
+                  marginTop: spacing.l,
+                  paddingHorizontal: spacing.s
+                }}
+              >
+                Explore Next
+              </Button>
             </View>
           </View>
         </>

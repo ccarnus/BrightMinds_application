@@ -121,6 +121,15 @@ const LoginScreen = ({ navigation }) => {
             disabled={!email || !password}
             buttonColor={colors.darkGreen}
             icon={require('../assets/Login_icons/log-in.png')}
+            contentStyle={{ flexDirection: 'row-reverse'}}
+            labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+            style={{ 
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.s,
+              marginTop: spacing.l,
+              paddingHorizontal: spacing.s
+            }}
           >
             Login
           </Button>

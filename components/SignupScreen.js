@@ -280,7 +280,15 @@ const SignupScreen = ({ navigation }) => {
             loading={loading}
             disabled={isButtonDisabled}
             buttonColor={colors.darkGreen}
-            icon={require('../assets/Login_icons/sign-up.png')}
+            icon={require('../assets/Login_icons/sign-up.png')}contentStyle={{ flexDirection: 'row-reverse'}}
+            labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+            style={{ 
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.s,
+              marginTop: spacing.l,
+              paddingHorizontal: spacing.s
+            }}
           >
             Sign Up
           </Button>

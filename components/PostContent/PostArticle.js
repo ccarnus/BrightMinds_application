@@ -440,6 +440,14 @@ const PostArticle = ({ navigation }) => {
             mode="contained"
             buttonColor={colors.darkGreen}
             icon={require('../../assets/Postcontent_icons/send.png')}
+            labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+            style={{ 
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.l,
+              marginTop: spacing.l,
+              paddingHorizontal: spacing.s
+            }}
           >
             POST
           </Button>

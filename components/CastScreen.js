@@ -258,7 +258,7 @@ const CastScreen = () => {
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
-            placeholder="Search casts..."
+            placeholder="I want to learn about.."
             placeholderTextColor={colors.secondary}
             onChangeText={handleSearch}
             value={searchQuery}

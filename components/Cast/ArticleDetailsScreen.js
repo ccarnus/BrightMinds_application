@@ -4,6 +4,7 @@ import { colors, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../../lists/departments';
+import { Button } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -129,41 +130,74 @@ const ArticleDetailsScreen = ({ route }) => {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Image source={{ uri: article.articleimageurl }} style={styles.image} />
-      {universityLogo && (
-        <View style={styles.iconContainer}>
-          <Image source={{ uri: universityLogo }} style={styles.icon} />
-          <Text style={styles.iconText}>{universityName}</Text>
+    <View style={styles.container}>
+      <ScrollView style={styles.containerScroll}>
+        <Image source={{ uri: article.articleimageurl }} style={styles.image} />
+        {universityLogo && (
+          <View style={styles.iconContainer}>
+            <Image source={{ uri: universityLogo }} style={styles.icon} />
+            <Text style={styles.iconText}>{universityName}</Text>
+          </View>
+        )}
+        
+        <View style={styles.infoDisplay}>
+          <Text style={styles.infoText}>{getDaysSincePosted(article.dateadded)}</Text>
+          <Text style={styles.separator}> · </Text>
+          <Text style={styles.infoText}>{getDepartmentDisplayName(article.department)}</Text>
         </View>
-      )}
-      
-      <View style={styles.infoDisplay}>
-        <Text style={styles.infoText}>{getDaysSincePosted(article.dateadded)}</Text>
-        <Text style={styles.separator}> · </Text>
-        <Text style={styles.infoText}>{getDepartmentDisplayName(article.department)}</Text>
-      </View>
 
-      <View style={styles.content}>
-        <Text style={styles.title}>{article.title}</Text>
-        <Text style={styles.description}>{article.articleDescription}</Text>
+        <View style={styles.content}>
+          <Text style={styles.title}>{article.title}</Text>
+          <Text style={styles.description}>{article.articleDescription}</Text>
+        </View>
+        
+        <View style={styles.buttonContainer}>
+          <Button
+              mode="contained"
+              onPress={handleAddToCastList}
+              buttonColor={colors.darkGreen}
+              icon={require('../../assets/Cast_screen_icons/like.png')}
+              labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+              style={{ 
+                marginLeft: spacing.m,
+                marginRight: spacing.m,
+                marginBottom: height * 0.1,
+                marginTop: spacing.l,
+                paddingHorizontal: spacing.s
+              }}
+            >
+              Got it!
+            </Button>
+        </View>
+      </ScrollView>
+      <View style={styles.fixedButtonContainer}>
+      <Button
+        mode="contained"
+        onPress={handleAccessFullResearch}
+        buttonColor={colors.darkblue}
+        icon={require('../../assets/Cast_screen_icons/link.png')}
+        labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+        style={{ 
+          marginLeft: spacing.m,
+          marginRight: spacing.m,
+          marginBottom: spacing.s,
+          marginTop: spacing.l,
+          paddingHorizontal: spacing.s
+        }}
+      >
+        Access Full Research
+      </Button>
       </View>
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button} onPress={handleAddToCastList}>
-          <Text style={styles.buttonAddText}>Got it!</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, styles.accessButton]} onPress={handleAccessFullResearch}>
-          <Text style={styles.buttonAccessText}>Access Full Research</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  containerScroll: {
     backgroundColor: colors.primaryBis,
   },
   image: {
@@ -268,6 +302,14 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     paddingHorizontal: spacing.xs,
     fontFamily: "MontserratBold",
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    padding: spacing.m,
   },
 });
 
