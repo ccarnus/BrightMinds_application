@@ -81,12 +81,12 @@ const DiscoverScreen = ({ navigation }) => {
   const fetchVideos = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://3.17.219.54/cast');
+      const response = await fetch('https://3.17.219.54/cast');
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       if (data && data.length > 0) {
         const fetchUniversityLogos = data.map(cast =>
-          fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
+          fetch(`https://3.17.219.54/university/by/name/${cast.university}`)
             .then(res => res.json())
             .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
             .catch(() => ({ ...cast, universityLogo: null }))
@@ -149,7 +149,7 @@ const DiscoverScreen = ({ navigation }) => {
     const castId = videos[index]._id;
 
     axios
-      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .post(`https://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(() => {
         setContentSubmitted(prevSubmitted => prevSubmitted.map((submitted, idx) => idx === index ? true : submitted));
         console.log("Content marked as watched at 85%");

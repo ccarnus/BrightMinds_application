@@ -80,7 +80,7 @@ const PostCast = ({ navigation }) => {
       setTopicLoading(true);
       setTopicOptions([]);
       setTopic('');
-      const response = await fetch(`http://3.17.219.54/topic/department/${deptName}`);
+      const response = await fetch(`https://3.17.219.54/topic/department/${deptName}`);
       if (!response.ok) {
         throw new Error('Failed to fetch topics from the server');
       }
@@ -189,7 +189,7 @@ const PostCast = ({ navigation }) => {
     });
 
     try {
-      const response = await fetch('http://3.17.219.54/cast', {
+      const response = await fetch('https://3.17.219.54/cast', {
         method: 'POST',
         body: formData,
         headers: {

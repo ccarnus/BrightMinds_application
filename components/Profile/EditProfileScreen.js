@@ -37,7 +37,7 @@ const EditProfileScreen = ({ navigation }) => {
       if (storedUserId) {
         setUserId(storedUserId);
         try {
-          const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
+          const response = await axios.get(`https://3.17.219.54/user/${storedUserId}`);
           const userData = response.data;
           setEmail(userData.email);
           setUsername(userData.username);
@@ -55,7 +55,7 @@ const EditProfileScreen = ({ navigation }) => {
 
     const fetchUniversities = async () => {
       try {
-        const response = await axios.get('http://3.17.219.54/university');
+        const response = await axios.get('https://3.17.219.54/university');
         setUniversities(response.data);
       } catch (error) {
         console.error('Error fetching universities:', error);
@@ -102,7 +102,7 @@ const EditProfileScreen = ({ navigation }) => {
     }
 
     try {
-      await axios.put(`http://3.17.219.54/user/${userId}`, formData, {
+      await axios.put(`https://3.17.219.54/user/${userId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

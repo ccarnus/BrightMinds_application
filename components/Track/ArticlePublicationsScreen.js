@@ -24,10 +24,10 @@ const ArticlePublicationsScreen = () => {
           return;
         }
         setUserId(storedUserId);
-        const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
+        const response = await axios.get(`https://3.17.219.54/user/${storedUserId}`);
         const articleDetails = await Promise.all(
           response.data.articlePublications.map(async (articleId) => {
-            const articleResponse = await axios.get(`http://3.17.219.54/article/${articleId}`);
+            const articleResponse = await axios.get(`https://3.17.219.54/article/${articleId}`);
             return articleResponse.data;
           })
         );
@@ -54,7 +54,7 @@ const ArticlePublicationsScreen = () => {
 
   const handleDeleteArticle = async () => {
     try {
-      await axios.delete(`http://3.17.219.54/article/${selectedArticleId}`);
+      await axios.delete(`https://3.17.219.54/article/${selectedArticleId}`);
       setArticles(articles.filter((article) => article._id !== selectedArticleId));
       hideModal();
     } catch (error) {

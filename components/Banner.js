@@ -21,7 +21,7 @@ const Banner = () => {
           const storedUserId = await AsyncStorage.getItem('userId');
           if (storedUserId) {
             setUserId(storedUserId);
-            const response = await fetch(`http://3.17.219.54/user/${storedUserId}`);
+            const response = await fetch(`https://3.17.219.54/user/${storedUserId}`);
             const data = await response.json();
     
             if (data && data.profilePictureUrl) {

@@ -30,7 +30,7 @@ const VirtualLab = ({ route }) => {
 
   const fetchLabData = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/cast/department/${labId}`);
+      const response = await fetch(`https://3.17.219.54/cast/department/${labId}`);
       const data = await response.json();
       setLabData(data);
     } catch (error) {

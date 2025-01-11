@@ -27,7 +27,7 @@ const PreferencesScreen = ({ navigation }) => {
 
     try {
       for (const department of selectedDepartments) {
-        await axios.post(`http://3.17.219.54/user/${userId}/preferences`, {
+        await axios.post(`https://3.17.219.54/user/${userId}/preferences`, {
           category: department,
           modification: 'positive',
         });

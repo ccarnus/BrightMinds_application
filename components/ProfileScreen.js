@@ -34,17 +34,17 @@ const ProfileScreen = () => {
   useEffect(() => {
     if (userId) {
       axios
-        .get(`http://3.17.219.54/user/${userId}`)
+        .get(`https://3.17.219.54/user/${userId}`)
         .then(response => setUserData(response.data))
         .catch(error => console.error('Error fetching user data:', error));
 
       axios
-        .get(`http://3.17.219.54/user/${userId}/preferences`)
+        .get(`https://3.17.219.54/user/${userId}/preferences`)
         .then(response => setUserPreferences(response.data.preferences))
         .catch(error => console.error('Error fetching user preferences:', error));
 
       axios
-        .get(`http://3.17.219.54/user/${userId}/tracking`)
+        .get(`https://3.17.219.54/user/${userId}/tracking`)
         .then(response => setTrackingData(response.data.tracking))
         .catch(error => console.error('Error fetching tracking data:', error));
     }

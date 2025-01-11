@@ -43,7 +43,7 @@ const ReadyScreen = ({ navigation }) => {
 
   const getCastList = async () => {
     try {
-      const response = await axios.get(`http://3.17.219.54/user/${userId}`);
+      const response = await axios.get(`https://3.17.219.54/user/${userId}`);
       const evaluationList = response.data.evaluation_list.filter(item => item.watched && !item.answered);
       const evaluationsData = evaluationList.map(item => ({
         contentid: item.contentid,

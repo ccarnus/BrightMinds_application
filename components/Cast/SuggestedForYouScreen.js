@@ -34,10 +34,10 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
   }, [userId, selectedVideoId]);
 
   const fetchVideoAndBookmarks = () => {
-    fetch(`http://3.17.219.54/cast/${selectedVideoId}`)
+    fetch(`https://3.17.219.54/cast/${selectedVideoId}`)
       .then(response => response.json())
       .then(videoData => {
-        fetch(`http://3.17.219.54/university/by/name/${videoData.university}`)
+        fetch(`https://3.17.219.54/university/by/name/${videoData.university}`)
           .then(res => res.json())
           .then(universityData => {
             setVideo({ ...videoData, universityLogo: universityData.iconurl });
@@ -52,7 +52,7 @@ const SuggestedForYouScreen = ({ route, navigation }) => {
     const castId = video._id;
 
     axios
-      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .post(`https://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
         setContentSubmitted(true);
         console.log("Content marked as watched at 85%");

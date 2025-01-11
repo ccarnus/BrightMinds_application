@@ -34,12 +34,12 @@ const LoginScreen = ({ navigation }) => {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('http://3.17.219.54/user/login', { email, password });
+      const response = await axios.post('https://3.17.219.54/user/login', { email, password });
       const userId = response.data.userId;
       await AsyncStorage.setItem('userId', userId);
 
       // Fetch user details to get the role and university
-      const userDetailsResponse = await axios.get(`http://3.17.219.54/user/${userId}`);
+      const userDetailsResponse = await axios.get(`https://3.17.219.54/user/${userId}`);
       const userRole = userDetailsResponse.data.role;
       const userUniversity = userDetailsResponse.data.university || '';
       await AsyncStorage.setItem('userRole', userRole);
@@ -50,7 +50,7 @@ const LoginScreen = ({ navigation }) => {
       }
 
       // Check if user has preferences defined
-      const userPreferencesResponse = await axios.get(`http://3.17.219.54/user/${userId}/preferences`);
+      const userPreferencesResponse = await axios.get(`https://3.17.219.54/user/${userId}/preferences`);
       const userPreferences = userPreferencesResponse.data.preferences;
 
       if (userPreferences.length === 0) {

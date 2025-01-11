@@ -57,7 +57,7 @@ const LabScreen = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await axios.get('http://3.17.219.54/cast/popular/department');
+        const response = await axios.get('https://3.17.219.54/cast/popular/department');
         const departments = response.data.map(dept => ({
           name: dept._id,  // Dept name from API
           display: getDisplayName(dept._id),  // Get display name from your static list

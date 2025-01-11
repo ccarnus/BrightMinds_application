@@ -30,7 +30,7 @@ const SignupScreen = ({ navigation }) => {
     // Fetch universities from your API
     const fetchUniversities = async () => {
       try {
-        const response = await axios.get('http://3.17.219.54/university');
+        const response = await axios.get('https://3.17.219.54/university');
         setUniversities(response.data);
       } catch (error) {
         console.error('Error fetching universities:', error);
@@ -124,7 +124,7 @@ const SignupScreen = ({ navigation }) => {
     });
 
     try {
-      await axios.post('http://3.17.219.54/user/signup', formData, {
+      await axios.post('https://3.17.219.54/user/signup', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

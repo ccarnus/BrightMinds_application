@@ -56,7 +56,7 @@ const TakeTest = ({ route, navigation }) => {
 
   const removeContentFromEvaluationList = async (evaluation) => {
     try {
-      await axios.post(`http://3.17.219.54/user/mark/content/as/answered/${userId}`, {
+      await axios.post(`https://3.17.219.54/user/mark/content/as/answered/${userId}`, {
         contentId: evaluation.contentid,
       });
     } catch (error) {
@@ -68,8 +68,8 @@ const TakeTest = ({ route, navigation }) => {
     try {
       const questionsPromises = evaluations.map(item => {
         const url = item.type === 'article'
-          ? `http://3.17.219.54/article/${item.contentid}`
-          : `http://3.17.219.54/cast/${item.contentid}`;
+          ? `https://3.17.219.54/article/${item.contentid}`
+          : `https://3.17.219.54/cast/${item.contentid}`;
         return axios.get(url);
       });
       const questionsResponses = await Promise.all(questionsPromises);

@@ -26,7 +26,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setLoading(true);
     try {
       // Make sure you have your server endpoint set correctly:
-      await axios.post('http://3.17.219.54/user/reset-password-request', { email });
+      await axios.post('https://3.17.219.54/user/reset-password-request', { email });
       showCustomAlert('Please check your email to reset your password.');
     } catch (error) {
       console.log(error);

@@ -24,10 +24,10 @@ const PublicationsScreen = () => {
           return;
         }
         setUserId(storedUserId);
-        const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
+        const response = await axios.get(`https://3.17.219.54/user/${storedUserId}`);
         const castDetails = await Promise.all(
           response.data.castPublications.map(async (castId) => {
-            const castResponse = await axios.get(`http://3.17.219.54/cast/${castId}`);
+            const castResponse = await axios.get(`https://3.17.219.54/cast/${castId}`);
             return castResponse.data;
           })
         );
@@ -54,7 +54,7 @@ const PublicationsScreen = () => {
 
   const handleDeleteCast = async () => {
     try {
-      await axios.delete(`http://3.17.219.54/cast/${selectedCastId}`);
+      await axios.delete(`https://3.17.219.54/cast/${selectedCastId}`);
       setCasts(casts.filter((cast) => cast._id !== selectedCastId));
       hideModal();
     } catch (error) {

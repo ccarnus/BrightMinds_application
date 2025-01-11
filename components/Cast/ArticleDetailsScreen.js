@@ -34,7 +34,7 @@ const ArticleDetailsScreen = ({ route }) => {
   const fetchArticle = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://3.17.219.54/article/${selectedArticleId}`);
+      const response = await fetch(`https://3.17.219.54/article/${selectedArticleId}`);
       const data = await response.json();
       setArticle(data);
       await fetchUniversityLogo(data.university);
@@ -47,7 +47,7 @@ const ArticleDetailsScreen = ({ route }) => {
 
   const fetchUniversityLogo = async (universityName) => {
     try {
-      const response = await fetch(`http://3.17.219.54/university/by/name/${universityName}`);
+      const response = await fetch(`https://3.17.219.54/university/by/name/${universityName}`);
       const data = await response.json();
       setUniversityLogo(data.iconurl);
       setUniversityName(data.displayedName);
@@ -58,7 +58,7 @@ const ArticleDetailsScreen = ({ route }) => {
 
   const handleAddToCastList = async () => {
     const contentId = selectedArticleId;
-    const url = `http://3.17.219.54/user/add/content/${userId}`;
+    const url = `https://3.17.219.54/user/add/content/${userId}`;
 
     try {
       const response = await fetch(url, {

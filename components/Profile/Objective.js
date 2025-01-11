@@ -48,7 +48,7 @@ const ObjectiveScreen = () => {
     if (!userId) return;
 
     try {
-      await axios.put(`http://3.17.219.54/user/${userId}/update/tracking`, {
+      await axios.put(`https://3.17.219.54/user/${userId}/update/tracking`, {
         objective: confirmationObjective
       });
       setSelectedObjective(confirmationObjective);
