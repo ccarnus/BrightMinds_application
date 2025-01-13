@@ -3,7 +3,8 @@ import { View, StyleSheet, ScrollView, Image, Text, TouchableOpacity, Animated }
 import { useNavigation } from '@react-navigation/native';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
-import departmentsList from '../lists/departments';  // Import the department list with display names
+import departmentsList from '../lists/departments';
+import { API_BASE_URL } from './APIConfig';
 
 const departmentImages = {
   'Physics': require('../assets/Virtual_labs/Physics.png'),
@@ -57,7 +58,7 @@ const LabScreen = () => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await axios.get('http://3.17.219.54/cast/popular/department');
+        const response = await axios.get(`${API_BASE_URL}/cast/popular/department`);
         const departments = response.data.map(dept => ({
           name: dept._id,  // Dept name from API
           display: getDisplayName(dept._id),  // Get display name from your static list

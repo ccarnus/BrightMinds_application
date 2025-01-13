@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
 import LottieView from 'lottie-react-native';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,10 +25,10 @@ const PublicationsScreen = () => {
           return;
         }
         setUserId(storedUserId);
-        const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
+        const response = await axios.get(`${API_BASE_URL}/user/${storedUserId}`);
         const castDetails = await Promise.all(
           response.data.castPublications.map(async (castId) => {
-            const castResponse = await axios.get(`http://3.17.219.54/cast/${castId}`);
+            const castResponse = await axios.get(`${API_BASE_URL}/cast/${castId}`);
             return castResponse.data;
           })
         );
@@ -54,7 +55,7 @@ const PublicationsScreen = () => {
 
   const handleDeleteCast = async () => {
     try {
-      await axios.delete(`http://3.17.219.54/cast/${selectedCastId}`);
+      await axios.delete(`https://3.17.219.54/cast/${selectedCastId}`);
       setCasts(casts.filter((cast) => cast._id !== selectedCastId));
       hideModal();
     } catch (error) {

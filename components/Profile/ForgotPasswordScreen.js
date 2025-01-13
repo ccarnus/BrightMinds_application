@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Dimensions } fr
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
 import { colors, sizes } from '../theme';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -26,7 +27,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setLoading(true);
     try {
       // Make sure you have your server endpoint set correctly:
-      await axios.post('http://3.17.219.54/user/reset-password-request', { email });
+      await axios.post(`${API_BASE_URL}/user/reset-password-request`, { email });
       showCustomAlert('Please check your email to reset your password.');
     } catch (error) {
       console.log(error);

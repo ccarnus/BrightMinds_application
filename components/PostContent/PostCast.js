@@ -19,6 +19,7 @@ import departments from '../../lists/departments';
 import { colors, sizes, spacing } from '../theme';
 import { Slider } from '@miblanchard/react-native-slider';
 import visibilityCategories from '../../lists/visibilityCategories';
+import { API_BASE_URL } from '../APIConfig';
 
 const PostCast = ({ navigation }) => {
   // Basic state
@@ -80,7 +81,7 @@ const PostCast = ({ navigation }) => {
       setTopicLoading(true);
       setTopicOptions([]);
       setTopic('');
-      const response = await fetch(`http://3.17.219.54/topic/department/${deptName}`);
+      const response = await fetch(`${API_BASE_URL}/topic/department/${deptName}`);
       if (!response.ok) {
         throw new Error('Failed to fetch topics from the server');
       }
@@ -189,7 +190,7 @@ const PostCast = ({ navigation }) => {
     });
 
     try {
-      const response = await fetch('http://3.17.219.54/cast', {
+      const response = await fetch(`${API_BASE_URL}/cast`, {
         method: 'POST',
         body: formData,
         headers: {

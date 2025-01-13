@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
 import { colors, sizes } from '../theme';
+import { API_BASE_URL } from '../APIConfig';
 
 const UserProfile = () => {
   const [userData, setUserData] = useState(null);
 
   useEffect(() => {
     // Fetch user data
-    fetch('http://3.17.219.54/user/6474e4001eec5ee1ecd40180')
+    fetch(`${API_BASE_URL}/user/6474e4001eec5ee1ecd40180`) // WRONG
       .then((response) => response.json())
       .then((data) => setUserData(data))
       .catch((error) => console.error(error));
@@ -25,7 +26,7 @@ const UserProfile = () => {
         <Text style={styles.score}>{userData.score}</Text>
         <Text style={styles.rank}>Better than {userData.percentage}%</Text>
       </View>
-      <Image source={{ uri: 'http://3.17.219.54/backend/media/university_icon/GT.png1691613590597.png' }} style={styles.universityPicture} />
+      <Image source={{ uri: 'https://3.17.219.54/backend/media/university_icon/GT.png1691613590597.png' }} style={styles.universityPicture} />
     </View>
   );
 };

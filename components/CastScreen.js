@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  ActivityIndicator,
   TextInput,
   RefreshControl,
   Dimensions
@@ -17,6 +16,7 @@ import { colors, sizes, spacing } from './theme';
 import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
 import LottieView from 'lottie-react-native';
+import { API_BASE_URL } from './APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -70,7 +70,7 @@ const CastScreen = () => {
 
   const fetchWatchedContent = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/user/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
       const userData = await response.json();
 
       setWatchedCastIds(
@@ -108,7 +108,7 @@ const CastScreen = () => {
 
   const fetchSuggestedCastData = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/user/${userId}/suggested/for/you`);
+      const response = await fetch(`${API_BASE_URL}/user/${userId}/suggested/for/you`);
       const data = await response.json();
 
       if (Array.isArray(data)) {
@@ -132,7 +132,7 @@ const CastScreen = () => {
 
   const fetchTrendingCastData = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/cast/trending/right/now`);
+      const response = await fetch(`${API_BASE_URL}/cast/trending/right/now`);
       const data = await response.json();
 
       if (Array.isArray(data)) {
@@ -156,7 +156,7 @@ const CastScreen = () => {
 
   const fetchAllCastData = async () => {
     try {
-      const response = await fetch('http://3.17.219.54/cast');
+      const response = await fetch(`${API_BASE_URL}/cast`);
       const data = await response.json();
       setAllCasts(data);
     } catch (error) {
@@ -166,7 +166,7 @@ const CastScreen = () => {
 
   const fetchArticleData = async () => {
     try {
-      const response = await fetch('http://3.17.219.54/article');
+      const response = await fetch(`${API_BASE_URL}/article`);
       const data = await response.json();
 
       if (Array.isArray(data)) {

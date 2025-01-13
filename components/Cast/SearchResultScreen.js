@@ -6,6 +6,7 @@ import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,10 +35,10 @@ const SearchResultScreen = ({ route, navigation }) => {
   }, [userId, selectedCastId]);
 
   const fetchVideo = () => {
-    fetch(`http://3.17.219.54/cast/${selectedCastId}`)
+    fetch(`${API_BASE_URL}/cast/${selectedCastId}`)
       .then(response => response.json())
       .then(videoData => {
-        fetch(`http://3.17.219.54/university/by/name/${videoData.university}`)
+        fetch(`${API_BASE_URL}/university/by/name/${videoData.university}`)
           .then(res => res.json())
           .then(universityData => {
             setVideo({ ...videoData, universityLogo: universityData.iconurl });
@@ -52,7 +53,7 @@ const SearchResultScreen = ({ route, navigation }) => {
     const castId = video._id;
 
     axios
-      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
         setContentSubmitted(true);
         console.log("Content marked as watched at 85%");

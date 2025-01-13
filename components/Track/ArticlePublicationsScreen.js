@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
 import LottieView from 'lottie-react-native';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,10 +25,10 @@ const ArticlePublicationsScreen = () => {
           return;
         }
         setUserId(storedUserId);
-        const response = await axios.get(`http://3.17.219.54/user/${storedUserId}`);
+        const response = await axios.get(`${API_BASE_URL}/user/${storedUserId}`);
         const articleDetails = await Promise.all(
           response.data.articlePublications.map(async (articleId) => {
-            const articleResponse = await axios.get(`http://3.17.219.54/article/${articleId}`);
+            const articleResponse = await axios.get(`${API_BASE_URL}/article/${articleId}`);
             return articleResponse.data;
           })
         );
@@ -54,7 +55,7 @@ const ArticlePublicationsScreen = () => {
 
   const handleDeleteArticle = async () => {
     try {
-      await axios.delete(`http://3.17.219.54/article/${selectedArticleId}`);
+      await axios.delete(`https://3.17.219.54/article/${selectedArticleId}`);
       setArticles(articles.filter((article) => article._id !== selectedArticleId));
       hideModal();
     } catch (error) {

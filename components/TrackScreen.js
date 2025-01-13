@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
 import { Button } from 'react-native-paper';
+import { API_BASE_URL } from './APIConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -48,7 +49,7 @@ const TrackScreen = () => {
 
   const fetchData = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/user/${userId}/tracking`);
+      const response = await fetch(`${API_BASE_URL}/user/${userId}/tracking`);
       const data = await response.json();
       if (data.tracking) {
         setTrackingData({
@@ -70,7 +71,7 @@ const TrackScreen = () => {
 
   const fetchUserData = async () => {
     try {
-      const response = await fetch(`http://3.17.219.54/user/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
       const data = await response.json();
       if (data.evaluation_list) {
         const answeredEvaluations = data.evaluation_list.filter(evaluation => evaluation.answered).length;

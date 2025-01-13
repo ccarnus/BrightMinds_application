@@ -13,6 +13,7 @@ import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
+import { API_BASE_URL } from '../APIConfig';
 
 const ObjectiveScreen = () => {
   const buttons = ['Follower', 'Explorer', 'Deep Learner', 'Researcher', 'Career'];
@@ -48,7 +49,7 @@ const ObjectiveScreen = () => {
     if (!userId) return;
 
     try {
-      await axios.put(`http://3.17.219.54/user/${userId}/update/tracking`, {
+      await axios.put(`${API_BASE_URL}/user/${userId}/update/tracking`, {
         objective: confirmationObjective
       });
       setSelectedObjective(confirmationObjective);

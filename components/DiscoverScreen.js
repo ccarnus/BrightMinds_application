@@ -8,6 +8,7 @@ import { colors, sizes, spacing } from './theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
 import { Button } from 'react-native-paper';
+import { API_BASE_URL } from './APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -81,12 +82,12 @@ const DiscoverScreen = ({ navigation }) => {
   const fetchVideos = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://3.17.219.54/cast');
+      const response = await fetch(`${API_BASE_URL}/cast`);
       if (!response.ok) throw new Error('Failed to fetch');
       const data = await response.json();
       if (data && data.length > 0) {
         const fetchUniversityLogos = data.map(cast =>
-          fetch(`http://3.17.219.54/university/by/name/${cast.university}`)
+          fetch(`${API_BASE_URL}/university/by/name/${cast.university}`)
             .then(res => res.json())
             .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
             .catch(() => ({ ...cast, universityLogo: null }))
@@ -149,7 +150,7 @@ const DiscoverScreen = ({ navigation }) => {
     const castId = videos[index]._id;
 
     axios
-      .post(`http://3.17.219.54/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(() => {
         setContentSubmitted(prevSubmitted => prevSubmitted.map((submitted, idx) => idx === index ? true : submitted));
         console.log("Content marked as watched at 85%");
