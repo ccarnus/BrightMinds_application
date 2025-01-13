@@ -123,13 +123,18 @@ const LoginScreen = ({ navigation }) => {
             buttonColor={colors.darkGreen}
             icon={require('../assets/Login_icons/log-in.png')}
             contentStyle={{ flexDirection: 'row-reverse'}}
-            labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-            style={{ 
+            labelStyle={{
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.xs,
+            }}
+            style={{
               marginLeft: spacing.m,
               marginRight: spacing.m,
               marginBottom: spacing.s,
               marginTop: spacing.l,
-              paddingHorizontal: spacing.s
+              borderRadius: sizes.buttonRadius,
             }}
           >
             Login

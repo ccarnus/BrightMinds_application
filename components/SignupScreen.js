@@ -169,176 +169,186 @@ const SignupScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.title}>Sign Up</Text>
+        <View
+        style={{ flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.title}>Sign Up</Text>
 
-          {/* Email */}
-          <TextInput
-            label="Email"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            mode="outlined"
-            autoCapitalize="none"
-            keyboardType="email-address"
-            activeOutlineColor={colors.darkGreen}
-          />
+            {/* Email */}
+            <TextInput
+              label="Email"
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              mode="outlined"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              activeOutlineColor={colors.darkGreen}
+            />
 
-          {/* Username */}
-          <TextInput
-            label="Username"
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            autoCapitalize="none"
-            activeOutlineColor={colors.darkGreen}
-          />
+            {/* Username */}
+            <TextInput
+              label="Username"
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+              mode="outlined"
+              autoCapitalize="none"
+              activeOutlineColor={colors.darkGreen}
+            />
 
-          {/* Password */}
-          <TextInput
-            label="Password"
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            mode="outlined"
-            autoCapitalize="none"
-            activeOutlineColor={colors.darkGreen}
-          />
+            {/* Password */}
+            <TextInput
+              label="Password"
+              style={styles.input}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              mode="outlined"
+              autoCapitalize="none"
+              activeOutlineColor={colors.darkGreen}
+            />
 
-          {/* Confirm Password */}
-          <TextInput
-            label="Confirm Password"
-            style={styles.input}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            mode="outlined"
-            autoCapitalize="none"
-            error={!passwordsMatch}
-            activeOutlineColor={colors.darkGreen}
-          />
-          {!passwordsMatch && (
-            <HelperText type="error" visible={!passwordsMatch}>
-              Passwords do not match
-            </HelperText>
-          )}
+            {/* Confirm Password */}
+            <TextInput
+              label="Confirm Password"
+              style={styles.input}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              mode="outlined"
+              autoCapitalize="none"
+              error={!passwordsMatch}
+              activeOutlineColor={colors.darkGreen}
+            />
+            {!passwordsMatch && (
+              <HelperText type="error" visible={!passwordsMatch}>
+                Passwords do not match
+              </HelperText>
+            )}
 
-          {/* ROLE */}
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={role}
-              style={styles.picker}
-              onValueChange={(itemValue) => setRole(itemValue)}
-            >
-              <Picker.Item label="College Student" value="College Student" />
-              <Picker.Item label="Professor" value="Professor" />
-              <Picker.Item label="Researcher" value="Researcher" />
-              <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
-              <Picker.Item label="PhD Student" value="PhD Student" />
-            </Picker>
-          </View>
+            {/* ROLE */}
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={role}
+                style={styles.picker}
+                onValueChange={(itemValue) => setRole(itemValue)}
+              >
+                <Picker.Item label="College Student" value="College Student" />
+                <Picker.Item label="Professor" value="Professor" />
+                <Picker.Item label="Researcher" value="Researcher" />
+                <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
+                <Picker.Item label="PhD Student" value="PhD Student" />
+              </Picker>
+            </View>
 
-          {/* UNIVERSITY (Custom Modal Approach) */}
-          {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
-            <TouchableOpacity
-              style={styles.universitySelector}
-              onPress={() => setUniversityModalVisible(true)}
-            >
-              {selectedUniversity ? (
-                <View style={styles.universitySelectedWrapper}>
-                  <Image
-                    source={{ uri: selectedUniversity.iconurl }}
-                    style={styles.universityIcon}
-                  />
-                  <Text style={styles.universityText}>
-                    {selectedUniversity.displayedName || selectedUniversity.name}
-                  </Text>
-                </View>
+            {/* UNIVERSITY (Custom Modal Approach) */}
+            {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
+              <TouchableOpacity
+                style={styles.universitySelector}
+                onPress={() => setUniversityModalVisible(true)}
+              >
+                {selectedUniversity ? (
+                  <View style={styles.universitySelectedWrapper}>
+                    <Image
+                      source={{ uri: selectedUniversity.iconurl }}
+                      style={styles.universityIcon}
+                    />
+                    <Text style={styles.universityText}>
+                      {selectedUniversity.displayedName || selectedUniversity.name}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.universityPlaceholder}>Select University</Text>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Profile Picture */}
+            <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
+              {profilePicture ? (
+                <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
               ) : (
-                <Text style={styles.universityPlaceholder}>Select University</Text>
+                <Text style={styles.imagePickerText}>Select Profile Picture</Text>
               )}
             </TouchableOpacity>
-          )}
-
-          {/* Profile Picture */}
-          <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-            {profilePicture ? (
-              <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
-            ) : (
-              <Text style={styles.imagePickerText}>Select Profile Picture</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Sign Up Button */}
-          <Button
-            mode="contained"
-            onPress={handleSignup}
-            loading={loading}
-            disabled={isButtonDisabled}
-            buttonColor={colors.darkGreen}
-            icon={require('../assets/Login_icons/sign-up.png')}contentStyle={{ flexDirection: 'row-reverse'}}
-            labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-            style={{ 
-              marginLeft: spacing.m,
-              marginRight: spacing.m,
-              marginBottom: spacing.s,
-              marginTop: spacing.l,
-              paddingHorizontal: spacing.s
-            }}
-          >
-            Sign Up
-          </Button>
-
-          {/* Go to Login */}
-          <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
-            <Text style={styles.signupText}>Already have an account? Login</Text>
-          </TouchableOpacity>
-
-          {/* University Modal */}
-          <Modal
-            transparent={false}
-            animationType="slide"
-            visible={universityModalVisible}
-            onRequestClose={() => setUniversityModalVisible(false)}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select a University</Text>
-              <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.secondary}
-                />
-              </TouchableOpacity>
-            </View>
-            <FlatList
-              data={universities}
-              keyExtractor={(item) => item._id}
-              renderItem={renderUniversityItem}
-              contentContainerStyle={styles.flatListContainer}
-            />
-          </Modal>
-
-          {/* Custom Alert Modal */}
-          <Portal>
-            <Modal
-              visible={customAlertVisible}
-              onDismiss={() => setCustomAlertVisible(false)}
-              contentContainerStyle={styles.modalContainer}
+          </ScrollView>
+          <View 
+            contentContainerStyle={styles.footerContainer}>
+            {/* Sign Up Button */}
+            <Button
+              mode="contained"
+              onPress={handleSignup}
+              loading={loading}
+              disabled={isButtonDisabled}
+              buttonColor={colors.darkGreen}
+              icon={require('../assets/Login_icons/sign-up.png')}contentStyle={{ flexDirection: 'row-reverse'}}
+              labelStyle={{
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                textAlign: 'center',
+                paddingTop: spacing.xs,
+              }}
+              style={{
+                marginLeft: spacing.m,
+                marginRight: spacing.m,
+                marginBottom: spacing.s,
+                marginTop: spacing.l,
+                borderRadius: sizes.buttonRadius,
+              }}
             >
-              <Text>{customAlertMessage}</Text>
-              <Button 
-                onPress={() => setCustomAlertVisible(false)}
-                textColor={colors.darkGreen}  
-              >OK</Button>
+              Sign Up
+            </Button>
+
+            {/* Go to Login */}
+            <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
+              <Text style={styles.signupText}>Already have an account? Login</Text>
+            </TouchableOpacity>
+
+            {/* University Modal */}
+            <Modal
+              transparent={false}
+              animationType="slide"
+              visible={universityModalVisible}
+              onRequestClose={() => setUniversityModalVisible(false)}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select a University</Text>
+                <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
+                  <MaterialCommunityIcons
+                    name="close"
+                    size={24}
+                    color={colors.secondary}
+                  />
+                </TouchableOpacity>
+              </View>
+              <FlatList
+                data={universities}
+                keyExtractor={(item) => item._id}
+                renderItem={renderUniversityItem}
+                contentContainerStyle={styles.flatListContainer}
+              />
             </Modal>
-          </Portal>
-        </ScrollView>
+
+            {/* Custom Alert Modal */}
+            <Portal>
+              <Modal
+                visible={customAlertVisible}
+                onDismiss={() => setCustomAlertVisible(false)}
+                contentContainerStyle={styles.modalContainer}
+              >
+                <Text>{customAlertMessage}</Text>
+                <Button 
+                  onPress={() => setCustomAlertVisible(false)}
+                  textColor={colors.darkGreen}  
+                >OK</Button>
+              </Modal>
+            </Portal>
+          </View>
+        </View>
       </KeyboardAvoidingView>
     </Provider>
   );
@@ -453,6 +463,21 @@ const styles = StyleSheet.create({
     margin: 20,
     borderRadius: sizes.radius,
   },
+  footerContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: colors.primaryBis,
+  },
+  signupButton: {
+    marginBottom: 20,
+    borderRadius: sizes.buttonRadius,
+  },
+  signupButtonLabel: {
+    fontSize: sizes.h2,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+  },
+  
 });
 
 export default SignupScreen;

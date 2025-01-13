@@ -209,13 +209,18 @@ const TrackScreen = () => {
         onPress={handleReadyScreenPress}
         buttonColor={colors.darkGreen}
         icon={require('../assets/Track_icons/test.png')}
-        labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-        style={{ 
+        llabelStyle={{
+          fontSize: sizes.h2,
+          fontFamily: 'Montserrat',
+          textAlign: 'center',
+          paddingTop: spacing.xs,
+          }}
+        style={{
           marginLeft: spacing.m,
           marginRight: spacing.m,
-          marginBottom: spacing.xl,
+          marginBottom: spacing.l,
           marginTop: spacing.l,
-          paddingHorizontal: spacing.s
+          borderRadius: sizes.buttonRadius,
         }}
       >
         Take Test

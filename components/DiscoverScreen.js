@@ -338,14 +338,19 @@ const DiscoverScreen = ({ navigation }) => {
                 buttonColor={colors.darkGreen}
                 icon={require('../assets/Discover_icons/next.png')}
                 contentStyle={{ flexDirection: 'row-reverse'}}
-                labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-                style={{ 
-                  marginLeft: spacing.m,
-                  marginRight: spacing.m,
-                  marginBottom: spacing.xl,
-                  marginTop: spacing.l,
-                  paddingHorizontal: spacing.s
-                }}
+                labelStyle={{
+                  fontSize: sizes.h2,
+                  fontFamily: 'Montserrat',
+                  textAlign: 'center',
+                  paddingTop: spacing.xs,
+                  }}
+                  style={{
+                    marginLeft: spacing.m,
+                    marginRight: spacing.m,
+                    marginBottom: spacing.s,
+                    marginTop: spacing.s,
+                    borderRadius: sizes.buttonRadius,
+                  }}
               >
                 Explore Next
               </Button>

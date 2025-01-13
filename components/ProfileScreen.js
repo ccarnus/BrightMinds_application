@@ -134,24 +134,48 @@ const ProfileScreen = () => {
               )}
             </View>
             <View style={styles.buttonRow}>
-              <TouchableOpacity 
-                style={styles.roundButton}
-                onPress={showModal}
-              >
-                <Image 
-                  source={require('../assets/Profile_icons/logout_icon.png')}
-                  style={styles.buttonIcon}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.roundButton}
-                onPress={handleEditProfile}
-              >
-                <Image 
-                  source={require('../assets/Profile_icons/edit_profile_icon.png')}
-                  style={styles.buttonIcon}
-                />
-              </TouchableOpacity>
+            <Button
+              mode="contained"
+              onPress={handleEditProfile}
+              buttonColor={colors.darkGreen}
+              icon={require('../assets/Profile_icons/edit_profile_icon.png')}
+              labelStyle={{
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                textAlign: 'center',
+                paddingTop: spacing.xs,
+              }}
+              style={{
+                marginLeft: spacing.m,
+                marginRight: spacing.m,
+                marginBottom: spacing.s,
+                marginTop: spacing.s,
+                borderRadius: sizes.buttonRadius,
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              mode="contained"
+              onPress={showModal}
+              buttonColor={colors.darkGreen}
+              icon={require('../assets/Profile_icons/logout_icon.png')}
+              labelStyle={{
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                textAlign: 'center',
+                paddingTop: spacing.xs,
+              }}
+              style={{
+                marginLeft: spacing.m,
+                marginRight: spacing.m,
+                marginBottom: spacing.s,
+                marginTop: spacing.s,
+                borderRadius: sizes.buttonRadius,
+              }}
+            >
+              Log out
+            </Button>
             </View>
           </ScrollView>
         </View>
@@ -338,8 +362,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'Column',
     marginTop: spacing.l,
     marginBottom: spacing.l,
   },

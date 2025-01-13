@@ -48,10 +48,12 @@ export const sizes = {
   h5: 12,
   body: 14,
   radius: 16,
+  buttonRadius: 50,
   gauge: 8,
 };
 
 export const spacing = {
+  xs: 4,
   s: 8,
   m: 18,
   l: 24,

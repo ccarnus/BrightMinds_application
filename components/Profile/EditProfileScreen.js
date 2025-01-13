@@ -218,14 +218,27 @@ const EditProfileScreen = ({ navigation }) => {
             )}
           </TouchableOpacity>
 
-          {/* Save Button */}
           <Button
             mode="contained"
             onPress={handleSaveProfile}
             loading={loading}
-            style={styles.button}
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Profile_icons/save.png')}
+            labelStyle={{
+            fontSize: sizes.h2,
+            fontFamily: 'Montserrat',
+            textAlign: 'center',
+            paddingTop: spacing.xs,
+            }}
+            style={{
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.s,
+              marginTop: spacing.l,
+              borderRadius: sizes.buttonRadius,
+            }}
           >
-            Save Profile
+            Save
           </Button>
 
           {/* University Modal */}
