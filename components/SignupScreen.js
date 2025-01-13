@@ -9,6 +9,7 @@ import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
+import { API_BASE_URL } from './APIConfig';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -30,7 +31,7 @@ const SignupScreen = ({ navigation }) => {
     // Fetch universities from your API
     const fetchUniversities = async () => {
       try {
-        const response = await axios.get('https://3.17.219.54/university');
+        const response = await axios.get(`${API_BASE_URL}/university`);
         setUniversities(response.data);
       } catch (error) {
         console.error('Error fetching universities:', error);
@@ -124,7 +125,7 @@ const SignupScreen = ({ navigation }) => {
     });
 
     try {
-      await axios.post('https://3.17.219.54/user/signup', formData, {
+      await axios.post(`${API_BASE_URL}/user/signup`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },

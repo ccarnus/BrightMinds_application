@@ -4,6 +4,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { colors, sizes } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../APIConfig';
 
 const ReadyScreen = ({ navigation }) => {
   const [showButton, setShowButton] = useState(false);
@@ -43,7 +44,7 @@ const ReadyScreen = ({ navigation }) => {
 
   const getCastList = async () => {
     try {
-      const response = await axios.get(`https://3.17.219.54/user/${userId}`);
+      const response = await axios.get(`${API_BASE_URL}/user/${userId}`);
       const evaluationList = response.data.evaluation_list.filter(item => item.watched && !item.answered);
       const evaluationsData = evaluationList.map(item => ({
         contentid: item.contentid,

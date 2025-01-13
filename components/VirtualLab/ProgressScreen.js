@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Image, Animated, Dimensions } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import { LinearGradient } from 'expo-linear-gradient';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -15,7 +16,7 @@ const ProgressScreen = ({ route }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await fetch(`https://3.17.219.54/topic/department/${labId}`);
+        const response = await fetch(`${API_BASE_URL}/topic/department/${labId}`);
         const data = await response.json();
 
         if (data.length > 0) {

@@ -5,6 +5,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
 import { colors, sizes, spacing } from './theme';
+import { API_BASE_URL } from './APIConfig';
 
 const PreferencesScreen = ({ navigation }) => {
   const [selectedDepartments, setSelectedDepartments] = useState([]);
@@ -27,7 +28,7 @@ const PreferencesScreen = ({ navigation }) => {
 
     try {
       for (const department of selectedDepartments) {
-        await axios.post(`https://3.17.219.54/user/${userId}/preferences`, {
+        await axios.post(`${API_BASE_URL}/user/${userId}/preferences`, {
           category: department,
           modification: 'positive',
         });

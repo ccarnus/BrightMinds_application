@@ -4,6 +4,7 @@ import axios from 'axios';
 import Gauge from './Gauge';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../APIConfig';
 
 let correctAnswerCount = 0;
 
@@ -56,7 +57,7 @@ const TakeTest = ({ route, navigation }) => {
 
   const removeContentFromEvaluationList = async (evaluation) => {
     try {
-      await axios.post(`https://3.17.219.54/user/mark/content/as/answered/${userId}`, {
+      await axios.post(`${API_BASE_URL}/user/mark/content/as/answered/${userId}`, {
         contentId: evaluation.contentid,
       });
     } catch (error) {
@@ -68,8 +69,8 @@ const TakeTest = ({ route, navigation }) => {
     try {
       const questionsPromises = evaluations.map(item => {
         const url = item.type === 'article'
-          ? `https://3.17.219.54/article/${item.contentid}`
-          : `https://3.17.219.54/cast/${item.contentid}`;
+          ? `${API_BASE_URL}/article/${item.contentid}`
+          : `${API_BASE_URL}/cast/${item.contentid}`;
         return axios.get(url);
       });
       const questionsResponses = await Promise.all(questionsPromises);

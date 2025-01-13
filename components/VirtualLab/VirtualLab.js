@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import departments from '../../lists/departments';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,7 +31,7 @@ const VirtualLab = ({ route }) => {
 
   const fetchLabData = async () => {
     try {
-      const response = await fetch(`https://3.17.219.54/cast/department/${labId}`);
+      const response = await fetch(`${API_BASE_URL}/cast/department/${labId}`);
       const data = await response.json();
       setLabData(data);
     } catch (error) {

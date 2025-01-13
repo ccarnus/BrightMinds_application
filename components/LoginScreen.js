@@ -8,6 +8,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import { useRoute } from '@react-navigation/native';
+import { API_BASE_URL } from './APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,12 +35,12 @@ const LoginScreen = ({ navigation }) => {
   const handleLogin = async () => {
     setLoading(true);
     try {
-      const response = await axios.post('https://3.17.219.54/user/login', { email, password });
+      const response = await axios.post(`${API_BASE_URL}/user/login`, { email, password });
       const userId = response.data.userId;
       await AsyncStorage.setItem('userId', userId);
 
       // Fetch user details to get the role and university
-      const userDetailsResponse = await axios.get(`https://3.17.219.54/user/${userId}`);
+      const userDetailsResponse = await axios.get(`${API_BASE_URL}/user/${userId}`);
       const userRole = userDetailsResponse.data.role;
       const userUniversity = userDetailsResponse.data.university || '';
       await AsyncStorage.setItem('userRole', userRole);
@@ -50,7 +51,7 @@ const LoginScreen = ({ navigation }) => {
       }
 
       // Check if user has preferences defined
-      const userPreferencesResponse = await axios.get(`https://3.17.219.54/user/${userId}/preferences`);
+      const userPreferencesResponse = await axios.get(`${API_BASE_URL}/user/${userId}/preferences`);
       const userPreferences = userPreferencesResponse.data.preferences;
 
       if (userPreferences.length === 0) {

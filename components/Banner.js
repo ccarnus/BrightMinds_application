@@ -3,6 +3,7 @@ import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
+import { API_BASE_URL } from './APIConfig';
 
 const Banner = () => {
   const navigation = useNavigation();
@@ -21,7 +22,7 @@ const Banner = () => {
           const storedUserId = await AsyncStorage.getItem('userId');
           if (storedUserId) {
             setUserId(storedUserId);
-            const response = await fetch(`https://3.17.219.54/user/${storedUserId}`);
+            const response = await fetch(`${API_BASE_URL}/user/${storedUserId}`);
             const data = await response.json();
     
             if (data && data.profilePictureUrl) {

@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../../lists/departments';
 import { Button } from 'react-native-paper';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -34,7 +35,7 @@ const ArticleDetailsScreen = ({ route }) => {
   const fetchArticle = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`https://3.17.219.54/article/${selectedArticleId}`);
+      const response = await fetch(`${API_BASE_URL}/article/${selectedArticleId}`);
       const data = await response.json();
       setArticle(data);
       await fetchUniversityLogo(data.university);
@@ -47,7 +48,7 @@ const ArticleDetailsScreen = ({ route }) => {
 
   const fetchUniversityLogo = async (universityName) => {
     try {
-      const response = await fetch(`https://3.17.219.54/university/by/name/${universityName}`);
+      const response = await fetch(`${API_BASE_URL}/university/by/name/${universityName}`);
       const data = await response.json();
       setUniversityLogo(data.iconurl);
       setUniversityName(data.displayedName);
@@ -58,7 +59,7 @@ const ArticleDetailsScreen = ({ route }) => {
 
   const handleAddToCastList = async () => {
     const contentId = selectedArticleId;
-    const url = `https://3.17.219.54/user/add/content/${userId}`;
+    const url = `${API_BASE_URL}/user/add/content/${userId}`;
 
     try {
       const response = await fetch(url, {
