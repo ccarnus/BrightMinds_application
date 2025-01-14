@@ -28,6 +28,7 @@ import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
 import EditProfileScreen from './Profile/EditProfileScreen';
 import ProgressScreen from './VirtualLab/ProgressScreen';
 import ForgotPasswordScreen from './Profile/ForgotPasswordScreen';
+import DiscoverScreen from './Cast/DiscoverScreen';
 
 const Stack = createStackNavigator();
 
@@ -78,6 +79,7 @@ const MainNavigator = () => {
         <Stack.Screen name="SignupScreen" component={SignupScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SuggestedForYou" component={SuggestedForYou} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Trending" component={Trending} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />

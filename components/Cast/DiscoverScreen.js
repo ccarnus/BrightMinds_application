@@ -4,11 +4,11 @@ import { Video } from 'expo-av';
 import { Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
-import { colors, sizes, spacing } from './theme';
+import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
 import { Button } from 'react-native-paper';
-import { API_BASE_URL } from './APIConfig';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -24,45 +24,45 @@ const DiscoverScreen = ({ navigation }) => {
   const [contentSubmitted, setContentSubmitted] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const videoRefs = useRef([]);
-  const serverError = require('../assets/Cast_screen_icons/server_error.png');
+  const serverError = require('../../assets/Cast_screen_icons/server_error.png');
 
   const departmentIcons = {
-    MedicineandHealthSciences: require('../assets/Virtual_labs/MedicineandHealthSciences.png'),
-    History: require('../assets/Virtual_labs/History.png'),
-    ComputerScience: require('../assets/Virtual_labs/ComputerScience.png'),
-    Biology: require('../assets/Virtual_labs/Biology.png'),
-    Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
-    Physics: require('../assets/Virtual_labs/Physics.png'),
-    Robotics: require('../assets/Virtual_labs/Robotics.png'),
-    EarthSciences: require('../assets/Virtual_labs/EarthSciences.png'),
-    Oceanography: require('../assets/Virtual_labs/Oceanography.png'),
-    EnvironmentalScience: require('../assets/Virtual_labs/EnvironmentalScience.png'),
-    Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
-    Psychology: require('../assets/Virtual_labs/Psychology.png'),
-    Sociology: require('../assets/Virtual_labs/Sociology.png'),
-    CulturalStudies: require('../assets/Virtual_labs/CulturalStudies.png'),
-    Economics: require('../assets/Virtual_labs/Economics.png'),
-    PoliticalScience: require('../assets/Virtual_labs/PoliticalScience.png'),
-    Engineering: require('../assets/Virtual_labs/Engineering.png'),
-    Agriculture: require('../assets/Virtual_labs/Agriculture.png'),
-    Philosophy: require('../assets/Virtual_labs/Philosophy.png'),
-    Linguistics: require('../assets/Virtual_labs/Linguistics.png'),
-    Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
-    ArtificialIntelligence: require('../assets/Virtual_labs/ArtificialIntelligence.png'),
-    Law: require('../assets/Virtual_labs/Law.png'),
-    Materials: require('../assets/Virtual_labs/Materials.png'),
-    Meteorology: require('../assets/Virtual_labs/Meteorology.png'),
-    NanoTechnology: require('../assets/Virtual_labs/NanoTechnology.png'),
-    Nutrition: require('../assets/Virtual_labs/Nutrition.png'),
-    Paleontology: require('../assets/Virtual_labs/Paleontology.png'),
-    Pediatrics: require('../assets/Virtual_labs/Pediatrics.png'),
-    Literature: require('../assets/Virtual_labs/Literature.png'),
-    Genetics: require('../assets/Virtual_labs/Genetics.png'),
-    Education: require('../assets/Virtual_labs/Education.png'),
-    Astronomy: require('../assets/Virtual_labs/Astronomy.png'),
-    Archaeology: require('../assets/Virtual_labs/Archaeology.png'),
-    Art: require('../assets/Virtual_labs/Art.png'),
-    SpaceExploration: require('../assets/Virtual_labs/SpaceExploration.png'),
+    MedicineandHealthSciences: require('../../assets/Virtual_labs/MedicineandHealthSciences.png'),
+    History: require('../../assets/Virtual_labs/History.png'),
+    ComputerScience: require('../../assets/Virtual_labs/ComputerScience.png'),
+    Biology: require('../../assets/Virtual_labs/Biology.png'),
+    Chemistry: require('../../assets/Virtual_labs/Chemistry.png'),
+    Physics: require('../../assets/Virtual_labs/Physics.png'),
+    Robotics: require('../../assets/Virtual_labs/Robotics.png'),
+    EarthSciences: require('../../assets/Virtual_labs/EarthSciences.png'),
+    Oceanography: require('../../assets/Virtual_labs/Oceanography.png'),
+    EnvironmentalScience: require('../../assets/Virtual_labs/EnvironmentalScience.png'),
+    Mathematics: require('../../assets/Virtual_labs/Mathematics.png'),
+    Psychology: require('../../assets/Virtual_labs/Psychology.png'),
+    Sociology: require('../../assets/Virtual_labs/Sociology.png'),
+    CulturalStudies: require('../../assets/Virtual_labs/CulturalStudies.png'),
+    Economics: require('../../assets/Virtual_labs/Economics.png'),
+    PoliticalScience: require('../../assets/Virtual_labs/PoliticalScience.png'),
+    Engineering: require('../../assets/Virtual_labs/Engineering.png'),
+    Agriculture: require('../../assets/Virtual_labs/Agriculture.png'),
+    Philosophy: require('../../assets/Virtual_labs/Philosophy.png'),
+    Linguistics: require('../../assets/Virtual_labs/Linguistics.png'),
+    Neuroscience: require('../../assets/Virtual_labs/Neuroscience.png'),
+    ArtificialIntelligence: require('../../assets/Virtual_labs/ArtificialIntelligence.png'),
+    Law: require('../../assets/Virtual_labs/Law.png'),
+    Materials: require('../../assets/Virtual_labs/Materials.png'),
+    Meteorology: require('../../assets/Virtual_labs/Meteorology.png'),
+    NanoTechnology: require('../../assets/Virtual_labs/NanoTechnology.png'),
+    Nutrition: require('../../assets/Virtual_labs/Nutrition.png'),
+    Paleontology: require('../../assets/Virtual_labs/Paleontology.png'),
+    Pediatrics: require('../../assets/Virtual_labs/Pediatrics.png'),
+    Literature: require('../../assets/Virtual_labs/Literature.png'),
+    Genetics: require('../../assets/Virtual_labs/Genetics.png'),
+    Education: require('../../assets/Virtual_labs/Education.png'),
+    Astronomy: require('../../assets/Virtual_labs/Astronomy.png'),
+    Archaeology: require('../../assets/Virtual_labs/Archaeology.png'),
+    Art: require('../../assets/Virtual_labs/Art.png'),
+    SpaceExploration: require('../../assets/Virtual_labs/SpaceExploration.png'),
   };
 
   useEffect(() => {
@@ -217,7 +217,7 @@ const DiscoverScreen = ({ navigation }) => {
         <View style={styles.loadingContainer}>
         {console.log('Loader should be visible, state is: ' + isLoading)}
         <LottieView
-          source={require('../assets/Loader/loader.json')}
+          source={require('../../assets/Loader/loader.json')}
           autoPlay
           loop
           style={{ width: 200, height: 200 }}
@@ -245,7 +245,7 @@ const DiscoverScreen = ({ navigation }) => {
                 {!videoStatus[focusedIndex] && (
                   <View style={styles.playIconContainer}>
                     <Image
-                      source={require('../assets/Cast_icons/play_icon.png')}
+                      source={require('../../assets/Cast_icons/play_icon.png')}
                       style={styles.playIcon}
                     />
                   </View>
@@ -336,7 +336,7 @@ const DiscoverScreen = ({ navigation }) => {
                 mode="contained"
                 onPress={handleNextVideoPress}
                 buttonColor={colors.darkGreen}
-                icon={require('../assets/Discover_icons/next.png')}
+                icon={require('../../assets/Discover_icons/next.png')}
                 contentStyle={{ flexDirection: 'row-reverse'}}
                 labelStyle={{
                   fontSize: sizes.h2,

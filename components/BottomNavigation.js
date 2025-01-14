@@ -4,7 +4,6 @@ import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import CastScreen from './CastScreen';
 import TrackScreen from './TrackScreen';
-import DiscoverScreen from './DiscoverScreen';
 import LabScreen from './LabScreen';
 import {colors, sizes} from './theme';
 import Icon from '../assets/Bottom_icons/Icon';
@@ -17,10 +16,6 @@ const tabs = [
   {
     name: 'Track',
     screen: TrackScreen,
-  },
-  {
-    name: 'Discover',
-    screen: DiscoverScreen,
   },
   {
     name: 'Lab',

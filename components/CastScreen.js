@@ -17,6 +17,7 @@ import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
 import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
+import DiscoverScreen from './Cast/DiscoverScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -236,6 +237,10 @@ const CastScreen = () => {
     console.log(id)
   };
 
+  const handleRandomPressed = () => {
+    navigation.navigate('DiscoverScreen');
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -269,6 +274,12 @@ const CastScreen = () => {
               <Text style={styles.clearButtonText}>✕</Text>
             </TouchableOpacity>
           )}
+          <TouchableOpacity 
+            style={styles.randomButton} 
+            onPress={() => navigation.navigate('DiscoverScreen')}
+          >
+            <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
+          </TouchableOpacity>
         </View>
 
         {/* Search Results */}
@@ -475,6 +486,19 @@ const styles = StyleSheet.create({
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     textAlign: 'center',
+  },
+  randomButton: {
+    marginLeft: spacing.s,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
+    height: 40,
+  },
+  randomButtonIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+    tintColor: colors.secondary,
   },
 });
 
