@@ -55,7 +55,7 @@ const PublicationsScreen = () => {
 
   const handleDeleteCast = async () => {
     try {
-      await axios.delete(`https://3.17.219.54/cast/${selectedCastId}`);
+      await axios.delete(`${API_BASE_URL}/cast/${selectedCastId}`);
       setCasts(casts.filter((cast) => cast._id !== selectedCastId));
       hideModal();
     } catch (error) {

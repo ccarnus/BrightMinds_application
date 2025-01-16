@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Dimensions } from 'react-native';
 import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
 import axios from 'axios';
-import { colors, sizes } from '../theme';
+import { colors, sizes, spacing } from '../theme';
 import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
@@ -67,8 +67,21 @@ const ForgotPasswordScreen = ({ navigation }) => {
             disabled={!email}
             buttonColor={colors.darkGreen}
             icon={require('../../assets/Login_icons/reset-password.png')}
+            labelStyle={{
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.xs,
+            }}
+            style={{
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.s,
+              marginTop: spacing.l,
+              borderRadius: sizes.buttonRadius,
+            }}
           >
-            Send Reset Link
+            Send Link
           </Button>
           <Portal>
             <Modal

@@ -55,7 +55,7 @@ const ArticlePublicationsScreen = () => {
 
   const handleDeleteArticle = async () => {
     try {
-      await axios.delete(`https://3.17.219.54/article/${selectedArticleId}`);
+      await axios.delete(`${API_BASE_URL}/article/${selectedArticleId}`);
       setArticles(articles.filter((article) => article._id !== selectedArticleId));
       hideModal();
     } catch (error) {

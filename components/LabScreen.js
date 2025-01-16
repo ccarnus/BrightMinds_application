@@ -62,25 +62,16 @@ const LabScreen = () => {
         const departments = response.data.map(dept => ({
           name: dept._id,  // Dept name from API
           display: getDisplayName(dept._id),  // Get display name from your static list
-          count: dept.count 
+          count: dept.count,
         }));
-
-        // Progressively add departments for animation effect
-        const timeoutIds = departments.map((department, index) => {
-          return setTimeout(() => {
-            setLabs((prevLabs) => [...prevLabs, department]);
-          }, index * 120);
-        });
-
-        // Cleanup timeouts if component unmounts
-        return () => {
-          timeoutIds.forEach((timeoutId) => clearTimeout(timeoutId));
-        };
+  
+        // Set all departments at once
+        setLabs(departments);
       } catch (error) {
         console.error('Failed to fetch departments:', error);
       }
     };
-
+  
     fetchDepartments();
   }, []);
 

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
-import FastImage from 'react-native-fast-image';
 
 const CARD_HEIGHT = 140;
 const CARD_WIDTH = CARD_HEIGHT * 1.75;
@@ -53,7 +52,7 @@ const Carousel = ({ list, carouselType }) => {
                 <Image
                   source={{ uri: item.image }}
                   style={styles.image}
-                  onError={() => console.log(`Error loading image for ${item.title}`)}
+                  onError={() => console.log(`Error loading image for ${item.title} with url ${item.image}`)}
                 />
                 <Text style={styles.duration}>{durationString}</Text>
                 {/* Conditionally render the "already seen" icon */}

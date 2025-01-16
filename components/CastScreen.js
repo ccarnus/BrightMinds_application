@@ -17,7 +17,6 @@ import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
 import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
-import DiscoverScreen from './Cast/DiscoverScreen';
 
 const { width, height } = Dimensions.get('window');
 
@@ -235,10 +234,6 @@ const CastScreen = () => {
   const handleSearchResultPress = (id) => {
     navigation.navigate('SearchResult', { selectedCastId: id });
     console.log(id)
-  };
-
-  const handleRandomPressed = () => {
-    navigation.navigate('DiscoverScreen');
   };
 
   if (isLoading) {

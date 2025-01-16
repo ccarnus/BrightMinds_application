@@ -8,6 +8,7 @@ export const colors = {
   primaryBis: '#f1f1f1',
   secondary:'#1c1c1c',
   lightGray: '#b2b2b2',
+  darkGray: "#4A4A4A",
   darkblue: '#00407A',
   lightblue:'#4A90E2',
   lightGreen: '#3CB371',

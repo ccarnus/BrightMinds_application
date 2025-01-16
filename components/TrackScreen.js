@@ -22,6 +22,7 @@ const TrackScreen = () => {
   const [refreshing, setRefreshing] = useState(false); // Add refreshing state
   const navigation = useNavigation();
   const Learning = require('../assets/Track_icons/learning.png');
+  const Progress = require('../assets/Track_icons/progress_illustration.png');
 
   const handleReadyScreenPress = () => {
     navigation.navigate('Ready');
@@ -126,7 +127,7 @@ const TrackScreen = () => {
       </LinearGradient>
       {(userRole === 'Professor' || userRole === 'Researcher' || userRole === 'PhD Student') && (
         <LinearGradient
-          colors={['#3CB371', '#2E8B57']}
+          colors={[colors.lightGreen, colors.darkGreen]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.greenSection}
@@ -148,30 +149,40 @@ const TrackScreen = () => {
           </View>
         </LinearGradient>
       )}
-      <View style={styles.ProgressContainer}>
+      <LinearGradient
+        colors={[colors.lightGray, colors.darkGray]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.ProgressContainer}
+      >
         <Text style={styles.sectionTitle}>
           <Text style={styles.ProgressText}>{trackingData.objective}</Text> progress
         </Text>
-        <View style={styles.gaugeContainer}>
-          <AnimatedCircularProgress
-            size={150}
-            width={15}
-            fill={trackingData.progress * 100}
-            tintColor={colors.secondary}
-            backgroundColor={colors.primaryBis}
-            lineCap="round"
-            rotation={0}
-          >
-            {fill => (
-              <Text style={styles.gaugeText}>
-                {`${Math.round(trackingData.progress * 100)}%`}
-              </Text>
-            )}
-          </AnimatedCircularProgress>
-        </View>
-      </View>
+          <View style={styles.gaugeContainer}>
+            <AnimatedCircularProgress
+              size={150}
+              width={15}
+              fill={trackingData.progress * 100}
+              tintColor={colors.secondary}
+              backgroundColor={colors.primaryBis}
+              lineCap="round"
+              rotation={0}
+            >
+              {fill => (
+                <Text style={styles.gaugeText}>
+                  {`${Math.round(trackingData.progress * 100)}%`}
+                </Text>
+              )}
+            </AnimatedCircularProgress>
+          </View>
+      </LinearGradient>
       <View style={styles.ChartTitleContainer}>
-        <Text style={styles.sectionTitle}>Learnings</Text>
+        <View styles={{flexDirection: 'column'}}>
+          <Text style={styles.sectionTitle}>Learnings</Text>
+          <View style={styles.LearningImageConainer}>
+            <Image source={Progress} style={styles.infoImage} />
+          </View>
+        </View>
         <View style={styles.circularGaugesContainer}>
           {history.length > 0 ? (
             history.map((item, index) => {
@@ -209,12 +220,12 @@ const TrackScreen = () => {
         onPress={handleReadyScreenPress}
         buttonColor={colors.darkGreen}
         icon={require('../assets/Track_icons/test.png')}
-        llabelStyle={{
+        labelStyle={{
           fontSize: sizes.h2,
           fontFamily: 'Montserrat',
           textAlign: 'center',
           paddingTop: spacing.xs,
-          }}
+        }}
         style={{
           marginLeft: spacing.m,
           marginRight: spacing.m,
@@ -258,6 +269,11 @@ const styles = StyleSheet.create({
     width: '50%',
   },
   infoBottomContainerRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '50%',
+  },
+  LearningImageConainer: {
     alignItems: 'center',
     justifyContent: 'center',
     width: '50%',
