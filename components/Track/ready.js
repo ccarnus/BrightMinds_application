@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
-import { colors, sizes } from '../theme';
+import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
+import { Button } from 'react-native-paper'; 
 
 const ReadyScreen = ({ navigation }) => {
   const [showButton, setShowButton] = useState(false);
@@ -83,11 +84,28 @@ const ReadyScreen = ({ navigation }) => {
       <Text style={styles.title}>{numQuestions === 1 ? 'Question' : 'Questions'}</Text>
       <View style={styles.buttonContainer}>
         <Animated.View style={[styles.readyButton, { opacity: opacityValue }]}>
-          <TouchableOpacity onPress={handleReadyButtonPress}>
-            <Text style={styles.readyButtonText}>
-              {numQuestions > 0 ? "Let's GO!" : "Come Back Later"}
-            </Text>
-          </TouchableOpacity>
+          <Button
+            mode="contained"
+            onPress={handleReadyButtonPress}
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Login_icons/log-in.png')}
+            contentStyle={{ flexDirection: 'row-reverse'}}
+            labelStyle={{
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.xs,
+            }}
+            style={{
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: spacing.s,
+              marginTop: spacing.l,
+              borderRadius: sizes.buttonRadius,
+            }}
+          >
+            {numQuestions > 0 ? "Let's GO!" : "Come Back Later"}
+          </Button>
         </Animated.View>
       </View>
     </View>
@@ -133,19 +151,6 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginBottom: 80,
-  },
-  readyButton: {
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderColor: colors.secondary,
-    backgroundColor: colors.secondary,
-    borderRadius: sizes.radius,
-    borderWidth: 2,
-  },
-  readyButtonText: {
-    fontSize: 22,
-    color: colors.primaryBis,
-    fontFamily: 'Montserrat',
   },
 });
 

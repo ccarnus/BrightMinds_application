@@ -177,11 +177,10 @@ const TrackScreen = () => {
           </View>
       </LinearGradient>
       <View style={styles.ChartTitleContainer}>
-        <View styles={{flexDirection: 'column'}}>
-          <Text style={styles.sectionTitle}>Learnings</Text>
-          <View style={styles.LearningImageConainer}>
-            <Image source={Progress} style={styles.infoImage} />
-          </View>
+        <View style={{flexDirection: 'row'}}>
+          <Image source={Progress} style={styles.infoImage2} />
+          <Text style={{textAlign: "left", fontSize: sizes.h2, fontFamily: 'Montserrat', flexShrink: 1,
+      flexWrap: 'wrap', marginTop: spacing.s, marginLeft: spacing.s, marginRight: spacing.s}}>What you are learning about</Text>
         </View>
         <View style={styles.circularGaugesContainer}>
           {history.length > 0 ? (
@@ -283,6 +282,12 @@ const styles = StyleSheet.create({
     height: 150,
     resizeMode: 'contain',
   },
+  infoImage2: {
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    marginLeft: spacing.s,
+  },
   questionsansweredNumber: {
     fontSize: sizes.title * 2,
     textAlign: 'center',
@@ -335,8 +340,13 @@ const styles = StyleSheet.create({
     fontSize: sizes.h2,
     color: colors.secondary,
     marginBottom: spacing.m,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     color: colors.primary,
+  },
+  learningSectionTitle: {
+    fontSize: sizes.h2,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
   },
   sectionTitle: {
     fontSize: sizes.h2,

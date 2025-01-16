@@ -162,8 +162,8 @@ const ArticleDetailsScreen = ({ route }) => {
               style={{ 
                 marginLeft: spacing.m,
                 marginRight: spacing.m,
-                marginBottom: height * 0.1,
-                marginTop: spacing.l,
+                marginBottom: height * 0.08,
+                marginTop: spacing.s,
                 paddingHorizontal: spacing.s
               }}
             >

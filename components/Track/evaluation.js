@@ -5,6 +5,7 @@ import Gauge from './Gauge';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
+import { Button} from 'react-native-paper';
 
 let correctAnswerCount = 0;
 
