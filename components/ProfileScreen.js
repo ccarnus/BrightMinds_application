@@ -143,7 +143,7 @@ const ProfileScreen = () => {
                 fontSize: sizes.h2,
                 fontFamily: 'Montserrat',
                 textAlign: 'center',
-                paddingTop: spacing.xs,
+                paddingTop: spacing.s,
               }}
               style={{
                 marginLeft: spacing.m,
@@ -164,7 +164,7 @@ const ProfileScreen = () => {
                 fontSize: sizes.h2,
                 fontFamily: 'Montserrat',
                 textAlign: 'center',
-                paddingTop: spacing.xs,
+                paddingTop: spacing.s,
               }}
               style={{
                 marginLeft: spacing.m,

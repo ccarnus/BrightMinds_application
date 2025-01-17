@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Animated , View, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
+import { Animated, View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
 import axios from 'axios';
 import Gauge from './Gauge';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
-import { Button} from 'react-native-paper';
+import { Button } from 'react-native-paper';
 
 let correctAnswerCount = 0;
+const { width } = Dimensions.get('window');
 
 const TakeTest = ({ route, navigation }) => {
   const { evaluations } = route.params;
@@ -27,9 +28,8 @@ const TakeTest = ({ route, navigation }) => {
       setUserId(storedUserId);
     };
     getUserId();
-    console.log(userId);
   }, []);
-  
+
   useEffect(() => {
     fetchQuestions();
   }, []);
@@ -49,11 +49,12 @@ const TakeTest = ({ route, navigation }) => {
 
   const typeQuestion = (questionText) => {
     let i = 0;
+    const typingSpeed = 20;
     typingIntervalRef.current = setInterval(() => {
       setDisplayedQuestion((prev) => prev + questionText.charAt(i));
       i++;
       if (i > questionText.length) clearInterval(typingIntervalRef.current);
-    }, 50);
+    }, typingSpeed);
   };
 
   const removeContentFromEvaluationList = async (evaluation) => {
@@ -65,24 +66,24 @@ const TakeTest = ({ route, navigation }) => {
       console.error(`Error marking content ${evaluation.contentid} as answered:`, error);
     }
   };
-  
+
   const fetchQuestions = async () => {
     try {
-      const questionsPromises = evaluations.map(item => {
-        const url = item.type === 'article'
-          ? `${API_BASE_URL}/article/${item.contentid}`
-          : `${API_BASE_URL}/cast/${item.contentid}`;
+      const questionsPromises = evaluations.map((item) => {
+        const url =
+          item.type === 'article'
+            ? `${API_BASE_URL}/article/${item.contentid}`
+            : `${API_BASE_URL}/cast/${item.contentid}`;
         return axios.get(url);
       });
       const questionsResponses = await Promise.all(questionsPromises);
-      const questionsData = questionsResponses.map(response => response.data.evaluation);
-  
+      const questionsData = questionsResponses.map((response) => response.data.evaluation);
+
       setQuestions(questionsData);
     } catch (error) {
       console.error('Error fetching questions:', error);
     }
   };
-  
 
   const animateCorrectAnswer = () => {
     Animated.sequence([
@@ -98,10 +99,9 @@ const TakeTest = ({ route, navigation }) => {
       }),
     ]).start();
   };
-  
+
   const animateIncorrectAnswer = () => {
     Animated.sequence([
-      // Shaking to the left and right
       Animated.timing(shakeAnim, {
         toValue: 10,
         duration: 100,
@@ -148,26 +148,26 @@ const TakeTest = ({ route, navigation }) => {
 
     if (isAnswerCorrect) {
       animateCorrectAnswer();
-      correctAnswerCount = correctAnswerCount + 1 ;
+      correctAnswerCount += 1;
       removeContentFromEvaluationList(evaluations[currentQuestionIndex]);
     } else {
       animateIncorrectAnswer();
     }
+  };
 
-    setTimeout(() => {
-      setSelectedAnswer(null);
-      setIsCorrect(null);
+  // Handle moving to the next question (or finishing if it's the last one)
+  const handleNextQuestion = () => {
+    setSelectedAnswer(null);
+    setIsCorrect(null);
 
-      if (currentQuestionIndex < questions.length - 1) {
-        setCurrentQuestionIndex(currentQuestionIndex + 1);
-      } else {
-        console.log(`correct answers count ${correctAnswerCount}`)
-        navigation.navigate('Finish', {
-          totalQuestions: questions.length,
-          correctAnswers: correctAnswerCount,
-        });
-      }
-    }, 1000);
+    if (currentQuestionIndex < questions.length - 1) {
+      setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else {
+      navigation.navigate('Finish', {
+        totalQuestions: questions.length,
+        correctAnswers: correctAnswerCount,
+      });
+    }
   };
 
   const currentQuestion = questions[currentQuestionIndex];
@@ -176,7 +176,7 @@ const TakeTest = ({ route, navigation }) => {
     <View style={styles.container}>
       <Gauge total={questions.length} current={currentQuestionIndex} />
       <View style={styles.questionContainer}>
-      <Text
+        <Text
           style={styles.questionText}
           numberOfLines={5}
           adjustsFontSizeToFit
@@ -185,21 +185,22 @@ const TakeTest = ({ route, navigation }) => {
           {displayedQuestion}
         </Text>
       </View>
+
       <ScrollView
         style={styles.answersContainer}
+        contentContainerStyle={styles.answersContentContainer}
       >
         {currentQuestion?.responses.map((response, index) => (
           <Animated.View
-          key={index}
-          style={{
-            transform: [
-              { scale: selectedAnswer === response && isCorrect ? scaleAnim : 1 },
-              { translateX: selectedAnswer === response && isCorrect === false ? shakeAnim : 0 }
-            ],
-          }}
-        >
+            key={index}
+            style={{
+              transform: [
+                { scale: selectedAnswer === response && isCorrect ? scaleAnim : 1 },
+                { translateX: selectedAnswer === response && isCorrect === false ? shakeAnim : 0 },
+              ],
+            }}
+          >
             <TouchableOpacity
-              key={index}
               style={[
                 styles.answerButton,
                 {
@@ -219,6 +220,31 @@ const TakeTest = ({ route, navigation }) => {
           </Animated.View>
         ))}
       </ScrollView>
+
+      {selectedAnswer !== null && (
+        <Button
+        mode="contained"
+        onPress={handleNextQuestion}
+        buttonColor={colors.darkGreen}
+        icon={require('../../assets/Track_icons/go.png')}
+        contentStyle={{ flexDirection: 'row-reverse'}}
+        labelStyle={{
+          fontSize: sizes.h2,
+          fontFamily: 'Montserrat',
+          textAlign: 'center',
+          paddingTop: spacing.s,
+        }}
+        style={{
+          marginLeft: spacing.m,
+          marginRight: spacing.m,
+          marginBottom: spacing.l,
+          marginTop: spacing.l,
+          borderRadius: sizes.buttonRadius,
+        }}
+        >
+          Next
+        </Button>
+      )}
     </View>
   );
 };
@@ -226,17 +252,16 @@ const TakeTest = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.primaryBis,
+    alignItems: 'center',
+    paddingTop: spacing.l,
   },
   questionContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop:spacing.s,
+    marginTop: spacing.s,
     marginBottom: spacing.s,
-    marginLeft: spacing.s,
-    marginRight: spacing.s,
+    marginHorizontal: spacing.s,
     height: '30%',
   },
   questionText: {
@@ -247,21 +272,23 @@ const styles = StyleSheet.create({
   },
   answersContainer: {
     width: '100%',
+    marginBottom: spacing.m,
+  },
+  answersContentContainer: {
+    alignItems: 'center',
+    paddingBottom: spacing.l,
   },
   answerButton: {
+    width: width*0.9,
     borderRadius: sizes.radius,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
     marginBottom: spacing.l,
-    padding: 15,
+    padding: spacing.m,
     elevation: 5,
-    textAlign: 'center',
-    width: '250',
   },
   answerButtonText: {
     fontSize: sizes.h3,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     textAlign: 'center',
   },
 });

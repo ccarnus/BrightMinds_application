@@ -223,7 +223,7 @@ const TrackScreen = () => {
           fontSize: sizes.h2,
           fontFamily: 'Montserrat',
           textAlign: 'center',
-          paddingTop: spacing.xs,
+          paddingTop: spacing.s,
         }}
         style={{
           marginLeft: spacing.m,
@@ -233,7 +233,7 @@ const TrackScreen = () => {
           borderRadius: sizes.buttonRadius,
         }}
       >
-        Take Test
+        Test Yourself
       </Button>
     </ScrollView>
   );

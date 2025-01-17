@@ -158,13 +158,19 @@ const ArticleDetailsScreen = ({ route }) => {
               onPress={handleAddToCastList}
               buttonColor={colors.darkGreen}
               icon={require('../../assets/Cast_screen_icons/like.png')}
-              labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+              labelStyle={{
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                textAlign: 'center',
+                paddingTop: spacing.s,
+              }}
               style={{ 
                 marginLeft: spacing.m,
                 marginRight: spacing.m,
                 marginBottom: height * 0.08,
-                marginTop: spacing.s,
-                paddingHorizontal: spacing.s
+                marginTop: spacing.l,
+                paddingHorizontal: spacing.m,
+                borderRadius: sizes.buttonRadius,
               }}
             >
               Got it!
@@ -172,22 +178,22 @@ const ArticleDetailsScreen = ({ route }) => {
         </View>
       </ScrollView>
       <View style={styles.fixedButtonContainer}>
-      <Button
-        mode="contained"
-        onPress={handleAccessFullResearch}
-        buttonColor={colors.darkblue}
-        icon={require('../../assets/Cast_screen_icons/link.png')}
-        labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-        style={{ 
-          marginLeft: spacing.m,
-          marginRight: spacing.m,
-          marginBottom: spacing.s,
-          marginTop: spacing.l,
-          paddingHorizontal: spacing.s
-        }}
-      >
-        Access Full Research
-      </Button>
+        <Button
+          mode="contained"
+          onPress={handleAccessFullResearch}
+          buttonColor={colors.darkblue}
+          icon={require('../../assets/Cast_screen_icons/link.png')}
+          labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+          style={{ 
+            marginLeft: spacing.m,
+            marginRight: spacing.m,
+            marginBottom: spacing.s,
+            marginTop: spacing.l,
+            paddingHorizontal: spacing.s
+          }}
+        >
+          Access Full Research
+        </Button>
       </View>
     </View>
   );

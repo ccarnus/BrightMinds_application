@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, ActivityIndicator, Image, Dimensions } from 'react-native';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
 import { Button } from 'react-native-paper'; 
+
+const { width } = Dimensions.get('window');
 
 const ReadyScreen = ({ navigation }) => {
   const [showButton, setShowButton] = useState(false);
@@ -14,6 +16,7 @@ const ReadyScreen = ({ navigation }) => {
   const [evaluations, setEvaluations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const opacityValue = useRef(new Animated.Value(0)).current;
+  const Ready = require('../../assets/Track_icons/ready.png');
 
   useEffect(() => {
     const getUserId = async () => {
@@ -82,19 +85,21 @@ const ReadyScreen = ({ navigation }) => {
       <Text style={styles.title}>You have</Text>
       <Text style={styles.numQuestions}>{numQuestions}</Text>
       <Text style={styles.title}>{numQuestions === 1 ? 'Question' : 'Questions'}</Text>
+      <Image source={Ready} style={styles.infoImage2} />
       <View style={styles.buttonContainer}>
         <Animated.View style={[styles.readyButton, { opacity: opacityValue }]}>
           <Button
             mode="contained"
             onPress={handleReadyButtonPress}
             buttonColor={colors.darkGreen}
-            icon={require('../../assets/Login_icons/log-in.png')}
             contentStyle={{ flexDirection: 'row-reverse'}}
+            icon={require('../../assets/Track_icons/go.png')}
             labelStyle={{
               fontSize: sizes.h2,
               fontFamily: 'Montserrat',
               textAlign: 'center',
-              paddingTop: spacing.xs,
+              paddingTop: spacing.s,
+              paddingHorizontal: spacing.m
             }}
             style={{
               marginLeft: spacing.m,
@@ -116,7 +121,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
-    paddingTop: 200,
+    paddingTop: spacing.xl*4,
     alignItems: 'center',
   },
   loadingContainer: {
@@ -128,12 +133,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: sizes.title,
     color: colors.secondary,
-    marginBottom: 10,
+    marginBottom: spacing.s,
     textAlign: 'center',
     fontFamily: 'Montserrat',
   },
   numQuestions: {
-    fontSize: 48,
+    fontSize: sizes.title*2,
     color: colors.secondary,
     fontFamily: 'MontserratBold',
     marginBottom: 5,
@@ -151,6 +156,13 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginBottom: 80,
+  },
+  infoImage2: {
+    width: width * 0.5,
+    height: width * 0.5,
+    marginTop: spacing.l,
+    marginBottom: spacing.xl,
+    resizeMode: 'contain',
   },
 });
 
