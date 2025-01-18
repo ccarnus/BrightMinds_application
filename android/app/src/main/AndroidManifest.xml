@@ -28,6 +28,7 @@
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="com.ccarnus3.brightminds"/>
         <data android:scheme="exp+brightmindsbeta"/>
+        <data android:scheme="exp+brightminds"/>
       </intent-filter>
     </activity>
   </application>
