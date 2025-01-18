@@ -40,6 +40,7 @@ const TakeTest = ({ route, navigation }) => {
       setDisplayedQuestion('');
       typeQuestion(currentQuestion);
     }
+
     return () => {
       if (typingIntervalRef.current) {
         clearInterval(typingIntervalRef.current);
@@ -53,7 +54,9 @@ const TakeTest = ({ route, navigation }) => {
     typingIntervalRef.current = setInterval(() => {
       setDisplayedQuestion((prev) => prev + questionText.charAt(i));
       i++;
-      if (i > questionText.length) clearInterval(typingIntervalRef.current);
+      if (i >= questionText.length) {
+        clearInterval(typingIntervalRef.current);
+      }
     }, typingSpeed);
   };
 
@@ -76,6 +79,7 @@ const TakeTest = ({ route, navigation }) => {
             : `${API_BASE_URL}/cast/${item.contentid}`;
         return axios.get(url);
       });
+
       const questionsResponses = await Promise.all(questionsPromises);
       const questionsData = questionsResponses.map((response) => response.data.evaluation);
 
@@ -155,7 +159,6 @@ const TakeTest = ({ route, navigation }) => {
     }
   };
 
-  // Handle moving to the next question (or finishing if it's the last one)
   const handleNextQuestion = () => {
     setSelectedAnswer(null);
     setIsCorrect(null);
@@ -207,9 +210,9 @@ const TakeTest = ({ route, navigation }) => {
                   backgroundColor:
                     selectedAnswer === response
                       ? isCorrect
-                        ? '#4CAF50'
-                        : '#F44336'
-                      : '#FFFFFF',
+                        ? colors.darkGreen
+                        : '#F44336' // incorrect = red
+                      : '#FFFFFF',  // default = white
                 },
               ]}
               onPress={() => handleAnswerSelection(response)}
@@ -222,28 +225,30 @@ const TakeTest = ({ route, navigation }) => {
       </ScrollView>
 
       {selectedAnswer !== null && (
-        <Button
-        mode="contained"
-        onPress={handleNextQuestion}
-        buttonColor={colors.darkGreen}
-        icon={require('../../assets/Track_icons/go.png')}
-        contentStyle={{ flexDirection: 'row-reverse'}}
-        labelStyle={{
-          fontSize: sizes.h2,
-          fontFamily: 'Montserrat',
-          textAlign: 'center',
-          paddingTop: spacing.s,
-        }}
-        style={{
-          marginLeft: spacing.m,
-          marginRight: spacing.m,
-          marginBottom: spacing.l,
-          marginTop: spacing.l,
-          borderRadius: sizes.buttonRadius,
-        }}
-        >
-          Next
-        </Button>
+        <View style= {styles.fixedButtonContainer}>
+          <Button
+          mode="contained"
+          onPress={handleNextQuestion}
+          buttonColor={colors.darkGreen}
+          icon={require('../../assets/Track_icons/go.png')}
+          contentStyle={{ flexDirection: 'row-reverse'}}
+          labelStyle={{
+            fontSize: sizes.h2,
+            fontFamily: 'Montserrat',
+            textAlign: 'center',
+            paddingTop: spacing.s,
+          }}
+          style={{
+            marginLeft: spacing.xl,
+            marginRight: spacing.xl,
+            marginBottom: spacing.l,
+            marginTop: spacing.l,
+            borderRadius: sizes.buttonRadius,
+          }}
+          >
+            Next
+          </Button>
+        </View>
       )}
     </View>
   );
@@ -279,7 +284,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.l,
   },
   answerButton: {
-    width: width*0.9,
+    width: width * 0.9,
     borderRadius: sizes.radius,
     marginBottom: spacing.l,
     padding: spacing.m,
@@ -290,6 +295,14 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
     textAlign: 'center',
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    padding: spacing.m,
   },
 });
 
