@@ -98,6 +98,7 @@ const CastScreen = () => {
         fetchSuggestedCastData(),
         fetchTrendingCastData(),
         fetchArticleData(),
+        fetchAllCastData(),
       ]);
       setIsLoading(false);
     } catch (error) {

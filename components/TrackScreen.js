@@ -150,7 +150,7 @@ const TrackScreen = () => {
         </LinearGradient>
       )}
       <LinearGradient
-        colors={[colors.lightGray, colors.darkGray]}
+        colors={[colors.lightGreen, colors.darkGreen]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.ProgressContainer}
@@ -163,7 +163,7 @@ const TrackScreen = () => {
               size={150}
               width={15}
               fill={trackingData.progress * 100}
-              tintColor={colors.secondary}
+              tintColor={colors.darkGreen}
               backgroundColor={colors.primaryBis}
               lineCap="round"
               rotation={0}
@@ -198,13 +198,13 @@ const TrackScreen = () => {
                       size={width * 0.25}  // Gauge size is 25% of the screen width
                       width={10}
                       fill={(item.progress / trackingData.target) * 100}
-                      tintColor={colors.lightGreen}
+                      tintColor={colors.darkGreen}
                       backgroundColor={colors.primaryBis}
                       lineCap="round"
                       rotation={0}
                     >
                       {fill => (
-                        <Text style={styles.multipleGaugeText}>
+                        <Text style={styles.gaugeText}>
                           {`${Math.round((item.progress / trackingData.target) * 100)}%`}
                         </Text>
                       )}
@@ -355,7 +355,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: sizes.h2,
-    color: colors.secondary,
+    color: colors.primaryBis,
     marginBottom: spacing.m,
     fontFamily: 'MontserratBold',
   },
@@ -420,15 +420,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
     textAlign: 'center',
   },
-  multipleGaugeText: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    color: colors.primaryBis,
-  },
   gaugeText: {
     fontSize: sizes.h3,
     fontFamily: 'Montserrat',
-    color: colors.secondary,
+    color: colors.primaryBis,
   },
   noDataText: {
     color: colors.secondary,

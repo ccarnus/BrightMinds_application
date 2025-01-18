@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  Dimensions,
+  ScrollView,
+  TouchableOpacity
+} from 'react-native';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { useNavigation } from '@react-navigation/native';
@@ -55,7 +63,7 @@ const ProfileScreen = () => {
   const hideModal = () => setVisible(false);
 
   const handleLogout = async () => {
-    hideModal(); // Hide modal after logging out
+    hideModal();
     await AsyncStorage.removeItem('userId');
     await AsyncStorage.removeItem('userRole');
     await AsyncStorage.removeItem('userUniversity');
@@ -70,24 +78,32 @@ const ProfileScreen = () => {
   };
 
   const pieData = userPreferences.map(pref => pref.weight);
-  const pieColors = userPreferences.map((_, index) => `hsl(${index * 360 / userPreferences.length}, 70%, 50%)`);
+  const pieColors = userPreferences.map((_, index) => `hsl(${(index * 360) / userPreferences.length}, 70%, 50%)`);
 
   return (
     <Provider>
-      <View style={styles.container}>
-        {userData && (
-          <View style={styles.upperSection}>
-            <View>
-              <Image
-                source={{ uri: userData.profilePictureUrl }}
-                style={styles.profileImage}
-              />
-              <Text style={styles.overlayUsername}>{userData.username}</Text>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContentContainer}
+      >
+        <View style={styles.container}>
+
+          {/* UPPER SECTION */}
+          {userData && (
+            <View style={styles.upperSection}>
+              <View>
+                <Image
+                  source={{ uri: userData.profilePictureUrl }}
+                  style={styles.profileImage}
+                />
+                <Text style={styles.overlayUsername}>{userData.username}</Text>
+              </View>
             </View>
-          </View>
-        )}
-        <View style={styles.lowerSection}>
-          <ScrollView style={styles.lowerSectionScrollView}>
+          )}
+
+          {/* LOWER SECTION */}
+          <View style={styles.lowerSection}>
+            {/* If the user is not verified, show a warning */}
             {userData && !userData.isVerified && (
               <View style={[styles.lowerSectionContainer, styles.verificationContainer]}>
                 <Image 
@@ -97,6 +113,8 @@ const ProfileScreen = () => {
                 <Text style={styles.verificationText}>Verify your email</Text>
               </View>
             )}
+
+            {/* Learning Path */}
             <View style={[styles.lowerSectionContainer, styles.shadow]}>
               <View style={styles.objectiveContainer}>
                 <Text style={styles.preferencesTitle}>My Learning Path</Text>
@@ -108,6 +126,8 @@ const ProfileScreen = () => {
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Preferences Pie Chart */}
             <View style={styles.lowerSectionContainer}>
               <Text style={styles.preferencesTitle}>Preferences</Text>
               {userPreferences.length > 0 ? (
@@ -133,130 +153,121 @@ const ProfileScreen = () => {
                 <Text style={styles.noDataText}>No preferences set just yet..</Text>
               )}
             </View>
-            <View style={styles.buttonRow}>
-            <Button
-              mode="contained"
-              onPress={handleEditProfile}
-              buttonColor={colors.darkGreen}
-              icon={require('../assets/Profile_icons/edit_profile_icon.png')}
-              labelStyle={{
-                fontSize: sizes.h2,
-                fontFamily: 'Montserrat',
-                textAlign: 'center',
-                paddingTop: spacing.s,
-              }}
-              style={{
-                marginLeft: spacing.m,
-                marginRight: spacing.m,
-                marginBottom: spacing.s,
-                marginTop: spacing.s,
-                borderRadius: sizes.buttonRadius,
-              }}
-            >
-              Edit
-            </Button>
-            <Button
-              mode="contained"
-              onPress={showModal}
-              buttonColor={colors.darkGreen}
-              icon={require('../assets/Profile_icons/logout_icon.png')}
-              labelStyle={{
-                fontSize: sizes.h2,
-                fontFamily: 'Montserrat',
-                textAlign: 'center',
-                paddingTop: spacing.s,
-              }}
-              style={{
-                marginLeft: spacing.m,
-                marginRight: spacing.m,
-                marginBottom: spacing.s,
-                marginTop: spacing.s,
-                borderRadius: sizes.buttonRadius,
-              }}
-            >
-              Log out
-            </Button>
-            </View>
-          </ScrollView>
-        </View>
 
-        <Portal>
-          <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
-            <Text style={styles.modalText}>Are you sure you want to log out?</Text>
-            <View style={styles.modalButtons}>
-              <Button 
-                mode="outlined" 
-                onPress={handleLogout} 
-                style={styles.modalButton}
-                textColor={colors.secondary}
+            {/* Buttons (Edit / Logout) */}
+            <View style={styles.buttonRow}>
+              <Button
+                mode="contained"
+                onPress={handleEditProfile}
+                buttonColor={colors.darkGreen}
+                icon={require('../assets/Profile_icons/edit_profile_icon.png')}
+                labelStyle={styles.buttonLabel}
+                style={[styles.fullWidthButton, styles.buttonMargin]}
               >
-                Yes
+                Edit
               </Button>
-              <Button 
-                mode="contained" 
-                onPress={hideModal} 
-                style={styles.modalButton}
-                buttonColor={colors.secondary}
+
+              <Button
+                mode="contained"
+                onPress={showModal}
+                buttonColor={colors.darkGreen}
+                icon={require('../assets/Profile_icons/logout_icon.png')}
+                labelStyle={styles.buttonLabel}
+                style={[styles.fullWidthButton, styles.buttonMargin]}
               >
-                No
+                Log out
               </Button>
             </View>
-          </Modal>
-        </Portal>
-      </View>
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Modal for logging out */}
+      <Portal>
+        <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
+          <Text style={styles.modalText}>Are you sure you want to log out?</Text>
+          <View style={styles.modalButtons}>
+            <Button
+              mode="outlined"
+              onPress={handleLogout}
+              style={styles.modalButton}
+              textColor={colors.secondary}
+            >
+              Yes
+            </Button>
+            <Button
+              mode="contained"
+              onPress={hideModal}
+              style={styles.modalButton}
+              buttonColor={colors.secondary}
+            >
+              No
+            </Button>
+          </View>
+        </Modal>
+      </Portal>
     </Provider>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  scrollContentContainer: {
+    paddingBottom: spacing.l,
+  },
   container: {
     flex: 1,
     overflow: 'visible',
   },
   upperSection: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    height: height * 1 / 8,
     backgroundColor: colors.secondary,
     elevation: 5,
+    paddingVertical: spacing.xl,
   },
   lowerSection: {
-    flex: 2,
     backgroundColor: colors.primaryBis,
     alignItems: 'center',
-    overflow: 'visible',
     width: '100%',
+    marginTop: spacing.m,
   },
+
+  /* Make the "lowerSectionContainer" fill most of the width */
   lowerSectionContainer: {
+    width: '90%',             // <-- 90% of parent width
+    alignSelf: 'center',      // <-- center horizontally
     alignItems: 'center',
     backgroundColor: colors.primary,
-    marginLeft: spacing.s,
-    marginRight: spacing.s,
     marginBottom: spacing.m,
     marginTop: spacing.m,
     borderRadius: sizes.radius,
     overflow: 'visible',
     elevation: 5,
+    padding: spacing.m,
   },
-  lowerSectionScrollView: {
-    width: '100%',
-    marginBottom: spacing.l,
-    paddingHorizontal: spacing.m,
-  },
+
   profileImage: {
     width: width * 0.4,
     height: width * 0.4,
     borderRadius: width * 0.2,
   },
-  scoreContainer: {
-    alignItems: 'center',
-  },
-  score: {
+  overlayUsername: {
+    position: 'absolute',
+    bottom: -20,
+    alignSelf: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: sizes.radius,
     fontSize: sizes.h3,
-    fontWeight: 'bold',
     color: colors.secondary,
+    fontFamily: 'MontserratBold',
+    elevation: 5,
   },
   pieContainer: {
     alignItems: 'center',
@@ -282,41 +293,21 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
-  textContainer: {
-    width: "33%",
-    marginLeft: 5,
-    textAlign: "center",
-    marginBottom: spacing.l,
-  },
-  buttonContainer: {
-    backgroundColor: colors.primary,
-    borderRadius: sizes.radius,
-    paddingVertical: 10,
-    justifyContent: 'center',
-    width: 100,
-    flexDirection: "row",
-    marginTop: 15,
-    elevation: 5,
-  },
-  overlayUsername: {
-    position: 'absolute',
-    bottom: -20,
-    alignSelf: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: sizes.radius,
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-    elevation: 5,
-  },
   preferencesTitle: {
     fontSize: sizes.h2,
     color: colors.white,
-    marginBottom: 10,
+    marginBottom: spacing.s,
     marginTop: spacing.s,
     fontFamily: 'MontserratBold',
+    textAlign: 'center',
+  },
+  noDataText: {
+    color: colors.secondary,
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    marginTop: spacing.l,
+    marginBottom: spacing.xl,
   },
   objectiveContainer: {
     alignItems: 'center',
@@ -327,7 +318,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 20,
     justifyContent: 'center',
-    flexDirection: "row",
+    flexDirection: 'row',
     marginBottom: spacing.m,
   },
   objectiveText: {
@@ -335,60 +326,18 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: 'Montserrat',
   },
-  logoutContainer: {
-    backgroundColor: colors.primaryBis,
-    borderColor: colors.secondary,
-    borderWidth: 2,
-    borderRadius: sizes.radius,
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    justifyContent: 'center',
-    flexDirection: "row",
-    marginBottom: spacing.s,
-    marginTop: spacing.s,
-    alignSelf: 'center',
-  },
-  buttonLogout: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  noDataText: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    marginTop: spacing.l,
-    marginBottom: spacing.xl
-  },
-  buttonRow: {
-    flexDirection: 'Column',
-    marginTop: spacing.l,
-    marginBottom: spacing.l,
-  },
-  roundButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 40,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 5,
-  },
-  buttonIcon: {
-    width: 40,
-    height: 40,
-    tintColor: colors.secondary,
-  },
   verificationContainer: {
-    backgroundColor: colors.primary,
-    color: colors.red,
+    borderColor: colors.red,
     borderWidth: 1,
     borderRadius: sizes.radius,
-    borderColor: colors.red,
     padding: spacing.s,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primary,
+  },
+  warningIcon: {
+    width: 30,
+    height: 30,
   },
   verificationText: {
     fontSize: sizes.h3,
@@ -397,10 +346,28 @@ const styles = StyleSheet.create({
     marginLeft: spacing.s,
     textAlign: 'center',
   },
-  warningIcon: {
-    width: 30,
-    height: 30,
+
+  /* Make the buttons row, each button full width, stacked vertically */
+  buttonRow: {
+    width: '100%',
+    alignItems: 'center',
   },
+  fullWidthButton: {
+    width: '90%',         // fill about 90% of parent's width
+    alignSelf: 'center',
+    borderRadius: sizes.buttonRadius,
+  },
+  buttonLabel: {
+    fontSize: sizes.h2,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
+  },
+  buttonMargin: {
+    marginVertical: spacing.s,
+  },
+
+  /* Modal styles */
   modalContainer: {
     backgroundColor: 'white',
     padding: 20,
@@ -421,6 +388,17 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     margin: spacing.s,
+  },
+
+  /* Shadow example */
+  shadow: {
+    // If you need a shadow for iOS
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    // and for Android
+    elevation: 5,
   },
 });
 
