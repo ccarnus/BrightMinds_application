@@ -18,12 +18,56 @@ import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
+// Your department images
+const departmentImages = {
+  Physics: require('../../assets/Virtual_labs/Physics.png'),
+  Chemistry: require('../../assets/Virtual_labs/Chemistry.png'),
+  SpaceExploration: require('../../assets/Virtual_labs/SpaceExploration.png'),
+  Robotics: require('../../assets/Virtual_labs/Robotics.png'),
+  Biology: require('../../assets/Virtual_labs/Biology.png'),
+  EarthSciences: require('../../assets/Virtual_labs/EarthSciences.png'),
+  Oceanography: require('../../assets/Virtual_labs/Oceanography.png'),
+  EnvironmentalScience: require('../../assets/Virtual_labs/EnvironmentalScience.png'),
+  Mathematics: require('../../assets/Virtual_labs/Mathematics.png'),
+  ComputerScience: require('../../assets/Virtual_labs/ComputerScience.png'),
+  Psychology: require('../../assets/Virtual_labs/Psychology.png'),
+  Sociology: require('../../assets/Virtual_labs/Sociology.png'),
+  CulturalStudies: require('../../assets/Virtual_labs/CulturalStudies.png'),
+  Economics: require('../../assets/Virtual_labs/Economics.png'),
+  PoliticalScience: require('../../assets/Virtual_labs/PoliticalScience.png'),
+  Engineering: require('../../assets/Virtual_labs/Engineering.png'),
+  MedicineandHealthSciences: require('../../assets/Virtual_labs/MedicineandHealthSciences.png'),
+  Agriculture: require('../../assets/Virtual_labs/Agriculture.png'),
+  History: require('../../assets/Virtual_labs/History.png'),
+  Philosophy: require('../../assets/Virtual_labs/Philosophy.png'),
+  Linguistics: require('../../assets/Virtual_labs/Linguistics.png'),
+  Neuroscience: require('../../assets/Virtual_labs/Neuroscience.png'),
+  ArtificialIntelligence: require('../../assets/Virtual_labs/ArtificialIntelligence.png'),
+  Law: require('../../assets/Virtual_labs/Law.png'),
+  Materials: require('../../assets/Virtual_labs/Materials.png'),
+  Meteorology: require('../../assets/Virtual_labs/Meteorology.png'),
+  NanoTechnology: require('../../assets/Virtual_labs/NanoTechnology.png'),
+  Nutrition: require('../../assets/Virtual_labs/Nutrition.png'),
+  Paleontology: require('../../assets/Virtual_labs/Paleontology.png'),
+  Pediatrics: require('../../assets/Virtual_labs/Pediatrics.png'),
+  Literature: require('../../assets/Virtual_labs/Literature.png'),
+  Genetics: require('../../assets/Virtual_labs/Genetics.png'),
+  Education: require('../../assets/Virtual_labs/Education.png'),
+  Astronomy: require('../../assets/Virtual_labs/Astronomy.png'),
+  Archaeology: require('../../assets/Virtual_labs/Archaeology.png'),
+  Art: require('../../assets/Virtual_labs/Art.png'),
+};
+
 const VirtualLab = ({ route }) => {
   const { labId, labDisplayName } = route.params;
   const [labData, setLabData] = useState([]);
   const navigation = useNavigation();
   const [infoVisible, setInfoVisible] = useState(false);
   const [departmentDescription, setDepartmentDescription] = useState('');
+
+  // Determine the correct image source for the current lab
+  const departmentImageSource =
+    departmentImages[labId] || departmentImages[labDisplayName] || null;
 
   useEffect(() => {
     fetchLabData();
@@ -45,9 +89,10 @@ const VirtualLab = ({ route }) => {
 
   const showInfoModal = () => {
     // Find the current department based on labDisplayName or labId
-    const department = departments.find(dep => 
-      dep.display.toLowerCase() === labDisplayName.toLowerCase() || 
-      dep.name.toLowerCase() === labId.toLowerCase()
+    const department = departments.find(
+      (dep) =>
+        dep.display.toLowerCase() === labDisplayName?.toLowerCase() ||
+        dep.name.toLowerCase() === labId?.toLowerCase()
     );
 
     if (department) {
@@ -71,11 +116,22 @@ const VirtualLab = ({ route }) => {
           colors={[colors.secondary, colors.primaryBis]}
           style={styles.topSection}
         >
-          <View style={styles.titleOverlay}>
+          <View style={styles.headerContent}>
+            {/* Department Image */}
+            {departmentImageSource && (
+              <Image
+                source={departmentImageSource}
+                style={styles.departmentImage}
+                resizeMode="contain"
+              />
+            )}
+
+            {/* Lab Title */}
             <Text style={styles.labTitle}>
               {labDisplayName || 'Virtual Laboratory'}
             </Text>
           </View>
+
           <View style={styles.topRightButtons}>
             <TouchableOpacity onPress={showInfoModal}>
               <Image source={InfoIcon} style={styles.topRightIcon} />
@@ -93,8 +149,10 @@ const VirtualLab = ({ route }) => {
                 style={styles.castContainer}
                 onPress={() => handleCastPress(cast._id)}
               >
-                <Image source={{ uri: cast.castimageurl }} style={styles.castImage} />
-                
+                <Image
+                  source={{ uri: cast.castimageurl }}
+                  style={styles.castImage}
+                />
                 <View style={styles.castTextContainer}>
                   {/* Title in bold, left-aligned */}
                   <Text style={styles.castTitle}>{cast.title}</Text>
@@ -108,16 +166,18 @@ const VirtualLab = ({ route }) => {
 
         {/* Info Modal */}
         <Portal>
-          <Modal 
-            visible={infoVisible} 
-            onDismiss={hideInfoModal} 
+          <Modal
+            visible={infoVisible}
+            onDismiss={hideInfoModal}
             contentContainerStyle={styles.modalContainer}
           >
             <Text style={styles.modalTitle}>{labDisplayName} Department</Text>
-            <Text style={styles.modalDescription}>{departmentDescription}</Text>
-            <Button 
-              mode="contained" 
-              onPress={hideInfoModal} 
+            <Text style={styles.modalDescription}>
+              {departmentDescription}
+            </Text>
+            <Button
+              mode="contained"
+              onPress={hideInfoModal}
               style={styles.modalButton}
               buttonColor={colors.secondary}
             >
@@ -138,11 +198,26 @@ const styles = StyleSheet.create({
     height: height / 4,
     backgroundColor: colors.secondary,
     elevation: 5,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.m,
   },
-  titleOverlay: {
-    flex: 1,
+  headerContent: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  departmentImage: {
+    width: 80,
+    height: 80,
+    marginRight: spacing.m,
+  },
+  labTitle: {
+    fontSize: sizes.title,
+    color: colors.primary,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   topRightButtons: {
     position: 'absolute',
@@ -150,17 +225,16 @@ const styles = StyleSheet.create({
     bottom: spacing.l,
     alignItems: 'center',
   },
-  labTitle: {
-    fontSize: sizes.title,
-    color: colors.primary,
-    fontFamily: 'Montserrat', 
-    textAlign: 'center',
+  topRightIcon: {
+    width: 30,
+    height: 30,
+    marginVertical: spacing.s,
+    tintColor: colors.primary,
   },
   bottomSection: {
     backgroundColor: colors.primaryBis,
     paddingVertical: spacing.m,
     width: width,
-    marginBottom: spacing.m,
   },
   castContainer: {
     flexDirection: 'row',
@@ -190,19 +264,12 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
     textAlign: 'left',
-    marginBottom: spacing.xs,
   },
   noDataText: {
     fontSize: sizes.body,
     color: colors.secondary,
     textAlign: 'center',
     marginTop: spacing.m,
-  },
-  topRightIcon: {
-    width: 30,
-    height: 30,
-    marginVertical: spacing.s,
-    tintColor: colors.primary,
   },
   // Modal Styles
   modalContainer: {
