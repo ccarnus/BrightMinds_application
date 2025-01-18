@@ -65,7 +65,13 @@ const MainNavigator = () => {
             },
           })}/>
         <Stack.Screen name="Ready" component={Ready} options={{ headerShown: false, tabBarVisible: true }} />
-        <Stack.Screen name="Finish" component={Finish} options={{ headerShown: false, tabBarVisible: true }} />
+        <Stack.Screen name="Finish" component={Finish} options={{ headerShown: false, tabBarVisible: true }} 
+          listeners={({ navigation }) => ({
+            beforeRemove: (e) => {
+              e.preventDefault();
+              navigation.navigate('Track');
+            },
+          })}/>
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false, }}/>
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />

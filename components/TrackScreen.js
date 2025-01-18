@@ -176,7 +176,12 @@ const TrackScreen = () => {
             </AnimatedCircularProgress>
           </View>
       </LinearGradient>
-      <View style={styles.ChartTitleContainer}>
+      <LinearGradient
+        colors={[colors.lightOrange, colors.darkOrange]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.ChartTitleContainer}
+      >
         <View style={{flexDirection: 'row'}}>
           <Image source={Progress} style={styles.infoImage2} />
           <Text style={{textAlign: "left", fontSize: sizes.h2, fontFamily: 'Montserrat', flexShrink: 1,
@@ -193,13 +198,13 @@ const TrackScreen = () => {
                       size={width * 0.25}  // Gauge size is 25% of the screen width
                       width={10}
                       fill={(item.progress / trackingData.target) * 100}
-                      tintColor={colors.secondary}
+                      tintColor={colors.lightGreen}
                       backgroundColor={colors.primaryBis}
                       lineCap="round"
                       rotation={0}
                     >
                       {fill => (
-                        <Text style={styles.gaugeText}>
+                        <Text style={styles.multipleGaugeText}>
                           {`${Math.round((item.progress / trackingData.target) * 100)}%`}
                         </Text>
                       )}
@@ -213,7 +218,7 @@ const TrackScreen = () => {
             <Text style={styles.noDataText}>No learnings yet...</Text>
           )}
         </View>
-      </View>
+      </LinearGradient>
       <Button
         mode="contained"
         onPress={handleReadyScreenPress}
@@ -411,9 +416,14 @@ const styles = StyleSheet.create({
   departmentName: {
     fontSize: sizes.h5,
     fontFamily: 'Montserrat',
-    color: colors.secondary,
+    color: colors.primaryBis,
     marginBottom: spacing.s,
     textAlign: 'center',
+  },
+  multipleGaugeText: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    color: colors.primaryBis,
   },
   gaugeText: {
     fontSize: sizes.h3,

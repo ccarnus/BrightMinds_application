@@ -7,7 +7,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
 import { Button } from 'react-native-paper';
 
-let correctAnswerCount = 0;
 const { width } = Dimensions.get('window');
 
 const TakeTest = ({ route, navigation }) => {
@@ -16,11 +15,11 @@ const TakeTest = ({ route, navigation }) => {
   const [questions, setQuestions] = useState([]);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isCorrect, setIsCorrect] = useState(null);
-  const [displayedQuestion, setDisplayedQuestion] = useState('');
   const [userId, setUserId] = useState(null);
-  const typingIntervalRef = useRef(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [correctAnswerCount, setCorrectAnswerCount] = useState(0);
 
   useEffect(() => {
     const getUserId = async () => {
@@ -34,41 +33,19 @@ const TakeTest = ({ route, navigation }) => {
     fetchQuestions();
   }, []);
 
+  // Whenever we change questions, do a fade-in animation
   useEffect(() => {
-    const currentQuestion = questions[currentQuestionIndex]?.question;
-    if (currentQuestion) {
-      setDisplayedQuestion('');
-      typeQuestion(currentQuestion);
+    if (questions[currentQuestionIndex]) {
+      // Reset opacity to 0
+      fadeAnim.setValue(0);
+      // Animate from 0 to 1
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400, // adjust duration as you like
+        useNativeDriver: true,
+      }).start();
     }
-
-    return () => {
-      if (typingIntervalRef.current) {
-        clearInterval(typingIntervalRef.current);
-      }
-    };
-  }, [currentQuestionIndex, questions]);
-
-  const typeQuestion = (questionText) => {
-    let i = 0;
-    const typingSpeed = 20;
-    typingIntervalRef.current = setInterval(() => {
-      setDisplayedQuestion((prev) => prev + questionText.charAt(i));
-      i++;
-      if (i >= questionText.length) {
-        clearInterval(typingIntervalRef.current);
-      }
-    }, typingSpeed);
-  };
-
-  const removeContentFromEvaluationList = async (evaluation) => {
-    try {
-      await axios.post(`${API_BASE_URL}/user/mark/content/as/answered/${userId}`, {
-        contentId: evaluation.contentid,
-      });
-    } catch (error) {
-      console.error(`Error marking content ${evaluation.contentid} as answered:`, error);
-    }
-  };
+  }, [currentQuestionIndex, questions, fadeAnim]);
 
   const fetchQuestions = async () => {
     try {
@@ -86,6 +63,16 @@ const TakeTest = ({ route, navigation }) => {
       setQuestions(questionsData);
     } catch (error) {
       console.error('Error fetching questions:', error);
+    }
+  };
+
+  const removeContentFromEvaluationList = async (evaluation) => {
+    try {
+      await axios.post(`${API_BASE_URL}/user/mark/content/as/answered/${userId}`, {
+        contentId: evaluation.contentid,
+      });
+    } catch (error) {
+      console.error(`Error marking content ${evaluation.contentid} as answered:`, error);
     }
   };
 
@@ -139,10 +126,7 @@ const TakeTest = ({ route, navigation }) => {
     ]).start();
   };
 
-  const handleAnswerSelection = async (selectedResponse) => {
-    if (typingIntervalRef.current) {
-      clearInterval(typingIntervalRef.current);
-    }
+  const handleAnswerSelection = (selectedResponse) => {
     const currentQuestion = questions[currentQuestionIndex];
     const correctAnswer = currentQuestion.correct;
     const isAnswerCorrect = selectedResponse === correctAnswer;
@@ -152,7 +136,7 @@ const TakeTest = ({ route, navigation }) => {
 
     if (isAnswerCorrect) {
       animateCorrectAnswer();
-      correctAnswerCount += 1;
+      setCorrectAnswerCount(prevCount => prevCount + 1);
       removeContentFromEvaluationList(evaluations[currentQuestionIndex]);
     } else {
       animateIncorrectAnswer();
@@ -178,15 +162,20 @@ const TakeTest = ({ route, navigation }) => {
   return (
     <View style={styles.container}>
       <Gauge total={questions.length} current={currentQuestionIndex} />
+
       <View style={styles.questionContainer}>
-        <Text
-          style={styles.questionText}
+        {/* Animated text for question fade-in */}
+        <Animated.Text
+          style={[
+            styles.questionText,
+            { opacity: fadeAnim }, // apply the fade animation
+          ]}
           numberOfLines={5}
           adjustsFontSizeToFit
           minimumFontScale={0.5}
         >
-          {displayedQuestion}
-        </Text>
+          {currentQuestion?.question}
+        </Animated.Text>
       </View>
 
       <ScrollView
@@ -225,26 +214,26 @@ const TakeTest = ({ route, navigation }) => {
       </ScrollView>
 
       {selectedAnswer !== null && (
-        <View style= {styles.fixedButtonContainer}>
+        <View style={styles.fixedButtonContainer}>
           <Button
-          mode="contained"
-          onPress={handleNextQuestion}
-          buttonColor={colors.darkGreen}
-          icon={require('../../assets/Track_icons/go.png')}
-          contentStyle={{ flexDirection: 'row-reverse'}}
-          labelStyle={{
-            fontSize: sizes.h2,
-            fontFamily: 'Montserrat',
-            textAlign: 'center',
-            paddingTop: spacing.s,
-          }}
-          style={{
-            marginLeft: spacing.xl,
-            marginRight: spacing.xl,
-            marginBottom: spacing.l,
-            marginTop: spacing.l,
-            borderRadius: sizes.buttonRadius,
-          }}
+            mode="contained"
+            onPress={handleNextQuestion}
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Track_icons/go.png')}
+            contentStyle={{ flexDirection: 'row-reverse' }}
+            labelStyle={{
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.s,
+            }}
+            style={{
+              marginLeft: spacing.xl,
+              marginRight: spacing.xl,
+              marginBottom: spacing.l,
+              marginTop: spacing.l,
+              borderRadius: sizes.buttonRadius,
+            }}
           >
             Next
           </Button>
