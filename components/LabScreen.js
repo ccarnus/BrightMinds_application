@@ -82,7 +82,7 @@ const LabScreen = () => {
         <TouchableOpacity
           key={index}
           style={styles.labContainer}
-          onPress={() => navigation.navigate('LabChoiceScreen', { labId: lab.name, labDisplayName: lab.display })}
+          onPress={() => navigation.navigate('VirtualLab', { labId: lab.name, labDisplayName: lab.display })}
         >
           <Image source={departmentImages[lab.name]} style={styles.labImage} resizeMode="contain" />
           <Text style={styles.labText}>{lab.display}</Text>

@@ -36,7 +36,7 @@ const Banner = () => {
         }
       };
   
-      fetchUserIdAndData();
+      fetchUserIdAndData(); 
     }, [])
   );
 
