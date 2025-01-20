@@ -10,11 +10,14 @@ import {
 } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import InfoIcon from '../../assets/Virtual_lab_icons/info_icon.png';
+import ArticleIcon from '../../assets/Cast_screen_icons/article_logo.png';
+import CastIcon from '../../assets/Cast_screen_icons/cast_logo.png';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import departments from '../../lists/departments';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
+import LottieView from 'lottie-react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -60,31 +63,35 @@ const departmentImages = {
 
 const VirtualLab = ({ route }) => {
   const { labId, labDisplayName } = route.params;
-  const [labData, setLabData] = useState([]);
+  const [topics, setTopics] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigation = useNavigation();
   const [infoVisible, setInfoVisible] = useState(false);
   const [departmentDescription, setDepartmentDescription] = useState('');
-
-  // Determine the correct image source for the current lab
   const departmentImageSource =
     departmentImages[labId] || departmentImages[labDisplayName] || null;
 
   useEffect(() => {
-    fetchLabData();
+    fetchTopics();
   }, []);
 
-  const fetchLabData = async () => {
+  useEffect(() => {
+  }, [topics]);
+
+  const fetchTopics = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/cast/department/${labId}`);
+      const response = await fetch(`${API_BASE_URL}/topic/department/${labId}`);
       const data = await response.json();
-      setLabData(data);
+      setTopics(data);
     } catch (error) {
-      console.error('Error fetching lab data:', error);
+      console.error('Error fetching topics:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleCastPress = (castId) => {
-    navigation.navigate('VirtualLabVideoScreen', { selectedCastId: castId });
+  const handleTopicPress = (topicId) => {
+    navigation.navigate('TopicDetailScreen', { selectedTopicId: topicId });
   };
 
   const showInfoModal = () => {
@@ -108,6 +115,19 @@ const VirtualLab = ({ route }) => {
     setInfoVisible(false);
     setDepartmentDescription('');
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={require('../../assets/Loader/loader.json')} // Ensure this path is correct
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
+    );
+  }
 
   return (
     <Provider>
@@ -140,24 +160,31 @@ const VirtualLab = ({ route }) => {
         </LinearGradient>
 
         <ScrollView style={styles.bottomSection}>
-          {labData.length === 0 ? (
-            <Text style={styles.noDataText}>No data available.</Text>
+          {topics.length === 0 ? (
+            <Text style={styles.noDataText}>No topics available.</Text>
           ) : (
-            labData.map((cast, index) => (
+            topics.map((topic) => (
               <TouchableOpacity
-                key={index}
-                style={styles.castContainer}
-                onPress={() => handleCastPress(cast._id)}
+                key={topic._id}
+                style={styles.topicContainer}
+                onPress={() => handleTopicPress(topic._id)}
               >
-                <Image
-                  source={{ uri: cast.castimageurl }}
-                  style={styles.castImage}
-                />
-                <View style={styles.castTextContainer}>
-                  {/* Title in bold, left-aligned */}
-                  <Text style={styles.castTitle}>{cast.title}</Text>
-                  {/* Topic just underneath the title */}
-                  <Text style={styles.castTopic}>{cast.topic}</Text>
+                {/* Topic Name */}
+                <Text style={styles.topicName}>{topic.name}</Text>
+
+                {/* Icons and Counts */}
+                <View style={styles.topicStats}>
+                  {/* Articles */}
+                  <View style={styles.statItem}>
+                    <Image source={ArticleIcon} style={styles.statIcon} />
+                    <Text style={styles.statText}>{topic.articleCount}</Text>
+                  </View>
+
+                  {/* Casts */}
+                  <View style={styles.statItem}>
+                    <Image source={CastIcon} style={styles.statIcon} />
+                    <Text style={styles.statText}>{topic.castCount}</Text>
+                  </View>
                 </View>
               </TouchableOpacity>
             ))
@@ -236,46 +263,50 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
     width: width,
   },
-  castContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.m,
-    paddingHorizontal: spacing.m,
-  },
-  castImage: {
-    width: 150,
-    height: 100,
-    resizeMode: 'cover',
-  },
-  castTextContainer: {
-    marginLeft: spacing.s,
-    justifyContent: 'flex-start',
-    flex: 1,
-  },
-  castTitle: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-    textAlign: 'left',
-    marginBottom: spacing.s,
-  },
-  castTopic: {
-    fontSize: sizes.body,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    textAlign: 'left',
-  },
   noDataText: {
     fontSize: sizes.body,
     color: colors.secondary,
     textAlign: 'center',
     marginTop: spacing.m,
   },
-  // Modal Styles
+  // New Topic Styles
+  topicContainer: {
+    backgroundColor: 'white',
+    marginHorizontal: spacing.m,
+    marginBottom: spacing.m,
+    padding: spacing.m,
+    borderRadius: sizes.radius,
+    elevation: 2,
+  },
+  topicName: {
+    fontSize: sizes.h2,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+    marginBottom: spacing.s,
+  },
+  topicStats: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: spacing.m,
+  },
+  statIcon: {
+    width: 24,
+    height: 24,
+    marginRight: 5,
+  },
+  statText: {
+    fontSize: sizes.body,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+  },
   modalContainer: {
     backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
+    padding: 18,
+    margin: 18,
     borderRadius: sizes.radius,
     alignItems: 'center',
   },
@@ -296,6 +327,17 @@ const styles = StyleSheet.create({
   modalButton: {
     marginTop: spacing.m,
     alignSelf: 'stretch',
+  },
+  // Loader Styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBis,
+  },
+  lottie: {
+    width: 200,
+    height: 200,
   },
 });
 

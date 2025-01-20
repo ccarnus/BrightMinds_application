@@ -89,7 +89,7 @@ const DiscoverScreen = ({ navigation }) => {
         const fetchUniversityLogos = data.map(cast =>
           fetch(`${API_BASE_URL}/university/by/name/${cast.university}`)
             .then(res => res.json())
-            .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }))
+            .then(universityData => ({ ...cast, universityLogo: universityData.iconurl }, console.log(universityData.iconurl)))
             .catch(() => ({ ...cast, universityLogo: null }))
         );
         Promise.all(fetchUniversityLogos).then(dataWithLogos => {

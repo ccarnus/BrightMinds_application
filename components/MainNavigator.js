@@ -6,7 +6,6 @@ import BottomNavigation from './BottomNavigation';
 import PostCast from './PostContent/PostCast';
 import PostArticle from './PostContent/PostArticle';
 import CastTypeChoice from './PostContent/CastTypeChoice';
-import LabChoiceScreen from './VirtualLab/LabChoiceScreen';
 import Ready from './Track/ready';
 import Evaluation from './Track/evaluation';
 import Banner from './Banner';
@@ -26,7 +25,6 @@ import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import CastPublicationsScreen from './Track/CastPublicationsScreen';
 import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
 import EditProfileScreen from './Profile/EditProfileScreen';
-import ProgressScreen from './VirtualLab/ProgressScreen';
 import ForgotPasswordScreen from './Profile/ForgotPasswordScreen';
 import DiscoverScreen from './Cast/DiscoverScreen';
 
@@ -73,9 +71,7 @@ const MainNavigator = () => {
             },
           })}/>
         <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="LabChoiceScreen" component={LabChoiceScreen} options={{ headerShown: false, tabBarVisible: false, }}/>
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="ProgressScreen" component={ProgressScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />

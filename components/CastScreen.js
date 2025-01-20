@@ -71,6 +71,7 @@ const CastScreen = () => {
   const fetchWatchedContent = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+      console.log(`${API_BASE_URL}/user/${userId}`);
       const userData = await response.json();
 
       setWatchedCastIds(
