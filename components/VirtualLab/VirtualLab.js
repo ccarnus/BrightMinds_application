@@ -18,6 +18,8 @@ import departments from '../../lists/departments';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
 import LottieView from 'lottie-react-native';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import { RFValue } from "react-native-responsive-fontsize"; // Importing RFValue for responsive font sizes
 
 const { width, height } = Dimensions.get('window');
 
@@ -116,6 +118,15 @@ const VirtualLab = ({ route }) => {
     setDepartmentDescription('');
   };
 
+  // Helper function to determine font size based on text length
+  const getFontSize = (text) => {
+    const maxLength = 30; // Adjust as needed
+    if (text.length > maxLength) {
+      return RFValue(18); // Smaller font size for longer text
+    }
+    return RFValue(24); // Default font size
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -147,7 +158,14 @@ const VirtualLab = ({ route }) => {
             )}
 
             {/* Lab Title */}
-            <Text style={styles.labTitle}>
+            <Text 
+              style={[
+                styles.labTitle, 
+                { fontSize: getFontSize(labDisplayName || 'Virtual Laboratory') }
+              ]}
+              numberOfLines={3} // Allows up to three lines
+              ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
+            >
               {labDisplayName || 'Virtual Laboratory'}
             </Text>
           </View>
@@ -170,7 +188,13 @@ const VirtualLab = ({ route }) => {
                 onPress={() => handleTopicPress(topic._id)}
               >
                 {/* Topic Name */}
-                <Text style={styles.topicName}>{topic.name}</Text>
+                <Text 
+                  style={styles.topicName}
+                  numberOfLines={3} // Allows up to three lines
+                  ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
+                >
+                  {topic.name}
+                </Text>
 
                 {/* Icons and Counts */}
                 <View style={styles.topicStats}>
@@ -185,6 +209,28 @@ const VirtualLab = ({ route }) => {
                     <Image source={CastIcon} style={styles.statIcon} />
                     <Text style={styles.statText}>{topic.castCount}</Text>
                   </View>
+                </View>
+
+                {/* Circular Gauge */}
+                <View style={styles.gaugeContainer}>
+                  <AnimatedCircularProgress
+                    size={width * 0.35} // Responsive size
+                    width={15}
+                    fill={Math.floor(Math.random() * 100) + 1} // Replace with actual data
+                    tintColor={colors.darkblue}
+                    backgroundColor={colors.primaryBis}
+                    rotation={-90} // Starts the progress from the left
+                    arcSweepAngle={180} // Makes the gauge a semi-circle
+                    lineCap="round" // Rounded ends
+                  >
+                    {
+                      (fill) => (
+                        <Text style={styles.gaugeText}>
+                          {Math.ceil(fill)}%
+                        </Text>
+                      )
+                    }
+                  </AnimatedCircularProgress>
                 </View>
               </TouchableOpacity>
             ))
@@ -233,6 +279,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1, // Ensures content can shrink if necessary
   },
   departmentImage: {
     width: 80,
@@ -240,11 +287,10 @@ const styles = StyleSheet.create({
     marginRight: spacing.m,
   },
   labTitle: {
-    fontSize: sizes.title,
     color: colors.primary,
     fontFamily: 'Montserrat',
     textAlign: 'center',
-    flexShrink: 1,
+    flexShrink: 1, // Allows the text to shrink if necessary
   },
   topRightButtons: {
     position: 'absolute',
@@ -269,7 +315,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.m,
   },
-  // New Topic Styles
   topicContainer: {
     backgroundColor: 'white',
     marginHorizontal: spacing.m,
@@ -279,14 +324,15 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   topicName: {
-    fontSize: sizes.h2,
+    fontSize: RFValue(20), // Responsive font size
     color: colors.secondary,
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
     marginBottom: spacing.s,
   },
   topicStats: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
+    marginBottom: spacing.s, // Adds spacing before the gauge
   },
   statItem: {
     flexDirection: 'row',
@@ -303,6 +349,17 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
+  gaugeContainer: {
+    alignItems: 'center',
+    marginTop: spacing.m,
+    marginBottom: -spacing.l,
+  },
+  gaugeText: {
+    fontSize: RFValue(16), // Responsive font size
+    color: colors.darkblue,
+    fontFamily: 'Montserrat',
+    position: 'absolute', // Centers the text within the gauge
+  },
   modalContainer: {
     backgroundColor: 'white',
     padding: 18,
@@ -311,14 +368,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: sizes.h3,
+    fontSize: RFValue(22), // Responsive font size
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'MontserratBold',
     textAlign: 'center',
   },
   modalDescription: {
-    fontSize: sizes.body,
+    fontSize: RFValue(16), // Responsive font size
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',
@@ -328,7 +385,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.m,
     alignSelf: 'stretch',
   },
-  // Loader Styles
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
