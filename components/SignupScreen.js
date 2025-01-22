@@ -215,6 +215,7 @@ const SignupScreen = ({ navigation }) => {
               autoCapitalize="none"
               keyboardType="email-address"
               activeOutlineColor={colors.darkGreen}
+              outlineStyle={styles.inputOutline}
             />
 
             {/* Username */}
@@ -226,6 +227,7 @@ const SignupScreen = ({ navigation }) => {
               mode="outlined"
               autoCapitalize="none"
               activeOutlineColor={colors.darkGreen}
+              outlineStyle={styles.inputOutline}
             />
 
             {/* Password */}
@@ -238,6 +240,7 @@ const SignupScreen = ({ navigation }) => {
               mode="outlined"
               autoCapitalize="none"
               activeOutlineColor={colors.darkGreen}
+              outlineStyle={styles.inputOutline}
             />
 
             {/* Confirm Password */}
@@ -251,6 +254,7 @@ const SignupScreen = ({ navigation }) => {
               autoCapitalize="none"
               error={!passwordsMatch}
               activeOutlineColor={colors.darkGreen}
+              outlineStyle={styles.inputOutline}
             />
             {!passwordsMatch && (
               <HelperText type="error" visible={!passwordsMatch}>
@@ -265,6 +269,8 @@ const SignupScreen = ({ navigation }) => {
                 selectedValue={role}
                 style={styles.picker}
                 onValueChange={(itemValue) => setRole(itemValue)}
+                labelStyle={{ fontFamily: 'Montserrat' }}
+                label
               >
                 <Picker.Item label="Choose category.." value="" />
                 <Picker.Item label="College Student" value="College Student" />
@@ -323,7 +329,7 @@ const SignupScreen = ({ navigation }) => {
                   fontSize: sizes.h2,
                   fontFamily: 'Montserrat',
                   textAlign: 'center',
-                  paddingTop: spacing.xs,
+                  paddingTop: spacing.s,
                 }}
                 style={{
                   marginLeft: spacing.m,
@@ -407,6 +413,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
+    borderRadius: sizes.radius,
   },
   pickerContainer: {
     borderWidth: 1,
@@ -521,6 +528,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     color: colors.secondary,
     marginTop: spacing.m,
+  },
+  inputOutline: {
+    borderRadius: sizes.radius,
   },
 });
 

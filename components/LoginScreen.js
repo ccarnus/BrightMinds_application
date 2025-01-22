@@ -95,6 +95,7 @@ const LoginScreen = ({ navigation }) => {
             underlineColor={colors.darkGreen}
             activeOutlineColor={colors.darkGreen}
             underlineColorAndroid={colors.darkGreen}
+            outlineStyle={styles.inputOutline}
           />
 
           <TextInput
@@ -107,6 +108,7 @@ const LoginScreen = ({ navigation }) => {
             autoCapitalize="none"
             underlineColor={colors.darkGreen}
             activeOutlineColor={colors.darkGreen}
+            outlineStyle={styles.inputOutline}
             right={
               <TextInput.Icon
                 icon={showPassword ? 'eye' : 'eye-off'}
@@ -127,7 +129,7 @@ const LoginScreen = ({ navigation }) => {
               fontSize: sizes.h2,
               fontFamily: 'Montserrat',
               textAlign: 'center',
-              paddingTop: spacing.xs,
+              paddingTop: spacing.s,
             }}
             style={{
               marginLeft: spacing.m,
@@ -217,6 +219,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     padding: 20,
     margin: 20,
+    borderRadius: sizes.radius,
+  },
+  inputOutline: {
     borderRadius: sizes.radius,
   },
 });

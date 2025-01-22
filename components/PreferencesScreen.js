@@ -33,7 +33,7 @@ const PreferencesScreen = ({ navigation }) => {
           modification: 'positive',
         });
       }
-      navigation.navigate('BottomNav');
+      navigation.navigate('LoadingScreen');
     } catch (error) {
       console.error('Failed to set preferences:', error);
     }
@@ -41,8 +41,8 @@ const PreferencesScreen = ({ navigation }) => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>What are your interests?</Text>
-      <Text style={styles.subtitle}>Select at least 3</Text>
+      <Text style={styles.title}>What do you want to learn about?</Text>
+      <Text style={styles.subtitle}>At least 3</Text>
       <View style={styles.bubbleContainer}>
         {departments.map(({ display, name }) => (
           <TouchableOpacity
@@ -67,8 +67,19 @@ const PreferencesScreen = ({ navigation }) => {
       <Button
         mode="contained"
         onPress={handleConfirm}
-        style={styles.button}
         disabled={isButtonDisabled}
+        buttonColor={colors.darkGreen}
+        labelStyle={{
+          fontSize: sizes.h2,
+          fontFamily: 'Montserrat',
+          textAlign: 'center',
+          paddingTop: spacing.s,
+        }}
+        style={{
+          marginBottom: spacing.s,
+          marginTop: spacing.l,
+          borderRadius: sizes.buttonRadius,
+        }}
       >
         Confirm
       </Button>
@@ -88,7 +99,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.s,
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     marginTop: spacing.l,
   },
   subtitle: {
