@@ -5,28 +5,24 @@ import {
   StyleSheet, 
   TouchableOpacity, 
   Dimensions, 
-  Alert 
+  Alert, 
+  Image 
 } from 'react-native';
+import Onboarding from 'react-native-onboarding-swiper';
 import { Video } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Button } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
+import { Button } from 'react-native-paper';
 
 const { width, height } = Dimensions.get('window');
 
 const OnboardingScreen = ({ navigation }) => {
   const videoRef = useRef(null);
-  const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [videoStatus, setVideoStatus] = useState({});
 
   useEffect(() => {
-    // Auto-play the video when the component mounts
-    const playVideo = async () => {
-      if (videoRef.current) {
-        await videoRef.current.playAsync();
-      }
-    };
-    playVideo();
+    // Optional: Auto-play video when the video screen is rendered
+    // This can also be handled within the Video component
   }, []);
 
   const handleOnboardingComplete = async () => {
@@ -38,82 +34,105 @@ const OnboardingScreen = ({ navigation }) => {
     }
   };
 
-  const handleVideoEnd = () => {
-    handleOnboardingComplete();
-  };
-
   const handleVideoError = (error) => {
     console.log('Video Error: ', error);
     Alert.alert('Error', 'Failed to load the onboarding video.');
     handleOnboardingComplete();
   };
 
+  const DoneButton = ({ ...props }) => (
+    <Button
+      mode="contained"
+      onPress={props.onPress}
+      style={{ marginRight: 10 }}
+      contentStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
+      labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
+      buttonColor={colors.darkGreen}
+    >
+      Get Started
+    </Button>
+  );
+
+  const SkipButton = ({ ...props }) => (
+    <TouchableOpacity style={{ marginLeft: 10 }} {...props}>
+      <Text style={styles.skipText}>Skip</Text>
+    </TouchableOpacity>
+  );
+
+  const NextButton = ({ ...props }) => (
+    <Button
+      mode="outlined"
+      onPress={props.onPress}
+      style={{ marginRight: 10 }}
+      contentStyle={{ paddingVertical: 8, paddingHorizontal: 16 }}
+      labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat', color: colors.darkGreen }}
+      color={colors.darkGreen}
+    >
+      Next
+    </Button>
+  );
+
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={styles.videoWrapper}
-        activeOpacity={1}
-        onPress={() => {
-          if (videoRef.current) {
-            if (videoStatus.isPlaying) {
-              videoRef.current.pauseAsync();
-            } else {
-              videoRef.current.playAsync();
-            }
-          }
-        }}
-      >
-        <Video
-          ref={videoRef}
-          source={require('../../assets/Onboarding/onboarding-video.mp4')} // Ensure this path is correct
-          style={styles.video}
-          resizeMode="cover"
-          shouldPlay={false} // Control playback manually
-          isLooping={false}
-          onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
-          onEnd={handleVideoEnd}
-          onError={handleVideoError}
-        />
-        {/* Overlay Controls */}
-        <View style={styles.overlay}>
-          <TouchableOpacity style={styles.skipButton} onPress={handleOnboardingComplete}>
-            <Text style={styles.skipText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
-      </TouchableOpacity>
-    </View>
+    <Onboarding
+      SkipButtonComponent={SkipButton}
+      NextButtonComponent={NextButton}
+      DoneButtonComponent={DoneButton}
+      onSkip={handleOnboardingComplete}
+      onDone={handleOnboardingComplete}
+      pages={[
+        {
+          backgroundColor: colors.primaryBis,
+          image: <Image source={require('../../assets/Onboarding/welcome.jpg')} style={styles.image} resizeMode="contain" />,
+          title: 'Welcome to BrightMinds',
+          subtitle: 'Discover and engage with insightful content tailored just for you.',
+        },
+        {
+          backgroundColor: colors.primaryBis,
+          image: <Image source={require('../../assets/Onboarding/features.jpg')} style={styles.image} resizeMode="contain" />,
+          title: 'Explore Features',
+          subtitle: 'Enjoy a variety of features designed to enhance your learning experience.',
+        },
+        {
+          backgroundColor: colors.primaryBis,
+          image: (
+            <Video
+              ref={videoRef}
+              source={require('../../assets/Onboarding/onboarding-video.mp4')}
+              style={styles.video}
+              resizeMode="cover"
+              shouldPlay={false} // Control playback manually
+              isLooping={false}
+              onPlaybackStatusUpdate={(status) => setVideoStatus(status)}
+              onError={handleVideoError}
+              onEnd={handleOnboardingComplete}
+            />
+          ),
+          title: 'Watch & Learn',
+          subtitle: 'Watch engaging videos to deepen your understanding.',
+        },
+        {
+          backgroundColor: colors.primaryBis,
+          image: <Image source={require('../../assets/Onboarding/get-started.png')} style={styles.image} resizeMode="contain" />, // Replace with your image
+          title: 'Get Started',
+          subtitle: 'Sign up or log in to start your journey with BrightMinds.',
+        },
+      ]}
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoWrapper: {
-    width: width,
-    height: height,
+  image: {
+    width: width * 0.6,
+    height: height * 0.3,
   },
   video: {
-    width: '100%',
-    height: '100%',
-  },
-  overlay: {
-    position: 'absolute',
-    top: spacing.l,
-    right: spacing.l,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  skipButton: {
-    padding: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 20,
+    width: width * 0.8,
+    height: height * 0.4,
+    borderRadius: 10,
   },
   skipText: {
-    color: 'white',
+    color: colors.darkGreen,
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
   },

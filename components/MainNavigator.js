@@ -42,7 +42,8 @@ const MainNavigator = () => {
     const checkStatus = async () => {
       try {
         const userId = await AsyncStorage.getItem('userId');
-        const onboarded = await AsyncStorage.getItem('hasOnboarded');
+        //const onboarded = await AsyncStorage.getItem('hasOnboarded');
+        const onboarded = false;
         setIsLoggedIn(!!userId);
         setHasOnboarded(!!onboarded);
       } catch (error) {
@@ -72,7 +73,6 @@ const MainNavigator = () => {
           header: () => <Banner />,
         }}
       >
-        {/* Onboarding Screens */}
         <Stack.Screen
           name="Onboarding"
           component={OnboardingScreen}
