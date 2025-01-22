@@ -28,34 +28,76 @@ import EditProfileScreen from './Profile/EditProfileScreen';
 import ForgotPasswordScreen from './Profile/ForgotPasswordScreen';
 import DiscoverScreen from './Cast/DiscoverScreen';
 import LoadingScreen from './Onboarding/LoadingScreen';
+import OnboardingScreen from './Onboarding/OnboardingScreen';
+import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
 
 const Stack = createStackNavigator();
 
 const MainNavigator = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(null);
+  const [hasOnboarded, setHasOnboarded] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const checkLoginStatus = async () => {
-      const userId = await AsyncStorage.getItem('userId');     
-      setIsLoggedIn(!!userId);
+    const checkStatus = async () => {
+      try {
+        const userId = await AsyncStorage.getItem('userId');
+        const onboarded = await AsyncStorage.getItem('hasOnboarded');
+        setIsLoggedIn(!!userId);
+        setHasOnboarded(!!onboarded);
+      } catch (error) {
+        console.log('Error checking auth status:', error);
+      } finally {
+        setLoading(false);
+      }
     };
-    checkLoginStatus();
+    checkStatus();
   }, []);
 
-  if (isLoggedIn === null) {
-    // Optionally, return a splash screen or loading component here
-    return null;
+  if (loading) {
+    return <LoadingScreen />;
   }
 
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={isLoggedIn ? "BottomNav" : "LoginScreen"}
+        initialRouteName={
+          hasOnboarded
+            ? isLoggedIn
+              ? "BottomNav"
+              : "AuthChoice"
+            : "Onboarding"
+        }
         screenOptions={{
           header: () => <Banner />,
         }}
       >
-        <Stack.Screen name="BottomNav" component={BottomNavigation} options={{ headerShown: true, tabBarVisible: true }} />
+        {/* Onboarding Screens */}
+        <Stack.Screen
+          name="Onboarding"
+          component={OnboardingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AuthChoice"
+          component={AuthChoiceScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="LoginScreen"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="SignupScreen"
+          component={SignupScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="BottomNav"
+          component={BottomNavigation}
+          options={{ headerShown: true, tabBarVisible: true }}
+        />
         <Stack.Screen name="Evaluation" component={Evaluation} options={{ headerShown: true, tabBarVisible: true }}
           listeners={({ navigation }) => ({
             beforeRemove: (e) => {
@@ -79,8 +121,6 @@ const MainNavigator = () => {
         <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="SignupScreen" component={SignupScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SuggestedForYou" component={SuggestedForYou} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Trending" component={Trending} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />

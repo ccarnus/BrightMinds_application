@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { colors } from '../theme';
+const { width, height } = Dimensions.get('window');
 
 const LoadingScreen = ({ navigation }) => {
   useEffect(() => {
@@ -35,8 +36,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   lottie: {
-    width: 200,
-    height: 200,
+    width: width*0.8,
+    height: width*0.8,
   },
 });
 
