@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image, ScrollView,
-  Platform, KeyboardAvoidingView, Alert, Modal, FlatList
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  Alert,
+  Modal,
+  FlatList,
+  Keyboard, // Import Keyboard
+  Dimensions, // For responsive design if needed
 } from 'react-native';
 import { Button, TextInput, Portal, Provider, HelperText } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
@@ -16,7 +27,7 @@ const SignupScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState('College Student');
+  const [role, setRole] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
@@ -26,6 +37,7 @@ const SignupScreen = ({ navigation }) => {
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false); // State to track keyboard visibility
 
   useEffect(() => {
     // Fetch universities from your API
@@ -62,7 +74,8 @@ const SignupScreen = ({ navigation }) => {
       passwordsMatch &&
       username &&
       profilePicture &&
-      (!needsUniversity || selectedUniversity);
+      (!needsUniversity || selectedUniversity) &&
+      role !== '';
 
     setIsButtonDisabled(!allFieldsOk);
   }, [
@@ -75,6 +88,22 @@ const SignupScreen = ({ navigation }) => {
     selectedUniversity,
     passwordsMatch,
   ]);
+
+  useEffect(() => {
+    // Add keyboard event listeners
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    // Cleanup listeners on unmount
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const showCustomAlert = (message) => {
     setCustomAlertMessage(message);
@@ -169,8 +198,7 @@ const SignupScreen = ({ navigation }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
-        <View
-        style={{ flex: 1 }}>
+        <View style={{ flex: 1 }}>
           <ScrollView
             contentContainerStyle={styles.container}
             keyboardShouldPersistTaps="handled"
@@ -231,12 +259,14 @@ const SignupScreen = ({ navigation }) => {
             )}
 
             {/* ROLE */}
+            <Text style={styles.pickerTitle}>Category:</Text>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={role}
                 style={styles.picker}
                 onValueChange={(itemValue) => setRole(itemValue)}
               >
+                <Picker.Item label="Choose category.." value="" />
                 <Picker.Item label="College Student" value="College Student" />
                 <Picker.Item label="Professor" value="Professor" />
                 <Picker.Item label="Researcher" value="Researcher" />
@@ -276,78 +306,82 @@ const SignupScreen = ({ navigation }) => {
               )}
             </TouchableOpacity>
           </ScrollView>
-          <View 
-            contentContainerStyle={styles.footerContainer}>
-            {/* Sign Up Button */}
-            <Button
-              mode="contained"
-              onPress={handleSignup}
-              loading={loading}
-              disabled={isButtonDisabled}
-              buttonColor={colors.darkGreen}
-              icon={require('../assets/Login_icons/sign-up.png')}contentStyle={{ flexDirection: 'row-reverse'}}
-              labelStyle={{
-                fontSize: sizes.h2,
-                fontFamily: 'Montserrat',
-                textAlign: 'center',
-                paddingTop: spacing.xs,
-              }}
-              style={{
-                marginLeft: spacing.m,
-                marginRight: spacing.m,
-                marginBottom: spacing.s,
-                marginTop: spacing.l,
-                borderRadius: sizes.buttonRadius,
-              }}
-            >
-              Sign Up
-            </Button>
 
-            {/* Go to Login */}
-            <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
-              <Text style={styles.signupText}>Already have an account? Login</Text>
-            </TouchableOpacity>
-
-            {/* University Modal */}
-            <Modal
-              transparent={false}
-              animationType="slide"
-              visible={universityModalVisible}
-              onRequestClose={() => setUniversityModalVisible(false)}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select a University</Text>
-                <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={24}
-                    color={colors.secondary}
-                  />
-                </TouchableOpacity>
-              </View>
-              <FlatList
-                data={universities}
-                keyExtractor={(item) => item._id}
-                renderItem={renderUniversityItem}
-                contentContainerStyle={styles.flatListContainer}
-              />
-            </Modal>
-
-            {/* Custom Alert Modal */}
-            <Portal>
-              <Modal
-                visible={customAlertVisible}
-                onDismiss={() => setCustomAlertVisible(false)}
-                contentContainerStyle={styles.modalContainer}
+          {/* Footer Container */}
+          {!isKeyboardVisible && (
+            <View style={styles.footerContainer}>
+              {/* Sign Up Button */}
+              <Button
+                mode="contained"
+                onPress={handleSignup}
+                loading={loading}
+                disabled={isButtonDisabled}
+                buttonColor={colors.darkGreen}
+                icon={require('../assets/Login_icons/sign-up.png')}
+                contentStyle={{ flexDirection: 'row-reverse' }}
+                labelStyle={{
+                  fontSize: sizes.h2,
+                  fontFamily: 'Montserrat',
+                  textAlign: 'center',
+                  paddingTop: spacing.xs,
+                }}
+                style={{
+                  marginLeft: spacing.m,
+                  marginRight: spacing.m,
+                  marginBottom: spacing.s,
+                  marginTop: spacing.l,
+                  borderRadius: sizes.buttonRadius,
+                }}
               >
-                <Text>{customAlertMessage}</Text>
-                <Button 
-                  onPress={() => setCustomAlertVisible(false)}
-                  textColor={colors.darkGreen}  
-                >OK</Button>
-              </Modal>
-            </Portal>
-          </View>
+                Sign Up
+              </Button>
+
+              {/* Go to Login */}
+              <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
+                <Text style={styles.signupText}>Already have an account? Login</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* University Modal */}
+          <Modal
+            transparent={false}
+            animationType="slide"
+            visible={universityModalVisible}
+            onRequestClose={() => setUniversityModalVisible(false)}
+          >
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select a University</Text>
+              <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={24}
+                  color={colors.secondary}
+                />
+              </TouchableOpacity>
+            </View>
+            <FlatList
+              data={universities}
+              keyExtractor={(item) => item._id}
+              renderItem={renderUniversityItem}
+              contentContainerStyle={styles.flatListContainer}
+            />
+          </Modal>
+
+          {/* Custom Alert Modal */}
+          <Portal>
+            <Modal
+              visible={customAlertVisible}
+              onDismiss={() => setCustomAlertVisible(false)}
+              contentContainerStyle={styles.modalContainer}
+            >
+              <Text>{customAlertMessage}</Text>
+              <Button 
+                onPress={() => setCustomAlertVisible(false)}
+                textColor={colors.darkGreen}  
+              >OK</Button>
+            </Modal>
+          </Portal>
         </View>
       </KeyboardAvoidingView>
     </Provider>
@@ -359,6 +393,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     backgroundColor: colors.primaryBis,
+    paddingBottom: 150,
   },
   title: {
     fontSize: sizes.title,
@@ -464,9 +499,12 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
   },
   footerContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: colors.primaryBis,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: spacing.l,
+    backgroundColor: 'transparent',
   },
   signupButton: {
     marginBottom: 20,
@@ -477,7 +515,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  
+  pickerTitle: {
+    fontSize: sizes.h3,
+    marginBottom: spacing.xs,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    marginTop: spacing.m,
+  },
 });
 
 export default SignupScreen;
