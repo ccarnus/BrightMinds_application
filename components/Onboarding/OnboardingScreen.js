@@ -67,33 +67,47 @@ const OnboardingScreen = ({ navigation }) => {
   };
 
   const DoneButton = ({ ...props }) => (
-    <Button
-      mode="contained"
-      onPress={props.onPress}
-      style={styles.doneButton}
-      labelStyle={styles.doneButtonLabel}
-      buttonColor={colors.darkGreen}
-    >
-      Get Started
-    </Button>
+    <View style={styles.ButtonContainer}>
+      <Button
+        mode="contained"
+        onPress={props.onPress}
+        style={styles.Button}
+        labelStyle={styles.ButtonLabel}
+        buttonColor={colors.primary}
+      >
+        Let's Go!
+      </Button>
+    </View>
   );
 
   const SkipButton = ({ ...props }) => (
-    <TouchableOpacity style={styles.skipButton} {...props}>
-      <Text style={styles.skipText}>Skip</Text>
-    </TouchableOpacity>
+    <View style={styles.ButtonContainer}>
+      <Button
+        mode="contained"
+        onPress={props.onPress}
+        style={styles.skipButton}
+        labelStyle={styles.skipButtonLabel}
+        buttonColor={colors.primary}
+      >
+        Skip
+      </Button>
+    </View>
   );
 
   const NextButton = ({ ...props }) => (
-    <Button
-      mode="outlined"
-      onPress={props.onPress}
-      style={styles.nextButton}
-      labelStyle={styles.nextButtonLabel}
-      color={colors.darkGreen}
-    >
-      Next
-    </Button>
+    <View style={styles.ButtonContainer}>
+      <Button
+        onPress={props.onPress}
+        style={styles.Button}
+        labelStyle={styles.ButtonLabel}
+        mode="contained"
+        buttonColor={colors.darkGreen}
+        icon={require('../../assets/Discover_icons/next.png')}
+        contentStyle={{ flexDirection: 'row-reverse', paddingTop: spacing.xs }}
+      >
+        Next
+      </Button>
+    </View>
   );
 
   return (
@@ -108,7 +122,7 @@ const OnboardingScreen = ({ navigation }) => {
       showNext={true}
       showDone={true}
       bottomBarHighlight={false}
-      bottomBarHeight={60}
+      bottomBarHeight={120}
       containerStyles={styles.onboardingContainer}
       pages={[
         {
@@ -149,7 +163,7 @@ const OnboardingScreen = ({ navigation }) => {
                   source={require('../../assets/Onboarding/onboarding-video.mp4')}
                   style={styles.video}
                   resizeMode="cover"
-                  shouldPlay={false} // Controlled manually
+                  shouldPlay={false}
                   isLooping={false}
                   isMuted={isMuted}
                   volume={isMuted ? 0 : 1}
@@ -161,16 +175,6 @@ const OnboardingScreen = ({ navigation }) => {
                   }}
                   onError={handleVideoError}
                 />
-                {/* Overlay Play/Pause Icon */}
-                {videoStatus.isPlaying !== undefined && (
-                  <View style={styles.playPauseOverlay}>
-                    <Ionicons
-                      name={isPlaying ? 'pause-circle' : 'play-circle'}
-                      size={64}
-                      color="rgba(255, 255, 255, 0.7)"
-                    />
-                  </View>
-                )}
               </TouchableOpacity>
               {/* Mute/Unmute Button */}
               <TouchableOpacity 
@@ -183,14 +187,6 @@ const OnboardingScreen = ({ navigation }) => {
                   size={24} 
                   color={colors.white} 
                 />
-              </TouchableOpacity>
-              {/* Transparent "Get Started" Button */}
-              <TouchableOpacity 
-                style={styles.transparentButton} 
-                onPress={handleOnboardingComplete}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.transparentButtonText}>Get Started</Text>
               </TouchableOpacity>
             </View>
           ),
@@ -214,11 +210,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
   },
   title: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
+    fontSize: sizes.title,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
     textAlign: 'center',
-    marginTop: spacing.l,
   },
   subtitle: {
     fontSize: sizes.h4,
@@ -228,34 +223,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     marginTop: spacing.s,
   },
-  doneButton: {
-    marginRight: spacing.m,
-    borderRadius: sizes.buttonRadius,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+  ButtonContainer: {
+    height: "100%",
+    justifyContent: 'center',
+    alignItems: 'center',  
   },
-  doneButtonLabel: {
+  Button: {
+    backgroundColor: colors.secondary,
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    paddingBottom: spacing.s,
+    borderRadius: sizes.buttonRadius,
+  },
+  ButtonLabel: {
     fontSize: sizes.h3,
     fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.xs,
+    color: colors.primaryBis,
   },
   skipButton: {
+    backgroundColor: colors.transparentButton,
     marginLeft: spacing.m,
-  },
-  skipText: {
-    color: colors.darkGreen,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-  },
-  nextButton: {
     marginRight: spacing.m,
+    paddingBottom: spacing.s,
     borderRadius: sizes.buttonRadius,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
   },
-  nextButtonLabel: {
+  skipButtonLabel: {
     fontSize: sizes.h3,
     fontFamily: 'Montserrat',
-    color: colors.darkGreen,
+    textAlign: 'center',
+    paddingTop: spacing.s,
+    color: colors.secondary,
   },
   videoContainer: {
     width: width,

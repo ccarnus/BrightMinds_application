@@ -178,63 +178,65 @@ const VirtualLab = ({ route }) => {
         </LinearGradient>
 
         <ScrollView style={styles.bottomSection}>
-          {topics.length === 0 ? (
-            <Text style={styles.noDataText}>No topics available.</Text>
-          ) : (
-            topics.map((topic) => (
-              <TouchableOpacity
-                key={topic._id}
-                style={styles.topicContainer}
-                onPress={() => handleTopicPress(topic._id)}
-              >
-                {/* Topic Name */}
-                <Text 
-                  style={styles.topicName}
-                  numberOfLines={3} // Allows up to three lines
-                  ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
+          <View style={{ marginBottom: spacing.l }} >
+            {topics.length === 0 ? (
+              <Text style={styles.noDataText}>No topics available.</Text>
+            ) : (
+              topics.map((topic) => (
+                <TouchableOpacity
+                  key={topic._id}
+                  style={styles.topicContainer}
+                  onPress={() => handleTopicPress(topic._id)}
                 >
-                  {topic.name}
-                </Text>
-
-                {/* Icons and Counts */}
-                <View style={styles.topicStats}>
-                  {/* Articles */}
-                  <View style={styles.statItem}>
-                    <Image source={ArticleIcon} style={styles.statIcon} />
-                    <Text style={styles.statText}>{topic.articleCount}</Text>
-                  </View>
-
-                  {/* Casts */}
-                  <View style={styles.statItem}>
-                    <Image source={CastIcon} style={styles.statIcon} />
-                    <Text style={styles.statText}>{topic.castCount}</Text>
-                  </View>
-                </View>
-
-                {/* Circular Gauge */}
-                <View style={styles.gaugeContainer}>
-                  <AnimatedCircularProgress
-                    size={width * 0.35} // Responsive size
-                    width={15}
-                    fill={Math.floor(Math.random() * 100) + 1} // Replace with actual data
-                    tintColor={colors.darkblue}
-                    backgroundColor={colors.primaryBis}
-                    rotation={-90} // Starts the progress from the left
-                    arcSweepAngle={180} // Makes the gauge a semi-circle
-                    lineCap="round" // Rounded ends
+                  {/* Topic Name */}
+                  <Text 
+                    style={styles.topicName}
+                    numberOfLines={3} // Allows up to three lines
+                    ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
                   >
-                    {
-                      (fill) => (
-                        <Text style={styles.gaugeText}>
-                          {Math.ceil(fill)}%
-                        </Text>
-                      )
-                    }
-                  </AnimatedCircularProgress>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
+                    {topic.name}
+                  </Text>
+
+                  {/* Icons and Counts */}
+                  <View style={styles.topicStats}>
+                    {/* Articles */}
+                    <View style={styles.statItem}>
+                      <Image source={ArticleIcon} style={styles.statIcon} />
+                      <Text style={styles.statText}>{topic.articleCount}</Text>
+                    </View>
+
+                    {/* Casts */}
+                    <View style={styles.statItem}>
+                      <Image source={CastIcon} style={styles.statIcon} />
+                      <Text style={styles.statText}>{topic.castCount}</Text>
+                    </View>
+                  </View>
+
+                  {/* Circular Gauge */}
+                  <View style={styles.gaugeContainer}>
+                    <AnimatedCircularProgress
+                      size={width * 0.35} // Responsive size
+                      width={10}
+                      fill={Math.floor(Math.random() * 100) + 1} // Replace with actual data
+                      tintColor={colors.darkblue}
+                      backgroundColor={colors.primaryBis}
+                      rotation={-115} // Starts the progress from the left
+                      arcSweepAngle={230} // Makes the gauge a semi-circle
+                      lineCap="round" // Rounded ends
+                    >
+                      {
+                        (fill) => (
+                          <Text style={styles.gaugeText}>
+                            {Math.ceil(fill)}%
+                          </Text>
+                        )
+                      }
+                    </AnimatedCircularProgress>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
+          </View>
         </ScrollView>
 
         {/* Info Modal */}
@@ -318,10 +320,10 @@ const styles = StyleSheet.create({
   topicContainer: {
     backgroundColor: 'white',
     marginHorizontal: spacing.m,
-    marginBottom: spacing.m,
+    marginBottom: spacing.l,
     padding: spacing.m,
     borderRadius: sizes.radius,
-    elevation: 2,
+    elevation: 5,
   },
   topicName: {
     fontSize: RFValue(20), // Responsive font size

@@ -1,72 +1,81 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+} from 'react-native';
 import { Button } from 'react-native-paper';
 import { colors, sizes, spacing } from '../theme';
+import LottieView from 'lottie-react-native';
 
 const AuthChoiceScreen = ({ navigation }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to BrightMinds!</Text>
-      <Text style={styles.subtitle}>Please choose an option to continue.</Text>
-      
-      <Button
-        mode="contained"
-        onPress={() => navigation.navigate('LoginScreen')}
-        style={styles.button}
-        contentStyle={styles.buttonContent}
-        labelStyle={styles.buttonLabel}
-        buttonColor={colors.darkGreen}
-      >
-        Log In
-      </Button>
+    <View style={styles.rootContainer}>
+      <LottieView
+        source={require('../../assets/Onboarding/star_bg_2.json')}
+        autoPlay
+        backgroundColor={colors.secondary}
+        loop
+        style={StyleSheet.absoluteFillObject}
+      />
+      <View style={styles.container}>
+        <Image
+          source={require('../../assets/Onboarding/BrightMinds.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
 
-      <Button
-        mode="outlined"
-        onPress={() => navigation.navigate('SignupScreen')}
-        style={styles.button}
-        contentStyle={styles.buttonContent}
-        labelStyle={styles.buttonLabel}
-        color={colors.darkGreen}
-      >
-        Sign Up
-      </Button>
+        <Button
+          mode="contained"
+          onPress={() => navigation.navigate('LoginScreen')}
+          buttonColor={colors.darkGreen}
+          labelStyle={styles.buttonLabel}
+          style={styles.authButton}
+        >
+          Log In
+        </Button>
+
+        <Button
+          mode="contained"
+          onPress={() => navigation.navigate('SignupScreen')}
+          buttonColor={colors.darkGreen}
+          labelStyle={styles.buttonLabel}
+          style={styles.authButton}
+        >
+          Sign Up
+        </Button>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  rootContainer: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.l,
   },
-  title: {
-    fontSize: sizes.title,
-    fontFamily: 'Montserrat-Bold',
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    marginBottom: spacing.l,
-    textAlign: 'center',
-  },
-  button: {
+  logo: {
     width: '80%',
-    marginVertical: spacing.s,
-    borderRadius: sizes.buttonRadius,
+    height: undefined,
+    aspectRatio: 1,
+    marginBottom: spacing.xl,
   },
-  buttonContent: {
-    paddingVertical: spacing.m,
+  authButton: {
+    width: '100%',
+    marginVertical: spacing.s, 
+    borderRadius: sizes.buttonRadius,
   },
   buttonLabel: {
     fontSize: sizes.h2,
     fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
   },
 });
 
