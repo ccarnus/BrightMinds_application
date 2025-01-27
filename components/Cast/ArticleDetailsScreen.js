@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   description: {
     fontSize: sizes.h3,
     color: colors.text,
-    textAlign: "justify",
+    textAlign: "left",
     fontFamily: "Montserrat",
   },
   detail: {

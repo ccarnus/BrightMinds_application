@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  RefreshControl,
+} from 'react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, sizes, spacing } from './theme';
@@ -19,7 +28,7 @@ const TrackScreen = () => {
   const [userId, setUserId] = useState(null);
   const [castCount, setCastCount] = useState(0);
   const [articleCount, setArticleCount] = useState(0);
-  const [refreshing, setRefreshing] = useState(false); // Add refreshing state
+  const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const Learning = require('../assets/Track_icons/learning.png');
   const Progress = require('../assets/Track_icons/progress_illustration.png');
@@ -59,10 +68,12 @@ const TrackScreen = () => {
           target: data.target,
         });
         if (data.tracking.history) {
-          setHistory(data.tracking.history.map(history => ({
-            category: history.category,
-            progress: history.count,
-          })));
+          setHistory(
+            data.tracking.history.map((hist) => ({
+              category: hist.category,
+              progress: hist.count,
+            }))
+          );
         }
       }
     } catch (error) {
@@ -74,8 +85,11 @@ const TrackScreen = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`);
       const data = await response.json();
+
       if (data.evaluation_list) {
-        const answeredEvaluations = data.evaluation_list.filter(evaluation => evaluation.answered).length;
+        const answeredEvaluations = data.evaluation_list.filter(
+          (evaluation) => evaluation.answered
+        ).length;
         setAnsweredCount(answeredEvaluations);
       }
       setCastCount(data.castPublications.length);
@@ -102,62 +116,88 @@ const TrackScreen = () => {
   }, [userId]);
 
   return (
-    <ScrollView
-      style={styles.container}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      <LinearGradient
-        colors={[colors.lightblue, colors.darkblue]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.infoContainer}
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: 120 }} // Extra space for the floating button
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
-        <Text style={styles.infoText}>Understand the research shaping tomorrow's world</Text>
-        <View style={styles.infoBottomContainer}>
-          <View style={styles.infoBottomContainerLeft}>
-            <Text style={styles.questionsansweredNumber}>{answeredCount}</Text>
-            <Text style={styles.questionsansweredText}>Topic Learned</Text>
-          </View>
-          <View style={styles.infoBottomContainerRight}>
-            <Image source={Learning} style={styles.infoImage} />
-          </View>
-        </View>
-      </LinearGradient>
-      {(userRole === 'Professor' || userRole === 'Researcher' || userRole === 'PhD Student') && (
         <LinearGradient
-          colors={[colors.lightGreen, colors.darkGreen]}
+          colors={[colors.lightblue, colors.darkblue]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.greenSection}
+          style={styles.infoContainer}
         >
-          <Text style={styles.greenSectionTitle}>Publications</Text>
-          <View style={styles.greenSectionContent}>
-            <TouchableOpacity style={styles.greenSectionColumn} onPress={() => handleNavigateToPublications('article')}>
-              <Image source={require('../assets/Cast_screen_icons/article_logo.png')} style={styles.greenSectionIcon} />
-              <Text style={styles.greenSectionText}>{articleCount}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.greenSectionColumn} onPress={() => handleNavigateToPublications('cast')}>
-              <Image source={require('../assets/Cast_screen_icons/cast_logo.png')} style={styles.greenSectionIcon} />
-              <Text style={styles.greenSectionText}>{castCount}</Text>
-            </TouchableOpacity>
-            <View style={styles.greenSectionColumn}>
-              <Image source={require('../assets/Cast_screen_icons/podcast_logo.png')} style={styles.greenSectionIcon} />
-              <Text style={styles.greenSectionText}>0</Text>
+          <Text style={styles.infoText}>
+            Understand the research shaping tomorrow's world
+          </Text>
+          <View style={styles.infoBottomContainer}>
+            <View style={styles.infoBottomContainerLeft}>
+              <Text style={styles.questionsansweredNumber}>{answeredCount}</Text>
+              <Text style={styles.questionsansweredText}>Topic Learned</Text>
+            </View>
+            <View style={styles.infoBottomContainerRight}>
+              <Image source={Learning} style={styles.infoImage} />
             </View>
           </View>
         </LinearGradient>
-      )}
-      <LinearGradient
-        colors={[colors.lightGreen, colors.darkGreen]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.ProgressContainer}
-      >
-        <Text style={styles.sectionTitle}>
-          <Text style={styles.ProgressText}>{trackingData.objective}</Text> progress
-        </Text>
+
+        {(userRole === 'Professor' ||
+          userRole === 'Researcher' ||
+          userRole === 'PhD Student') && (
+          <LinearGradient
+            colors={[colors.lightGreen, colors.darkGreen]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.greenSection}
+          >
+            <Text style={styles.greenSectionTitle}>Publications</Text>
+            <View style={styles.greenSectionContent}>
+              <TouchableOpacity
+                style={styles.greenSectionColumn}
+                onPress={() => handleNavigateToPublications('article')}
+              >
+                <Image
+                  source={require('../assets/Cast_screen_icons/article_logo.png')}
+                  style={styles.greenSectionIcon}
+                />
+                <Text style={styles.greenSectionText}>{articleCount}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.greenSectionColumn}
+                onPress={() => handleNavigateToPublications('cast')}
+              >
+                <Image
+                  source={require('../assets/Cast_screen_icons/cast_logo.png')}
+                  style={styles.greenSectionIcon}
+                />
+                <Text style={styles.greenSectionText}>{castCount}</Text>
+              </TouchableOpacity>
+
+              <View style={styles.greenSectionColumn}>
+                <Image
+                  source={require('../assets/Cast_screen_icons/podcast_logo.png')}
+                  style={styles.greenSectionIcon}
+                />
+                <Text style={styles.greenSectionText}>0</Text>
+              </View>
+            </View>
+          </LinearGradient>
+        )}
+
+        <LinearGradient
+          colors={[colors.lightTeal, colors.darkTeal]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.ProgressContainer}
+        >
+          <Text style={styles.sectionTitle}>
+            <Text style={styles.ProgressText}>{trackingData.objective}</Text>{' '}
+            progress
+          </Text>
           <View style={styles.gaugeContainer}>
             <AnimatedCircularProgress
               size={150}
@@ -168,79 +208,100 @@ const TrackScreen = () => {
               lineCap="round"
               rotation={0}
             >
-              {fill => (
+              {(fill) => (
                 <Text style={styles.gaugeText}>
                   {`${Math.round(trackingData.progress * 100)}%`}
                 </Text>
               )}
             </AnimatedCircularProgress>
           </View>
-      </LinearGradient>
-      <LinearGradient
-        colors={[colors.lightOrange, colors.darkOrange]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.ChartTitleContainer}
-      >
-        <View style={{flexDirection: 'row'}}>
-          <Image source={Progress} style={styles.infoImage2} />
-          <Text style={{textAlign: "left", fontSize: sizes.h2, fontFamily: 'Montserrat', flexShrink: 1,
-      flexWrap: 'wrap', marginTop: spacing.s, marginLeft: spacing.s, marginRight: spacing.s}}>What you are learning about</Text>
-        </View>
-        <View style={styles.circularGaugesContainer}>
-          {history.length > 0 ? (
-            history.map((item, index) => {
-              const department = departments.find(dep => dep.name === item.category);
-              return (
-                <View style={styles.ChartandTextContainer}>
-                  <View key={index} style={styles.circularGaugeItem}>
-                    <AnimatedCircularProgress
-                      size={width * 0.25}  // Gauge size is 25% of the screen width
-                      width={10}
-                      fill={(item.progress / trackingData.target) * 100}
-                      tintColor={colors.darkGreen}
-                      backgroundColor={colors.primaryBis}
-                      lineCap="round"
-                      rotation={0}
-                    >
-                      {fill => (
-                        <Text style={styles.gaugeText}>
-                          {`${Math.round((item.progress / trackingData.target) * 100)}%`}
-                        </Text>
-                      )}
-                    </AnimatedCircularProgress>
-                    <Text style={styles.departmentName}>{department ? department.display : item.category}</Text>
+        </LinearGradient>
+
+        <LinearGradient
+          colors={[colors.lightOrange, colors.darkOrange]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.ChartTitleContainer}
+        >
+          <View style={{ flexDirection: 'row' }}>
+            <Image source={Progress} style={styles.infoImage2} />
+            <Text
+              style={{
+                textAlign: 'left',
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                flexShrink: 1,
+                flexWrap: 'wrap',
+                marginTop: spacing.s,
+                marginLeft: spacing.s,
+                marginRight: spacing.s,
+              }}
+            >
+              What you are learning about
+            </Text>
+          </View>
+
+          <View style={styles.circularGaugesContainer}>
+            {history.length > 0 ? (
+              history.map((item, index) => {
+                const department = departments.find(
+                  (dep) => dep.name === item.category
+                );
+                return (
+                  <View style={styles.ChartandTextContainer} key={index}>
+                    <View style={styles.circularGaugeItem}>
+                      <AnimatedCircularProgress
+                        size={width * 0.25} // Gauge size is 25% of screen width
+                        width={10}
+                        fill={(item.progress / trackingData.target) * 100}
+                        tintColor={colors.darkGreen}
+                        backgroundColor={colors.primaryBis}
+                        lineCap="round"
+                        rotation={0}
+                      >
+                        {(fill) => (
+                          <Text style={styles.gaugeText}>
+                            {`${Math.round(
+                              (item.progress / trackingData.target) * 100
+                            )}%`}
+                          </Text>
+                        )}
+                      </AnimatedCircularProgress>
+                      <Text style={styles.departmentName}>
+                        {department ? department.display : item.category}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })
-          ) : (
-            <Text style={styles.noDataText}>No learnings yet...</Text>
-          )}
-        </View>
-      </LinearGradient>
-      <Button
-        mode="contained"
-        onPress={handleReadyScreenPress}
-        buttonColor={colors.darkGreen}
-        icon={require('../assets/Track_icons/test.png')}
-        labelStyle={{
-          fontSize: sizes.h2,
-          fontFamily: 'Montserrat',
-          textAlign: 'center',
-          paddingTop: spacing.s,
-        }}
-        style={{
-          marginLeft: spacing.m,
-          marginRight: spacing.m,
-          marginBottom: spacing.l,
-          marginTop: spacing.l,
-          borderRadius: sizes.buttonRadius,
-        }}
-      >
-        Test Yourself
-      </Button>
-    </ScrollView>
+                );
+              })
+            ) : (
+              <Text style={styles.noDataText}>No learnings yet...</Text>
+            )}
+          </View>
+        </LinearGradient>
+      </ScrollView>
+
+      {/** FLOATING BUTTON AT THE BOTTOM */}
+      <View style={styles.fixedButtonContainer}>
+        <Button
+          mode="contained"
+          onPress={handleReadyScreenPress}
+          buttonColor={colors.darkGreen}
+          icon={require('../assets/Track_icons/test.png')}
+          labelStyle={{
+            fontSize: sizes.h2,
+            fontFamily: 'Montserrat',
+            textAlign: 'center',
+            paddingTop: spacing.s,
+          }}
+          style={{
+            borderRadius: sizes.buttonRadius,
+          }}
+        >
+          Test Yourself
+        </Button>
+      </View>
+    </View>
   );
 };
 
@@ -249,9 +310,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.primaryBis,
   },
-  contentContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  scrollView: {
+    flex: 1,
+  },
+  fixedButtonContainer: {
+    /** Absolutely position the button at the bottom */
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    padding: spacing.m,
   },
   infoContainer: {
     padding: spacing.s,
@@ -273,11 +342,6 @@ const styles = StyleSheet.create({
     width: '50%',
   },
   infoBottomContainerRight: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '50%',
-  },
-  LearningImageConainer: {
     alignItems: 'center',
     justifyContent: 'center',
     width: '50%',
@@ -323,6 +387,12 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
     elevation: 5,
   },
+  greenSectionTitle: {
+    fontSize: sizes.h2,
+    marginBottom: spacing.m,
+    fontFamily: 'Montserrat',
+    color: colors.primary,
+  },
   greenSectionContent: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -341,17 +411,16 @@ const styles = StyleSheet.create({
     color: colors.primaryBis,
     fontFamily: 'MontserratBold',
   },
-  greenSectionTitle: {
-    fontSize: sizes.h2,
-    color: colors.secondary,
+  ProgressContainer: {
+    backgroundColor: colors.primary,
+    padding: spacing.m,
+    marginVertical: spacing.m,
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
     marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
-    color: colors.primary,
-  },
-  learningSectionTitle: {
-    fontSize: sizes.h2,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+    marginTop: spacing.m,
+    borderRadius: sizes.radius,
+    elevation: 5,
   },
   sectionTitle: {
     fontSize: sizes.h2,
@@ -368,26 +437,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: spacing.s,
   },
-  ChartandTextContainer: {
-    marginTop: spacing.s,
-    marginInlineStart: 2,
-    marginRight: 2,
-  },
-  WatchTimeText: {
-    fontSize: 16,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
-  },
-  ProgressContainer: {
-    backgroundColor: colors.primary,
-    padding: spacing.m,
-    marginVertical: spacing.m,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
-    borderRadius: sizes.radius,
-    elevation: 5,
+  gaugeText: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    color: colors.primaryBis,
   },
   ChartTitleContainer: {
     backgroundColor: colors.primary,
@@ -420,11 +473,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
     textAlign: 'center',
   },
-  gaugeText: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    color: colors.primaryBis,
-  },
   noDataText: {
     color: colors.secondary,
     fontSize: sizes.h3,
@@ -432,6 +480,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     lineHeight: 150,
+  },
+  ChartandTextContainer: {
+    marginTop: spacing.s,
+    marginInlineStart: 2,
+    marginRight: 2,
   },
 });
 

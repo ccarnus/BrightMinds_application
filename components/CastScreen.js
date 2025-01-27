@@ -257,20 +257,23 @@ const CastScreen = () => {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="I want to learn about.."
-            placeholderTextColor={colors.secondary}
-            onChangeText={handleSearch}
-            value={searchQuery}
-            clearButtonMode="while-editing"
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Text style={styles.clearButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.searchContainerAndRandom}>
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="I want to learn about.."
+              placeholderTextColor={colors.secondary}
+              onChangeText={handleSearch}
+              value={searchQuery}
+              clearButtonMode="while-editing"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+                <Text style={styles.clearButtonText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
           <TouchableOpacity 
             style={styles.randomButton} 
             onPress={() => navigation.navigate('DiscoverScreen')}
@@ -356,13 +359,19 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.primary,
     borderRadius: sizes.radius,
-    margin: spacing.m,
     paddingHorizontal: spacing.m,
     height: 40,
+    flexShrink: 1,
+  },
+  searchContainerAndRandom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.m,
   },
   searchInput: {
     flex: 1,
@@ -485,17 +494,17 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   randomButton: {
-    marginLeft: spacing.s,
+    flex: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 40,
-    height: 40,
+    marginLeft: spacing.m,
+    marginRight: spacing.s,
   },
   randomButtonIcon: {
     width: 24,
     height: 24,
     resizeMode: 'contain',
-    tintColor: colors.secondary,
+    tintColor: colors.lightGreen,
   },
 });
 

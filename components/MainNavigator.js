@@ -42,8 +42,7 @@ const MainNavigator = () => {
     const checkStatus = async () => {
       try {
         const userId = await AsyncStorage.getItem('userId');
-        //const onboarded = await AsyncStorage.getItem('hasOnboarded');
-        const onboarded = false;
+        const onboarded = await AsyncStorage.getItem('hasOnboarded');
         setIsLoggedIn(!!userId);
         setHasOnboarded(!!onboarded);
       } catch (error) {

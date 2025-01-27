@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -9,7 +9,7 @@ import {
   TouchableOpacity 
 } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
-import { Video } from 'expo-av';
+//import { Video } from 'expo-video';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from '../theme';
 import { Button } from 'react-native-paper';
@@ -18,22 +18,10 @@ import { Ionicons } from '@expo/vector-icons';
 const { width, height } = Dimensions.get('window');
 
 const OnboardingScreen = ({ navigation }) => {
-  const videoRef = useRef(null);
-  const [videoStatus, setVideoStatus] = useState({});
+  //const videoRef = useRef(null);
+  //const [videoStatus, setVideoStatus] = useState({});
   const [currentPage, setCurrentPage] = useState(0);
-  const [isMuted, setIsMuted] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-
-  useEffect(() => {
-    // Control video playback based on the current page
-    if (currentPage === 2 && videoRef.current) {
-      videoRef.current.playAsync();
-      setIsPlaying(true);
-    } else if (videoRef.current) {
-      videoRef.current.pauseAsync();
-      setIsPlaying(false);
-    }
-  }, [currentPage]);
 
   const handleOnboardingComplete = async () => {
     try {
@@ -44,35 +32,30 @@ const OnboardingScreen = ({ navigation }) => {
     }
   };
 
-  const handleVideoError = (error) => {
-    console.log('Video Error: ', error);
-    Alert.alert('Error', 'Failed to load the onboarding video.');
-    handleOnboardingComplete();
-  };
+  //const handleVideoError = (error) => {
+  //  console.log('Video Error: ', error);
+  //  Alert.alert('Error', 'Failed to load the onboarding video.');
+  //  handleOnboardingComplete();
+  //};
 
-  const toggleMute = () => {
-    setIsMuted(!isMuted);
-  };
-
-  const togglePlayPause = async () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        await videoRef.current.pauseAsync();
-        setIsPlaying(false);
-      } else {
-        await videoRef.current.playAsync();
-        setIsPlaying(true);
-      }
-    }
-  };
+  //const togglePlayPause = async () => {
+  //  if (!videoRef.current) return;
+  //  if (isPlaying) {
+  //    await videoRef.current.pauseAsync();
+  //    setIsPlaying(false);
+  //  } else {
+  //    await videoRef.current.playAsync();
+  //    setIsPlaying(true);
+  //  }
+  //};
 
   const DoneButton = ({ ...props }) => (
     <View style={styles.ButtonContainer}>
       <Button
         mode="contained"
         onPress={props.onPress}
-        style={styles.Button}
-        labelStyle={styles.ButtonLabel}
+        style={styles.GoButton}
+        labelStyle={styles.GoButtonLabel}
         buttonColor={colors.primary}
       >
         Let's Go!
@@ -134,8 +117,8 @@ const OnboardingScreen = ({ navigation }) => {
               resizeMode="contain" 
             />
           ),
-          title: 'The latests research..',
-          subtitle: 'Discover and engage with insightful content tailored just for you.',
+          title: 'Find out the latest from the research world',
+          subtitle: '',
           titleStyles: styles.title,
           subtitleStyles: styles.subtitle,
         },
@@ -148,25 +131,28 @@ const OnboardingScreen = ({ navigation }) => {
               resizeMode="contain" 
             />
           ),
-          title: '..Brought to the public',
-          subtitle: 'Enjoy a variety of features designed to enhance your learning experience.',
+          title: 'Explained in the most simple way',
+          subtitle: '',
           titleStyles: styles.title,
           subtitleStyles: styles.subtitle,
         },
-        {
-          backgroundColor: colors.primaryBis,
+        /*{
+          backgroundColor: '#000000',
           image: (
             <View style={styles.videoContainer}>
-              <TouchableOpacity activeOpacity={1} onPress={togglePlayPause}>
+              <TouchableOpacity 
+                activeOpacity={1} 
+                onPress={togglePlayPause}
+                style={styles.videoTouchContainer}
+              >
                 <Video
                   ref={videoRef}
                   source={require('../../assets/Onboarding/onboarding-video.mp4')}
                   style={styles.video}
-                  resizeMode="cover"
-                  shouldPlay={false}
+                  resizeMode="contain"
+                  // No auto-play: remove shouldPlay
                   isLooping={false}
-                  isMuted={isMuted}
-                  volume={isMuted ? 0 : 1}
+                  playsInSilentLockedModeIOS // allow iOS playback in silent mode
                   onPlaybackStatusUpdate={(status) => {
                     setVideoStatus(status);
                     if (status.didJustFinish) {
@@ -175,26 +161,19 @@ const OnboardingScreen = ({ navigation }) => {
                   }}
                   onError={handleVideoError}
                 />
-              </TouchableOpacity>
-              {/* Mute/Unmute Button */}
-              <TouchableOpacity 
-                style={styles.muteButton} 
-                onPress={toggleMute}
-                activeOpacity={0.7}
-              >
-                <Ionicons 
-                  name={isMuted ? 'volume-mute' : 'volume-high'} 
-                  size={24} 
-                  color={colors.white} 
-                />
+                {!isPlaying && (
+                  <View style={styles.playIconContainer}>
+                    <Ionicons name="play-circle" size={80} color="#FFF" />
+                  </View>
+                )}
               </TouchableOpacity>
             </View>
           ),
-          title: 'Watch & Learn',
-          subtitle: 'Watch engaging videos to deepen your understanding.',
+          title: '',
+          subtitle: '',
           titleStyles: styles.title,
           subtitleStyles: styles.subtitle,
-        },
+        }*/
       ]}
     />
   );
@@ -228,6 +207,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',  
   },
+  GoButton: {
+    backgroundColor: colors.primary,
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    paddingBottom: spacing.s,
+    borderRadius: sizes.buttonRadius,  
+  },
   Button: {
     backgroundColor: colors.secondary,
     marginLeft: spacing.m,
@@ -241,6 +227,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingTop: spacing.xs,
     color: colors.primaryBis,
+  },
+  GoButtonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
+    color: colors.secondary,
   },
   skipButton: {
     backgroundColor: colors.transparentButton,
@@ -257,42 +250,31 @@ const styles = StyleSheet.create({
     color: colors.secondary,
   },
   videoContainer: {
-    width: width,
-    height: height * 0.6,
+    flex: 1,
+    backgroundColor: 'black',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
+  videoTouchContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   video: {
-    width: width,
-    height: height * 0.6,
+    width: width * 1,   // adjust as desired
+    height: height * 1, // adjust as desired
   },
-  muteButton: {
+  playIconContainer: {
     position: 'absolute',
-    top: spacing.m,
-    right: spacing.m,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: spacing.s,
-    borderRadius: 20,
-  },
-  transparentButton: {
-    position: 'absolute',
-    bottom: spacing.l,
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingVertical: spacing.s,
-    paddingHorizontal: spacing.m * 2,
-    borderRadius: sizes.buttonRadius,
-  },
-  transparentButtonText: {
-    color: colors.white,
-    fontSize: sizes.h3,
-    fontFamily: 'MontserratBold',
-  },
-  playPauseOverlay: {
-    position: 'absolute',
-    top: '45%',
-    left: '45%',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    zIndex: 9999,
+    elevation: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 0, 0, 0.3)', // DEBUG
   },
 });
 
