@@ -296,6 +296,7 @@ const TrackScreen = () => {
           }}
           style={{
             borderRadius: sizes.buttonRadius,
+            marginBottom: spacing.s,
           }}
         >
           Test Yourself
