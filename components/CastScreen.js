@@ -334,21 +334,6 @@ const CastScreen = () => {
           </>
         )}
       </ScrollView>
-
-      {/* Floating Action Button */}
-      {(userRole === 'Professor' ||
-        userRole === 'Researcher' ||
-        userRole === 'PhD Student') && (
-        <TouchableOpacity
-          style={styles.floatingButton}
-          onPress={() => navigation.navigate('CastTypeChoice')}
-        >
-          <Image
-            source={require('../assets/Cast_screen_icons/plus_icon.png')}
-            style={styles.floatingButtonIcon}
-          />
-        </TouchableOpacity>
-      )}
     </View>
   );
 };
@@ -438,24 +423,6 @@ const styles = StyleSheet.create({
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     marginVertical: spacing.l,
-  },
-  floatingButton: {
-    position: 'absolute',
-    bottom: 25,
-    right: 15,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    backgroundColor: 'transparent',
-  },
-  floatingButtonIcon: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'contain',
-    tintColor: colors.secondary,
   },
   errorContainer: {
     flex: 1,
