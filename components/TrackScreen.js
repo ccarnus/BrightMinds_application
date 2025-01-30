@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,51 +16,58 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '../lists/departments';
 import { Button } from 'react-native-paper';
+import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
 
 const { width } = Dimensions.get('window');
 
 const TrackScreen = () => {
+  // STATES
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
   const [history, setHistory] = useState([]);
   const [answeredCount, setAnsweredCount] = useState(0);
   const [userRole, setUserRole] = useState('');
   const [userId, setUserId] = useState(null);
-  const [castCount, setCastCount] = useState(0);
-  const [articleCount, setArticleCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const Learning = require('../assets/Track_icons/learning.png');
   const Progress = require('../assets/Track_icons/progress_illustration.png');
+  // Use the same serverError image as in CastScreen
+  const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
+  // NAVIGATIONS
   const handleReadyScreenPress = () => {
     navigation.navigate('Ready');
   };
 
-  const handleNavigateToPublications = (type) => {
-    if (type === 'cast') {
-      navigation.navigate('CastPublicationsScreen');
-    } else if (type === 'article') {
-      navigation.navigate('ArticlePublicationsScreen');
-    }
-  };
-
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const getUserRole = async () => {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const storedUserRole = await AsyncStorage.getItem('userRole');
-        setUserId(storedUserId);
-        setUserRole(storedUserRole);
+        try {
+          const storedUserId = await AsyncStorage.getItem('userId');
+          const storedUserRole = await AsyncStorage.getItem('userRole');
+          setUserId(storedUserId);
+          setUserRole(storedUserRole);
+        } catch (error) {
+          console.error('Error fetching user data from storage:', error);
+        }
       };
       getUserRole();
     }, [])
   );
 
-  const fetchData = async () => {
+  // FETCHING FUNCTIONS
+  const fetchTrackingData = async (id) => {
+    // Use setApiError(false) here to reset error state before fetch
+    setApiError(false);
+
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}/tracking`);
+      const response = await fetch(`${API_BASE_URL}/user/${id}/tracking`);
       const data = await response.json();
+
+      // Optional: check response.ok or do your own error handling
       if (data.tracking) {
         setTrackingData({
           objective: data.tracking.objective,
@@ -78,12 +85,13 @@ const TrackScreen = () => {
       }
     } catch (error) {
       console.error('Error fetching tracking data:', error);
+      setApiError(true);
     }
   };
 
-  const fetchUserData = async () => {
+  const fetchUserData = async (id) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+      const response = await fetch(`${API_BASE_URL}/user/${id}`);
       const data = await response.json();
 
       if (data.evaluation_list) {
@@ -92,38 +100,86 @@ const TrackScreen = () => {
         ).length;
         setAnsweredCount(answeredEvaluations);
       }
-      setCastCount(data.castPublications.length);
-      setArticleCount(data.articlePublications.length);
     } catch (error) {
       console.error('Error fetching user data:', error);
+      setApiError(true);
     }
   };
 
+  // Combined fetch for both tracking + user data
+  const fetchAllData = async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    setApiError(false);
+
+    await Promise.all([fetchTrackingData(userId), fetchUserData(userId)]);
+
+    setIsLoading(false);
+  };
+
+  // MOUNT/UPDATE
   useEffect(() => {
     if (userId) {
-      fetchData();
-      fetchUserData();
+      fetchAllData();
     }
   }, [userId]);
 
-  const onRefresh = React.useCallback(() => {
+  // PULL TO REFRESH
+  const onRefresh = useCallback(() => {
     if (userId) {
       setRefreshing(true);
-      fetchData();
-      fetchUserData();
-      setRefreshing(false);
+      fetchAllData().then(() => setRefreshing(false));
     }
   }, [userId]);
 
+  // ERROR LAYOUT
+  if (apiError) {
+    return (
+      <View style={styles.errorContainer}>
+        <Image source={serverError} style={styles.errorImage} />
+        <Text style={styles.errorText}>Whoops!</Text>
+        <Text style={styles.errorDetail}>
+          Please try refreshing or come back later!
+        </Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={() => {
+            setApiError(false);
+            setIsLoading(true);
+            fetchAllData();
+          }}
+        >
+          <Text style={styles.refreshButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  // LOADING LAYOUT
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <LottieView
+          source={require('../assets/Loader/loader.json')}
+          autoPlay
+          loop
+          style={styles.lottie}
+        />
+      </View>
+    );
+  }
+
+  // MAIN LAYOUT
   return (
     <View style={styles.container}>
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: 120 }} // Extra space for the floating button
+        contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Blue Gradient */}
         <LinearGradient
           colors={[colors.lightblue, colors.darkblue]}
           start={{ x: 0, y: 0 }}
@@ -144,50 +200,7 @@ const TrackScreen = () => {
           </View>
         </LinearGradient>
 
-        {(userRole === 'Professor' ||
-          userRole === 'Researcher' ||
-          userRole === 'PhD Student') && (
-          <LinearGradient
-            colors={[colors.lightGreen, colors.darkGreen]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.greenSection}
-          >
-            <Text style={styles.greenSectionTitle}>Publications</Text>
-            <View style={styles.greenSectionContent}>
-              <TouchableOpacity
-                style={styles.greenSectionColumn}
-                onPress={() => handleNavigateToPublications('article')}
-              >
-                <Image
-                  source={require('../assets/Cast_screen_icons/article_logo.png')}
-                  style={styles.greenSectionIcon}
-                />
-                <Text style={styles.greenSectionText}>{articleCount}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.greenSectionColumn}
-                onPress={() => handleNavigateToPublications('cast')}
-              >
-                <Image
-                  source={require('../assets/Cast_screen_icons/cast_logo.png')}
-                  style={styles.greenSectionIcon}
-                />
-                <Text style={styles.greenSectionText}>{castCount}</Text>
-              </TouchableOpacity>
-
-              <View style={styles.greenSectionColumn}>
-                <Image
-                  source={require('../assets/Cast_screen_icons/podcast_logo.png')}
-                  style={styles.greenSectionIcon}
-                />
-                <Text style={styles.greenSectionText}>0</Text>
-              </View>
-            </View>
-          </LinearGradient>
-        )}
-
+        {/* Progress Container (Teal Gradient) */}
         <LinearGradient
           colors={[colors.lightTeal, colors.darkTeal]}
           start={{ x: 0, y: 0 }}
@@ -217,6 +230,7 @@ const TrackScreen = () => {
           </View>
         </LinearGradient>
 
+        {/* Chart Container (Orange Gradient) */}
         <LinearGradient
           colors={[colors.lightOrange, colors.darkOrange]}
           start={{ x: 0, y: 0 }}
@@ -251,7 +265,7 @@ const TrackScreen = () => {
                   <View style={styles.ChartandTextContainer} key={index}>
                     <View style={styles.circularGaugeItem}>
                       <AnimatedCircularProgress
-                        size={width * 0.25} // Gauge size is 25% of screen width
+                        size={width * 0.25} 
                         width={10}
                         fill={(item.progress / trackingData.target) * 100}
                         tintColor={colors.darkGreen}
@@ -281,7 +295,7 @@ const TrackScreen = () => {
         </LinearGradient>
       </ScrollView>
 
-      {/** FLOATING BUTTON AT THE BOTTOM */}
+      {/* FLOATING BUTTON */}
       <View style={styles.fixedButtonContainer}>
         <Button
           mode="contained"
@@ -306,6 +320,8 @@ const TrackScreen = () => {
   );
 };
 
+export default TrackScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -315,7 +331,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   fixedButtonContainer: {
-    /** Absolutely position the button at the bottom */
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -329,8 +344,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.darkblue,
     marginLeft: spacing.m,
     marginRight: spacing.m,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     borderRadius: sizes.radius,
     elevation: 5,
   },
@@ -415,11 +428,8 @@ const styles = StyleSheet.create({
   ProgressContainer: {
     backgroundColor: colors.primary,
     padding: spacing.m,
+    marginHorizontal: spacing.m,
     marginVertical: spacing.m,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     borderRadius: sizes.radius,
     elevation: 5,
   },
@@ -446,11 +456,8 @@ const styles = StyleSheet.create({
   ChartTitleContainer: {
     backgroundColor: colors.primary,
     padding: spacing.s,
+    marginHorizontal: spacing.m,
     marginVertical: spacing.m,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     borderRadius: sizes.radius,
     elevation: 5,
     alignItems: 'center',
@@ -487,6 +494,54 @@ const styles = StyleSheet.create({
     marginInlineStart: 2,
     marginRight: 2,
   },
-});
 
-export default TrackScreen;
+  /* LOADING & ERROR STYLES */
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryBis,
+  },
+  lottie: {
+    width: 200,
+    height: 200,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.m,
+    backgroundColor: colors.primaryBis,
+  },
+  errorImage: {
+    width: width * 0.5,
+    height: width * 0.5,
+    marginBottom: spacing.m,
+    resizeMode: 'contain',
+  },
+  errorText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'MontserratBold',
+  },
+  errorDetail: {
+    fontSize: sizes.h4,
+    color: colors.secondary,
+    textAlign: 'center',
+    fontFamily: 'Montserrat',
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
+  },
+  refreshButton: {
+    backgroundColor: colors.secondary,
+    padding: spacing.m,
+    borderRadius: sizes.radius,
+  },
+  refreshButtonText: {
+    color: colors.primary,
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+  },
+});

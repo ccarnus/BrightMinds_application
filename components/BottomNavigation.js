@@ -138,6 +138,7 @@ const BottomNavigation = () => {
           style={[
             styles.indicator,
             {
+              left: (sizes.width / tabs.length) / 2 - 15,
               width: 32,
               transform: [
                 {
@@ -158,8 +159,6 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     height: 3,
-    // Adjust this left calculation so the indicator aligns with your tabs
-    left: sizes.width / 4 / 2 - 15,
     bottom: 47,
     backgroundColor: colors.darkblue,
     zIndex: 100,
