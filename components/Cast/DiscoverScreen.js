@@ -157,28 +157,30 @@ const DiscoverScreen = ({ navigation }) => {
         <>
           {videos.length > 0 && videos[focusedIndex] && (
             <>
-              <View style={styles.titleView}>
-                <Text style={styles.videoTitle}>
-                  {videos[focusedIndex].title}
-                </Text>
-              </View>
-              <TouchableOpacity
-                style={[styles.imageContainer, { height: width / 1.5 }]}
-                onPress={togglePlay}
-                activeOpacity={1}
-              >
-                <Image
-                  source={{ uri: videos[focusedIndex].castimageurl }}
-                  style={{ width: width, height: width / 1.5 }}
-                  resizeMode="contain"
-                />
-                <View style={styles.playIconContainer}>
-                  <Image
-                    source={require('../../assets/Cast_icons/play_icon.png')}
-                    style={styles.playIcon}
-                  />
+            <View style={styles.topSection}>
+                <View style={styles.titleView}>
+                  <Text style={styles.videoTitle}>
+                    {videos[focusedIndex].title}
+                  </Text>
                 </View>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.imageContainer, { height: width / 1.5 }]}
+                  onPress={togglePlay}
+                  activeOpacity={1}
+                >
+                  <Image
+                    source={{ uri: videos[focusedIndex].castimageurl }}
+                    style={{ width: width, height: width / 1.5 }}
+                    resizeMode="contain"
+                  />
+                  <View style={styles.playIconContainer}>
+                    <Image
+                      source={require('../../assets/Cast_icons/play_icon.png')}
+                      style={styles.playIcon}
+                    />
+                  </View>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
@@ -227,7 +229,6 @@ const DiscoverScreen = ({ navigation }) => {
                   marginLeft: spacing.m,
                   marginRight: spacing.m,
                   marginBottom: spacing.s,
-                  marginTop: spacing.s,
                   borderRadius: sizes.buttonRadius,
                 }}
               >
@@ -246,10 +247,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.primary,
   },
+  topSection: {
+    flex: 1,
+    marginTop: height * 0.15,
+  },
   bottomSection: {
     flex: 1,
     justifyContent: 'space-around',
     alignItems: 'center',
+    marginTop: height * 0.15,
   },
   band: {
     flex: 1,
@@ -284,8 +290,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   universityIconMain: {
-    width: width * 0.25,
-    height: width * 0.25,
+    width: width * 0.18,
+    height: width * 0.18,
   },
   departmentIcon: {
     width: width * 0.15,

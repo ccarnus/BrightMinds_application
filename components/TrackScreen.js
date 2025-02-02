@@ -71,8 +71,7 @@ const TrackScreen = () => {
       if (data.tracking) {
         setTrackingData({
           objective: data.tracking.objective,
-          progress: data.tracking.progress / 100,
-          target: data.target,
+          progress: data.tracking.progress / data.tracking.target,
         });
         if (data.tracking.history) {
           setHistory(
