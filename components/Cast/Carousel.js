@@ -42,7 +42,7 @@ const Carousel = ({ list, carouselType }) => {
             }}
             onPress={() =>
               navigation.navigate(
-                carouselType === 'trending' ? 'Trending' : 'SuggestedForYou',
+                carouselType === 'trending' ? 'VideoScreen' : 'VideoScreen',
                 { selectedVideoId: item.id }
               )
             }

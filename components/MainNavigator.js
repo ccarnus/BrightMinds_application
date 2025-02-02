@@ -10,9 +10,6 @@ import Ready from './Track/ready';
 import Evaluation from './Track/evaluation';
 import Banner from './Banner';
 import ProfileScreen from './ProfileScreen';
-import SuggestedForYou from './Cast/SuggestedForYouScreen';
-import Trending from './Cast/TrendingScreen';
-import SearchResult from './Cast/SearchResultScreen';
 import SimpleHeader from './Profile/SimpleHeader';
 import Objective from './Profile/Objective';
 import Finish from './Track/finish';
@@ -30,6 +27,7 @@ import DiscoverScreen from './Cast/DiscoverScreen';
 import LoadingScreen from './Onboarding/LoadingScreen';
 import OnboardingScreen from './Onboarding/OnboardingScreen';
 import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
+import VideoScreen from './Cast/VideoScreen';
 
 const Stack = createStackNavigator();
 
@@ -120,10 +118,8 @@ const MainNavigator = () => {
         <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="SuggestedForYou" component={SuggestedForYou} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="Trending" component={Trending} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="VideoScreen" component={VideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="SearchResult" component={SearchResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />

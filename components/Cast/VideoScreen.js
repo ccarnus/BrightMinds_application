@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Image, Dimensions, Share } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  TouchableOpacity, 
+  Text, 
+  Image, 
+  Dimensions, 
+  Share 
+} from 'react-native';
 import { Video } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
@@ -9,6 +17,7 @@ import { colors, sizes, spacing } from '../theme';
 
 const { width, height } = Dimensions.get('window');
 
+// Converts a time string (e.g. "00:00:04,639") to milliseconds.
 const timeStringToMillis = (timeString) => {
   const parts = timeString.split(/[:,]/);
   const hours = parseInt(parts[0], 10);
@@ -18,6 +27,7 @@ const timeStringToMillis = (timeString) => {
   return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis;
 };
 
+// Parses an SRT file string into an array of caption objects.
 const parseSRT = (data) => {
   const captions = [];
   const blocks = data.split(/\n\s*\n/);
@@ -37,8 +47,12 @@ const parseSRT = (data) => {
   return captions;
 };
 
-const SearchResultScreen = ({ route, navigation }) => {
-  const { selectedCastId } = route.params;
+const VideoScreen = ({ route, navigation }) => {
+  // Accept either selectedCastId or selectedVideoId.
+  const { selectedCastId, selectedVideoId } = route.params;
+  // Use whichever parameter exists.
+  const videoId = selectedCastId || selectedVideoId;
+
   const [video, setVideo] = useState(null);
   const [videoStatus, setVideoStatus] = useState(true);
   const [userId, setUserId] = useState(null);
@@ -60,26 +74,31 @@ const SearchResultScreen = ({ route, navigation }) => {
     getUserId();
   }, []);
 
+  // Once the userId is available, fetch the video.
   useEffect(() => {
-    if (userId) {
+    if (userId && videoId) {
       fetchVideo();
     }
-  }, [userId, selectedCastId]);
+  }, [userId, videoId]);
 
   const fetchVideo = () => {
-    fetch(`${API_BASE_URL}/cast/${selectedCastId}`)
+    fetch(`${API_BASE_URL}/cast/${videoId}`)
       .then(response => response.json())
       .then(videoData => {
         fetch(`${API_BASE_URL}/university/by/name/${videoData.university}`)
           .then(res => res.json())
           .then(universityData => {
-            const completeVideo = { ...videoData, universityLogo: universityData.iconurl };
+            const completeVideo = { 
+              ...videoData, 
+              universityLogo: universityData.iconurl 
+            };
             setVideo(completeVideo);
           });
       })
       .catch(error => console.error(error));
   };
 
+  // If a subtitle URL exists, fetch and parse the subtitle file.
   useEffect(() => {
     if (video && video.subtitleurl) {
       fetch(video.subtitleurl)
@@ -105,15 +124,14 @@ const SearchResultScreen = ({ route, navigation }) => {
         setContentSubmitted(true);
         console.log("Content marked as watched at 85%");
       })
-      .catch(error => {
-        console.error(error);
-      });
+      .catch(error => console.error(error));
   };
 
   const handleCastDonePlaying = () => {
     navigation.goBack();
   };
 
+  // Pause video when the screen loses focus.
   useEffect(() => {
     const pauseVideo = () => {
       setVideoStatus(false);
@@ -135,14 +153,11 @@ const SearchResultScreen = ({ route, navigation }) => {
         handleCastDonePlaying();
       }
 
+      // Update custom caption overlay only if captions are enabled.
       if (captionsEnabled && parsedCaptions.length > 0) {
         const currentTime = status.positionMillis;
         const caption = parsedCaptions.find(cap => currentTime >= cap.start && currentTime < cap.end);
-        if (caption) {
-          setCurrentCaption(caption.text);
-        } else {
-          setCurrentCaption('');
-        }
+        setCurrentCaption(caption ? caption.text : '');
       } else {
         setCurrentCaption('');
       }
@@ -170,11 +185,9 @@ const SearchResultScreen = ({ route, navigation }) => {
         message: `Check out this video: ${video.casturl}`,
       });
       if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          console.log('Shared with activity type: ', result.activityType);
-        } else {
-          console.log('Video shared successfully.');
-        }
+        console.log(result.activityType
+          ? 'Shared with activity type: ' + result.activityType
+          : 'Video shared successfully.');
       } else if (result.action === Share.dismissedAction) {
         console.log('Share dismissed.');
       }
@@ -183,6 +196,9 @@ const SearchResultScreen = ({ route, navigation }) => {
     }
   };
 
+  // Determine which caption icon to use.
+  // If the video has a subtitle URL and captions are enabled, show caption_on;
+  // otherwise, show caption_off.
   let captionIcon = require('../../assets/Cast_screen_icons/caption_off.png');
   if (video && video.subtitleurl) {
     captionIcon = captionsEnabled
@@ -259,10 +275,7 @@ const SearchResultScreen = ({ route, navigation }) => {
         {/* Buttons container (always visible) positioned just above the progress bar */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity onPress={() => setCaptionsEnabled(prev => !prev)}>
-            <Image
-              source={captionIcon}
-              style={styles.icon}
-            />
+            <Image source={captionIcon} style={styles.icon} />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare}>
             <Image
@@ -343,7 +356,7 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 55,
+    bottom: 55, // Just above the progress slider
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -374,4 +387,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SearchResultScreen;
+export default VideoScreen;

@@ -234,7 +234,7 @@ const CastScreen = () => {
   };
 
   const handleSearchResultPress = (id) => {
-    navigation.navigate('SearchResult', { selectedCastId: id });
+    navigation.navigate('VideoScreen', { selectedCastId: id });
     console.log(id)
   };
 
