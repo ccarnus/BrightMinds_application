@@ -4,8 +4,7 @@ import {
   TouchableOpacity, 
   Text, 
   Image, 
-  StyleSheet, 
-  ActivityIndicator 
+  StyleSheet 
 } from 'react-native';
 import { Dimensions } from 'react-native';
 import axios from 'axios';
@@ -14,6 +13,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import LottieView from 'lottie-react-native';
 import { Button } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
+import departments from '../../lists/departments';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,7 +22,6 @@ const DiscoverScreen = ({ navigation }) => {
   const [apiError, setApiError] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const [userId, setUserId] = useState(null);
-  const [contentSubmitted, setContentSubmitted] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const serverError = require('../../assets/Cast_screen_icons/server_error.png');
 
@@ -120,6 +119,12 @@ const DiscoverScreen = ({ navigation }) => {
     );
   }
 
+  // Helper: Returns the display name for a given department key.
+  const getDepartmentDisplayName = (departmentKey) => {
+    const deptObj = departments.find(dept => dept.name === departmentKey);
+    return deptObj ? deptObj.display : '';
+  };
+
   const getDepartmentIcon = (department) => {
     return departmentIcons[department] || null;
   };
@@ -186,15 +191,20 @@ const DiscoverScreen = ({ navigation }) => {
 
           <View style={styles.bottomSection}>
             <View style={styles.middleband}>
-              <View style={styles.leftColumn}>
-                {videos[focusedIndex] && videos[focusedIndex].department && (
+            <View style={styles.leftColumn}>
+              {videos[focusedIndex] && videos[focusedIndex].department && (
+                <View style={{ alignItems: 'center' }}>
                   <Image
                     source={getDepartmentIcon(videos[focusedIndex].department)}
                     style={styles.departmentIcon}
                     resizeMode="contain"
                   />
-                )}
-              </View>
+                  <Text style={styles.departmentLabel}>
+                    {getDepartmentDisplayName(videos[focusedIndex].department)}
+                  </Text>
+                </View>
+              )}
+            </View>
               <View style={styles.separator} />
               <View style={styles.middleColumn}>
                 {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
@@ -333,6 +343,13 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
     textAlign: 'center',
+  },
+  departmentLabel: {
+    fontSize: sizes.h4,
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    marginTop: spacing.s,
   },
   loadingContainer: {
     flex: 1,
