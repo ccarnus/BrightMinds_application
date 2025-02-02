@@ -1,8 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Image, StyleSheet, Modal, ActivityIndicator } from 'react-native';
-import { Video } from 'expo-av';
+import React, { useState, useEffect } from 'react';
+import { 
+  View, 
+  TouchableOpacity, 
+  Text, 
+  Image, 
+  StyleSheet, 
+  ActivityIndicator 
+} from 'react-native';
 import { Dimensions } from 'react-native';
-import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,14 +21,9 @@ const DiscoverScreen = ({ navigation }) => {
   const [videos, setVideos] = useState([]);
   const [apiError, setApiError] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [videoStatus, setVideoStatus] = useState([]);
-  const [showVideo, setShowVideo] = useState(false);
   const [userId, setUserId] = useState(null);
-  const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
-  const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
   const [contentSubmitted, setContentSubmitted] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const videoRefs = useRef([]);
   const serverError = require('../../assets/Cast_screen_icons/server_error.png');
 
   const departmentIcons = {
@@ -97,7 +97,6 @@ const DiscoverScreen = ({ navigation }) => {
         );
         Promise.all(fetchUniversityLogos).then(dataWithLogos => {
           setVideos(dataWithLogos);
-          setVideoStatus(dataWithLogos.map(() => false));
           setIsLoading(false);
         });
       } else {
@@ -112,22 +111,17 @@ const DiscoverScreen = ({ navigation }) => {
   };
 
   if (apiError) {
-      return (
-        <View style={styles.errorContainer}>
-          <Image source={serverError} style={styles.errorImage} />
-          <Text style={styles.errorText}>Whoops!</Text>
-          <Text style={styles.errorDetail}>Please try to come back later!</Text>
-        </View>
-      );
-    }
+    return (
+      <View style={styles.errorContainer}>
+        <Image source={serverError} style={styles.errorImage} />
+        <Text style={styles.errorText}>Whoops!</Text>
+        <Text style={styles.errorDetail}>Please try to come back later!</Text>
+      </View>
+    );
+  }
 
   const getDepartmentIcon = (department) => {
     return departmentIcons[department] || null;
-  };
-
-  const togglePlay = () => {
-    setShowVideo(true);
-    setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? !status : status));
   };
 
   const formatDuration = (duration) => {
@@ -136,103 +130,36 @@ const DiscoverScreen = ({ navigation }) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const togglePlayVideoFocused = async () => {
-    if (videoRefs.current[focusedIndex]) {
-      const status = await videoRefs.current[focusedIndex].getStatusAsync();
-      if (status.isPlaying) {
-        await videoRefs.current[focusedIndex].pauseAsync();
-      } else {
-        await videoRefs.current[focusedIndex].playAsync();
-      }
-    }
-  };
-
-  const handleCastWatched = (index) => {
-    if (!videos[index] || contentSubmitted[index]) return;
-
-    const castId = videos[index]._id;
-
-    axios
-      .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
-      .then(() => {
-        setContentSubmitted(prevSubmitted => prevSubmitted.map((submitted, idx) => idx === index ? true : submitted));
-        console.log("Content marked as watched at 85%");
-      })
-      .catch(error => {
-        console.error(error);
-      });
-  };
-
-  const handleCastDonePlaying = () => {
-    setShowVideo(false);
-    setVideoStatus(videoStatus.map((status, idx) => idx === focusedIndex ? false : status));
-    navigation.goBack(); // Close the video and navigate back
-  };
-
-  const onPlaybackStatusUpdate = (status) => {
-    if (status.isLoaded) {
-      setPlaybackInstancePosition(status.positionMillis);
-      setPlaybackInstanceDuration(status.durationMillis);
-
-      const progress = playbackInstancePosition / playbackInstanceDuration;
-
-      if (progress >= 0.85 && !contentSubmitted[focusedIndex]) {
-        handleCastWatched(focusedIndex); // Mark content as watched at 85%
-      }
-
-      if (status.didJustFinish) {
-        handleCastDonePlaying();
-      }
-    }
-  };
-
-  const getMMSSFromMillis = (millis) => {
-    const totalSeconds = millis / 1000;
-    const seconds = Math.floor(totalSeconds % 60);
-    const minutes = Math.floor(totalSeconds / 60);
-
-    const padWithZero = (number) => {
-      const string = number.toString();
-      if (number < 10) {
-        return '0' + string;
-      }
-      return string;
-    };
-    return padWithZero(minutes) + ':' + padWithZero(seconds);
-  };
-
-  const handleSliderValueChange = async (value) => {
-    if (videoRefs.current[focusedIndex]) {
-      const seekPosition = value * playbackInstanceDuration;
-      await videoRefs.current[focusedIndex].setPositionAsync(seekPosition);
-    }
+  // When the image is pressed, navigate to VideoScreen with the selected cast's ID
+  const togglePlay = () => {
+    const selectedVideo = videos[focusedIndex];
+    navigation.navigate('VideoScreen', { selectedCastId: selectedVideo._id });
   };
 
   const handleNextVideoPress = () => {
     const nextIndex = (focusedIndex + 1) % videos.length;
     setFocusedIndex(nextIndex);
-    setVideoStatus(videoStatus.map((_, idx) => idx === nextIndex ? false : false));
   };
 
   return (
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-        {console.log('Loader should be visible, state is: ' + isLoading)}
-        <LottieView
-          source={require('../../assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={{ width: 200, height: 200 }}
-        />
-      </View>
+          {console.log('Loader should be visible, state is: ' + isLoading)}
+          <LottieView
+            source={require('../../assets/Loader/loader.json')}
+            autoPlay
+            loop
+            style={{ width: 200, height: 200 }}
+          />
+        </View>
       ) : (
         <>
           {videos.length > 0 && videos[focusedIndex] && (
             <>
               <View style={styles.titleView}>
                 <Text style={styles.videoTitle}>
-                  {videos[focusedIndex] ? videos[focusedIndex].title : ''}
+                  {videos[focusedIndex].title}
                 </Text>
               </View>
               <TouchableOpacity
@@ -245,67 +172,16 @@ const DiscoverScreen = ({ navigation }) => {
                   style={{ width: width, height: width / 1.5 }}
                   resizeMode="contain"
                 />
-                {!videoStatus[focusedIndex] && (
-                  <View style={styles.playIconContainer}>
-                    <Image
-                      source={require('../../assets/Cast_icons/play_icon.png')}
-                      style={styles.playIcon}
-                    />
-                  </View>
-                )}
+                <View style={styles.playIconContainer}>
+                  <Image
+                    source={require('../../assets/Cast_icons/play_icon.png')}
+                    style={styles.playIcon}
+                  />
+                </View>
               </TouchableOpacity>
-              <Modal
-                animationType="slide"
-                transparent={false}
-                visible={showVideo}
-                onRequestClose={() => {
-                  setShowVideo(false);
-                  setVideoStatus(videoStatus.map((status, idx) =>
-                    idx === focusedIndex ? false : status
-                  ));
-                }}
-              >
-                <TouchableOpacity
-                  activeOpacity={1}
-                  style={{ flex: 1 }}
-                  onPress={togglePlayVideoFocused}
-                >
-                  <View style={{ flex: 1, backgroundColor: colors.secondary }}>
-                    <Video
-                      ref={ref => (videoRefs.current[focusedIndex] = ref)}
-                      source={{ uri: videos[focusedIndex].casturl }}
-                      shouldPlay={videoStatus[focusedIndex]}
-                      resizeMode="contain"
-                      style={{ width: '100%', height: '100%' }}
-                      onPlaybackStatusUpdate={onPlaybackStatusUpdate}
-                    />
-                    <Slider
-                      style={styles.progressSlider}
-                      value={playbackInstancePosition / playbackInstanceDuration}
-                      minimumValue={0}
-                      maximumValue={1}
-                      minimumTrackTintColor={colors.primary}
-                      maximumTrackTintColor={colors.secondary}
-                      thumbTintColor={colors.primary}
-                      onSlidingComplete={handleSliderValueChange}
-                    />
-                    <Text style={styles.duration}>
-                      {getMMSSFromMillis(playbackInstancePosition)} /{' '}
-                      {getMMSSFromMillis(playbackInstanceDuration)}
-                    </Text>
-                    <View style={styles.UniversityContainer}>
-                      <Image
-                        source={{ uri: videos[focusedIndex].universityLogo }}
-                        style={styles.universityIcon}
-                        resizeMode="contain"
-                      />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              </Modal>
             </>
           )}
-  
+
           <View style={styles.bottomSection}>
             <View style={styles.middleband}>
               <View style={styles.leftColumn}>
@@ -340,20 +216,20 @@ const DiscoverScreen = ({ navigation }) => {
                 onPress={handleNextVideoPress}
                 buttonColor={colors.darkGreen}
                 icon={require('../../assets/Discover_icons/next.png')}
-                contentStyle={{ flexDirection: 'row-reverse'}}
+                contentStyle={{ flexDirection: 'row-reverse' }}
                 labelStyle={{
                   fontSize: sizes.h2,
                   fontFamily: 'Montserrat',
                   textAlign: 'center',
                   paddingTop: spacing.xs,
-                  }}
-                  style={{
-                    marginLeft: spacing.m,
-                    marginRight: spacing.m,
-                    marginBottom: spacing.s,
-                    marginTop: spacing.s,
-                    borderRadius: sizes.buttonRadius,
-                  }}
+                }}
+                style={{
+                  marginLeft: spacing.m,
+                  marginRight: spacing.m,
+                  marginBottom: spacing.s,
+                  marginTop: spacing.s,
+                  borderRadius: sizes.buttonRadius,
+                }}
               >
                 Explore Next
               </Button>
@@ -363,7 +239,7 @@ const DiscoverScreen = ({ navigation }) => {
       )}
     </View>
   );
-};  
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -420,19 +296,6 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
-  button: {
-    padding: 15,
-    backgroundColor: colors.secondary,
-    alignItems: 'center',
-    borderRadius: sizes.radius,
-    width: "80%",
-    elevation: 5,
-  },
-  buttonText: {
-    fontSize: sizes.h3,
-    color: colors.primaryBis,
-    fontFamily: 'MontserratBold',
-  },
   imageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -465,47 +328,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  UniversityContainer: {
-    width: width/4,
-    height: width/4,
-    position: 'absolute',
-    bottom: spacing.xl*2,
-    right: spacing.l,
-    alignItems: 'center',
-  },
-  universityIcon: {
-    width: "100%",
-    height: "100%",
-    marginHorizontal: 12,
-  },
-  progressSlider: {
-    position: 'absolute',
-    bottom: 30,
-    width: '90%',
-  },
-  duration: {
-    position: 'absolute',
-    bottom: 10,
-    color: 'white',
-    textAlign: 'center',
-    width: '100%',
-    fontFamily: 'Montserrat',
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  logo: {
-    width: width * 0.5, 
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lottie: {
-    width: width*0.25,
   },
   errorContainer: {
     flex: 1,
@@ -514,8 +340,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorImage: {
-    width: width*0.5,
-    height: width*0.5,
+    width: width * 0.5,
+    height: width * 0.5,
     marginBottom: 20,
   },
   errorText: {

@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   topicName: {
     fontSize: RFValue(20), // Responsive font size
     color: colors.secondary,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     marginBottom: spacing.s,
   },
   topicStats: {
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     fontSize: RFValue(22), // Responsive font size
     color: colors.secondary,
     marginBottom: spacing.m,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     textAlign: 'center',
   },
   modalDescription: {

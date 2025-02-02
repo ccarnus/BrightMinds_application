@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     fontSize: sizes.title,
     color: colors.secondary,
     marginBottom: spacing.l,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     textAlign: 'center',
   },
   publicationsContainer: {
