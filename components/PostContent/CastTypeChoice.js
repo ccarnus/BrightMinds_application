@@ -37,8 +37,6 @@ const CastTypeChoice = () => {
 
   const handleChoice = (castType) => {
     switch (castType) {
-      case 'Podcast':
-        break;
       case 'Clip':
         navigation.navigate('PostCast');
         break;
@@ -52,18 +50,6 @@ const CastTypeChoice = () => {
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim1 }]}>
-        <TouchableOpacity onPress={() => handleChoice('Podcast')}>
-          <View style={styles.content}>
-            <Image
-              source={require('../../assets/Cast_screen_icons/podcast_logo.png')}
-              style={styles.icon}
-            />
-            <Text style={styles.buttonText}>Podcast</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-
       <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim2 }]}>
         <TouchableOpacity onPress={() => handleChoice('Clip')}>
           <View style={styles.content}>
