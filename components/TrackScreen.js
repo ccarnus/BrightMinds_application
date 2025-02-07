@@ -74,6 +74,7 @@ const TrackScreen = () => {
           progress: data.tracking.progress / data.tracking.target,
         });
         if (data.tracking.history) {
+          console.log("Tracking 'history' before mapping:", data.tracking.history);
           setHistory(
             data.tracking.history.map((hist) => ({
               category: hist.category,
@@ -253,7 +254,6 @@ const TrackScreen = () => {
               What you are learning about
             </Text>
           </View>
-
           <View style={styles.circularGaugesContainer}>
             {history.length > 0 ? (
               history.map((item, index) => {
@@ -266,7 +266,7 @@ const TrackScreen = () => {
                       <AnimatedCircularProgress
                         size={width * 0.25} 
                         width={10}
-                        fill={(item.progress / trackingData.target) * 100}
+                        fill={(item.progress /10 ) *100}
                         tintColor={colors.darkGreen}
                         backgroundColor={colors.primaryBis}
                         lineCap="round"
@@ -275,7 +275,7 @@ const TrackScreen = () => {
                         {(fill) => (
                           <Text style={styles.gaugeText}>
                             {`${Math.round(
-                              (item.progress / trackingData.target) * 100
+                              (item.progress /10) * 100 
                             )}%`}
                           </Text>
                         )}
