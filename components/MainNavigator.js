@@ -18,7 +18,6 @@ import ArticleDetailsScreen from './Cast/ArticleDetailsScreen';
 import LoginScreen from './LoginScreen';
 import SignupScreen from './SignupScreen';
 import PreferencesScreen from './PreferencesScreen';
-import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import CastPublicationsScreen from './Track/CastPublicationsScreen';
 import ArticlePublicationsScreen from './Track/ArticlePublicationsScreen';
 import EditProfileScreen from './Profile/EditProfileScreen';
@@ -120,7 +119,6 @@ const MainNavigator = () => {
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VideoScreen" component={VideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }}  
