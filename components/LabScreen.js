@@ -24,7 +24,7 @@ const departmentImages = {
   Chemistry: require('../assets/Virtual_labs/Chemistry.png'),
   EarthandPlanetarySciences: require('../assets/Virtual_labs/EarthandPlanetarySciences.png'),
   Neuroscience: require('../assets/Virtual_labs/Neuroscience.png'),
-  Mathematics: require('../assets/Virtual_labs/Neuroscience.png'),
+  Mathematics: require('../assets/Virtual_labs/Mathematics.png'),
   ImmunologyandMicrobiology: require('../assets/Virtual_labs/ImmunologyandMicrobiology.png'),
   DecisionSciences: require('../assets/Virtual_labs/DecisionSciences.png'),
   Energy: require('../assets/Virtual_labs/Energy.png'),

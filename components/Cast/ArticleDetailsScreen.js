@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Linking, Dimensions } from 'react-native';
+import { 
+  View, 
+  Text, 
+  Image, 
+  ScrollView, 
+  StyleSheet, 
+  ActivityIndicator, 
+  Linking, 
+  Dimensions 
+} from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -93,25 +102,22 @@ const ArticleDetailsScreen = ({ route }) => {
     }
   };
 
-  const getDaysSincePosted = (dateString) => {
-    const datePosted = new Date(dateString);
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
-    datePosted.setHours(0, 0, 0, 0);
-
-    const differenceInTime = currentDate.getTime() - datePosted.getTime();
-    const differenceInDays = Math.floor(differenceInTime / (1000 * 3600 * 24));
-
-    if (differenceInDays === 0) {
-      return "today";
-    } else {
-      return `${differenceInDays} days ago`;
-    }
+  const getDepartmentDetails = (departmentName) => {
+    return departments.find((dept) => dept.name === departmentName);
   };
 
-  const getDepartmentDisplayName = (departmentName) => {
-    const department = departments.find((dept) => dept.name === departmentName);
-    return department ? department.display : departmentName;
+  const getTimeSincePosted = (dateString) => {
+    const datePosted = new Date(dateString);
+    const currentDate = new Date();
+    const diffInMs = currentDate.getTime() - datePosted.getTime();
+    const diffInDays = Math.floor(diffInMs / (1000 * 3600 * 24));
+
+    if (diffInDays < 365) {
+      return diffInDays === 0 ? "today" : `${diffInDays} days ago`;
+    } else {
+      const years = Math.floor(diffInDays / 365);
+      return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+    }
   };
 
   if (isLoading) {
@@ -130,51 +136,64 @@ const ArticleDetailsScreen = ({ route }) => {
     );
   }
 
+  // Get the department details
+  const departmentDetails = getDepartmentDetails(article.department);
+  const departmentDisplayName = departmentDetails ? departmentDetails.display : article.department;
+
   return (
     <View style={styles.container}>
       <ScrollView style={styles.containerScroll}>
         <Image source={{ uri: article.articleimageurl }} style={styles.image} />
+
+        {/* University Info */}
         {universityLogo && (
-          <View style={styles.iconContainer}>
+          <View style={styles.topIconContainer}>
             <Image source={{ uri: universityLogo }} style={styles.icon} />
             <Text style={styles.iconText}>{universityName}</Text>
           </View>
         )}
-        
-        <View style={styles.infoDisplay}>
-          <Text style={styles.infoText}>{getDaysSincePosted(article.dateadded)}</Text>
-          <Text style={styles.separator}> · </Text>
-          <Text style={styles.infoText}>{getDepartmentDisplayName(article.department)}</Text>
+
+        {/* Department Info */}
+        {departmentDetails && (
+          <View style={styles.topIconContainer}>
+            <Image source={departmentDetails.image} style={styles.icon} />
+            <Text style={styles.iconTextDepartment}>{departmentDisplayName}</Text>
+          </View>
+        )}
+
+        {/* Date Added */}
+        <View style={styles.dateContainer}>
+          <Text style={styles.dateText}>{getTimeSincePosted(article.dateadded)}</Text>
         </View>
 
         <View style={styles.content}>
           <Text style={styles.title}>{article.title}</Text>
-          <Text style={styles.description}>{article.articleDescription}</Text>
+          <Text style={styles.description}>{article.description}</Text>
         </View>
         
         <View style={styles.buttonContainer}>
           <Button
-              mode="contained"
-              onPress={handleAddToCastList}
-              buttonColor={colors.darkGreen}
-              icon={require('../../assets/Cast_screen_icons/like.png')}
-              labelStyle={{
-                fontSize: sizes.h2,
-                fontFamily: 'Montserrat',
-                textAlign: 'center',
-                paddingTop: spacing.s,
-              }}
-              style={{ 
-                marginLeft: spacing.m,
-                marginRight: spacing.m,
-                marginBottom: height * 0.08,
-                marginTop: spacing.l,
-                paddingHorizontal: spacing.m,
-                borderRadius: sizes.buttonRadius,
-              }}
-            >
-              Got it!
-            </Button>
+            mode="contained"
+            onPress={handleAddToCastList}
+            buttonColor={colors.darkGreen}
+            icon={require('../../assets/Cast_screen_icons/like.png')}
+            labelStyle={{
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.s,
+            }}
+            style={{ 
+              marginLeft: spacing.m,
+              marginRight: spacing.m,
+              marginBottom: height * 0.08,
+              marginTop: spacing.l,
+              paddingHorizontal: spacing.m,
+              borderRadius: sizes.buttonRadius,
+            }}
+          >
+            Got it!
+          </Button>
         </View>
       </ScrollView>
       <View style={styles.fixedButtonContainer}>
@@ -228,25 +247,18 @@ const styles = StyleSheet.create({
     textAlign: "left",
     fontFamily: "Montserrat",
   },
-  detail: {
-    fontSize: sizes.h1,
-    color: colors.gray,
-    marginBottom: spacing.xs,
-  },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconContainer: {
+  topIconContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginLeft: spacing.xl,
-    marginRight: spacing.l,
-    marginVertical: spacing.m,
-  },
+    marginVertical: spacing.s,
+  },  
   icon: {
     width: 40,
     height: 40,
@@ -257,58 +269,32 @@ const styles = StyleSheet.create({
     fontSize: sizes.h3,
     color: colors.black,
     fontFamily: 'Montserrat',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    textAlign: 'center',
+    width: '70%',
+  },
+  iconTextDepartment: {
+    fontSize: sizes.h3,
+    color: colors.black,
+    fontFamily: 'Montserrat',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    textAlign: 'center',
+  },
+  dateContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.s,
+    marginTop: spacing.s,
+  },
+  dateText: {
+    fontSize: sizes.h3,
+    color: colors.secondary,
+    fontFamily: "MontserratBold",
   },
   buttonContainer: {
     alignItems: 'center',
     marginBottom: spacing.l * 2,
-  },
-  button: {
-    backgroundColor: colors.darkblue,
-    borderRadius: sizes.radius,
-    paddingVertical: spacing.s,
-    paddingHorizontal: spacing.m,
-    width: '80%',
-    marginVertical: spacing.s,
-    backgroundColor: colors.primary,
-    borderColor: colors.secondary,
-    elevation: 5,
-  },
-  buttonAddText: {
-    color: colors.secondary,
-    fontSize: sizes.title,
-    textAlign: 'center',
-    fontFamily: "Montserrat",
-  },
-  buttonAccessText: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
-    textAlign: 'center',
-    fontFamily: "Montserrat",
-  },
-  infoDisplay: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.m,
-    borderRadius: sizes.radius,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginHorizontal: spacing.s,
-    marginBottom: spacing.m,
-    borderWidth: 1,
-    elevation: 5,
-  },
-  infoText: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    fontFamily: "MontserratBold",
-  },
-  separator: {
-    fontSize: sizes.title,
-    color: colors.secondary,
-    paddingHorizontal: spacing.xs,
-    fontFamily: "MontserratBold",
   },
   fixedButtonContainer: {
     position: 'absolute',
