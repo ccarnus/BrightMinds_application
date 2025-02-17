@@ -14,6 +14,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
 import { colors, sizes, spacing } from '../theme';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,11 +49,9 @@ const parseSRT = (data) => {
 };
 
 const VideoScreen = ({ route, navigation }) => {
-  // Accept either selectedCastId or selectedVideoId.
+  useKeepAwake();
   const { selectedCastId, selectedVideoId } = route.params;
-  // Use whichever parameter exists.
   const videoId = selectedCastId || selectedVideoId;
-
   const [video, setVideo] = useState(null);
   const [videoStatus, setVideoStatus] = useState(true);
   const [userId, setUserId] = useState(null);

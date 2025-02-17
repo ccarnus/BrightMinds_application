@@ -12,7 +12,6 @@
     ],
     "splash": {
       "image": "./assets/BrightMinds/splash.png",
-      "resizeMode": "contain",
       "backgroundColor": "#f1f1f1"
     },
     "statusBar": {
