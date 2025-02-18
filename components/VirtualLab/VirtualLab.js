@@ -19,7 +19,7 @@ import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
 import LottieView from 'lottie-react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
-import { RFValue } from "react-native-responsive-fontsize"; // Importing RFValue for responsive font sizes
+import { RFValue } from "react-native-responsive-fontsize";
 
 const { width, height } = Dimensions.get('window');
 
@@ -66,9 +66,6 @@ const VirtualLab = ({ route }) => {
     fetchTopics();
   }, []);
 
-  useEffect(() => {
-  }, [topics]);
-
   const fetchTopics = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/topic/department/${labId}`);
@@ -86,7 +83,6 @@ const VirtualLab = ({ route }) => {
   };
 
   const showInfoModal = () => {
-    // Find the current department based on labDisplayName or labId
     const department = departments.find(
       (dep) =>
         dep.display.toLowerCase() === labDisplayName?.toLowerCase() ||
@@ -120,7 +116,7 @@ const VirtualLab = ({ route }) => {
     return (
       <View style={styles.loadingContainer}>
         <LottieView
-          source={require('../../assets/Loader/loader.json')} // Ensure this path is correct
+          source={require('../../assets/Loader/loader.json')}
           autoPlay
           loop
           style={styles.lottie}
@@ -128,6 +124,9 @@ const VirtualLab = ({ route }) => {
       </View>
     );
   }
+
+  const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
+  const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
 
   return (
     <Provider>
@@ -152,8 +151,8 @@ const VirtualLab = ({ route }) => {
                 styles.labTitle, 
                 { fontSize: getFontSize(labDisplayName || 'Virtual Laboratory') }
               ]}
-              numberOfLines={3} // Allows up to three lines
-              ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
+              numberOfLines={3}
+              ellipsizeMode='tail'
             >
               {labDisplayName || 'Virtual Laboratory'}
             </Text>
@@ -171,59 +170,81 @@ const VirtualLab = ({ route }) => {
             {topics.length === 0 ? (
               <Text style={styles.noDataText}>No topics available.</Text>
             ) : (
-              topics.map((topic) => (
-                <TouchableOpacity
-                  key={topic._id}
-                  style={styles.topicContainer}
-                  onPress={() => handleTopicPress(topic._id)}
-                >
-                  {/* Topic Name */}
-                  <Text 
-                    style={styles.topicName}
-                    numberOfLines={3} // Allows up to three lines
-                    ellipsizeMode='tail' // Adds ellipsis at the end if text exceeds three lines
+              topics.map((topic) => {
+                // Normalize the gauge values to a 0-100 fill range.
+                const activityFill = maxActivity ? (topic.activity / maxActivity) * 100 : 0;
+                const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
+
+                return (
+                  <TouchableOpacity
+                    key={topic._id}
+                    style={styles.topicContainer}
+                    onPress={() => handleTopicPress(topic._id)}
                   >
-                    {topic.name}
-                  </Text>
-
-                  {/* Icons and Counts */}
-                  <View style={styles.topicStats}>
-                    {/* Articles */}
-                    <View style={styles.statItem}>
-                      <Image source={ArticleIcon} style={styles.statIcon} />
-                      <Text style={styles.statText}>{topic.articleCount}</Text>
-                    </View>
-
-                    {/* Casts */}
-                    <View style={styles.statItem}>
-                      <Image source={CastIcon} style={styles.statIcon} />
-                      <Text style={styles.statText}>{topic.castCount}</Text>
-                    </View>
-                  </View>
-
-                  {/* Circular Gauge */}
-                  <View style={styles.gaugeContainer}>
-                    <AnimatedCircularProgress
-                      size={width * 0.35} // Responsive size
-                      width={10}
-                      fill={Math.floor(Math.random() * 100) + 1} // Replace with actual data
-                      tintColor={colors.darkblue}
-                      backgroundColor={colors.primaryBis}
-                      rotation={-115} // Starts the progress from the left
-                      arcSweepAngle={230} // Makes the gauge a semi-circle
-                      lineCap="round" // Rounded ends
+                    <Text 
+                      style={styles.topicName}
+                      numberOfLines={3}
+                      ellipsizeMode='tail'
                     >
-                      {
-                        (fill) => (
-                          <Text style={styles.gaugeText}>
-                            {Math.ceil(fill)}%
-                          </Text>
-                        )
-                      }
-                    </AnimatedCircularProgress>
-                  </View>
-                </TouchableOpacity>
-              ))
+                      {topic.name}
+                    </Text>
+
+                    <View style={styles.topicStats}>
+                      <View style={styles.statItem}>
+                        <Image source={ArticleIcon} style={styles.statIcon} />
+                        <Text style={styles.statText}>{topic.articleCount}</Text>
+                      </View>
+                      <View style={styles.statItem}>
+                        <Image source={CastIcon} style={styles.statIcon} />
+                        <Text style={styles.statText}>{topic.castCount}</Text>
+                      </View>
+                    </View>
+
+                    {/* Two gauges side by side */}
+                    <View style={styles.gaugeRow}>
+                      <View style={styles.gaugeContainer}>
+                        <AnimatedCircularProgress
+                          size={width * 0.35}
+                          width={10}
+                          fill={activityFill}
+                          tintColor={colors.darkblue}
+                          backgroundColor={colors.primaryBis}
+                          rotation={-115}
+                          arcSweepAngle={230}
+                          lineCap="round"
+                        >
+                          {(fill) => (
+                            <Text style={styles.gaugeText}>
+                              {topic.activity.toFixed(2)}
+                            </Text>
+                          )}
+                        </AnimatedCircularProgress>
+                        <Text style={styles.gaugeLabel}>Activity</Text>
+                      </View>
+
+                      <View style={styles.gaugeContainer}>
+                        <AnimatedCircularProgress
+                          size={width * 0.35}
+                          width={10}
+                          fill={impactFill}
+                          tintColor={colors.darkblue}
+                          backgroundColor={colors.primaryBis}
+                          rotation={-115}
+                          arcSweepAngle={230}
+                          lineCap="round"
+                        >
+                          {(fill) => (
+                            <Text style={styles.gaugeText}>
+                              {topic.impact.toFixed(2)}
+                            </Text>
+                          )}
+                        </AnimatedCircularProgress>
+                        <Text style={styles.gaugeLabel}>Impact</Text>
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
             )}
           </View>
         </ScrollView>
@@ -270,7 +291,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 1, // Ensures content can shrink if necessary
+    flexShrink: 1,
   },
   departmentImage: {
     width: 80,
@@ -281,7 +302,7 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: 'Montserrat',
     textAlign: 'center',
-    flexShrink: 1, // Allows the text to shrink if necessary
+    flexShrink: 1,
   },
   topRightButtons: {
     position: 'absolute',
@@ -315,7 +336,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   topicName: {
-    fontSize: RFValue(20), // Responsive font size
+    fontSize: RFValue(20),
     color: colors.secondary,
     fontFamily: 'Montserrat',
     marginBottom: spacing.s,
@@ -323,7 +344,7 @@ const styles = StyleSheet.create({
   topicStats: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    marginBottom: spacing.s, // Adds spacing before the gauge
+    marginBottom: spacing.s,
   },
   statItem: {
     flexDirection: 'row',
@@ -340,16 +361,27 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     fontFamily: 'Montserrat',
   },
-  gaugeContainer: {
-    alignItems: 'center',
+  // New style for displaying two gauges in a row
+  gaugeRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginTop: spacing.m,
     marginBottom: -spacing.l,
   },
+  gaugeContainer: {
+    alignItems: 'center',
+  },
   gaugeText: {
-    fontSize: RFValue(16), // Responsive font size
+    fontSize: RFValue(16),
     color: colors.darkblue,
     fontFamily: 'Montserrat',
-    position: 'absolute', // Centers the text within the gauge
+    position: 'absolute',
+  },
+  gaugeLabel: {
+    fontSize: RFValue(14),
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
+    marginTop: spacing.s / 2,
   },
   modalContainer: {
     backgroundColor: 'white',
@@ -359,14 +391,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: RFValue(22), // Responsive font size
+    fontSize: RFValue(22),
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
   modalDescription: {
-    fontSize: RFValue(16), // Responsive font size
+    fontSize: RFValue(16),
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',

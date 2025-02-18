@@ -25,7 +25,7 @@ const DiscoverScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(true);
   const serverError = require('../../assets/Cast_screen_icons/server_error.png');
 
-  const departmentImages = {
+  const departmentIcons = {
     Medicine: require('../../assets/Virtual_labs/Medicine.png'),
     SocialSciences: require('../../assets/Virtual_labs/SocialSciences.png'),
     Engineering: require('../../assets/Virtual_labs/Engineering.png'),
@@ -223,11 +223,9 @@ const DiscoverScreen = ({ navigation }) => {
                   fontSize: sizes.h2,
                   fontFamily: 'Montserrat',
                   textAlign: 'center',
-                  paddingTop: spacing.xs,
+                  paddingTop: spacing.s,
                 }}
                 style={{
-                  marginLeft: spacing.m,
-                  marginRight: spacing.m,
                   marginBottom: spacing.s,
                   borderRadius: sizes.buttonRadius,
                 }}
@@ -258,10 +256,12 @@ const styles = StyleSheet.create({
     marginTop: height * 0.15,
   },
   band: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+    padding: spacing.m,
   },
   middleband: {
     flex: 1,
