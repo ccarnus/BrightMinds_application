@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { colors, shadow, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
+import LottieView from 'lottie-react-native';
 
 const CARD_HEIGHT = 140;
 const CARD_WIDTH = CARD_HEIGHT * 1.75;
 const CARD_HEIGHT_TOTAL = 175;
 const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
 
-const Carousel = ({ list, carouselType }) => {
+const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }) => {
   const navigation = useNavigation();
   const [errorStates, setErrorStates] = useState({});
 
@@ -30,10 +31,12 @@ const Carousel = ({ list, carouselType }) => {
       renderItem={({ item, index }) => {
         const minutes = Math.floor(item.duration);
         const seconds = Math.round((item.duration - minutes) * 60);
-        const durationString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-        const hasError = errorStates[item.id];
-
+        const durationString = `${minutes.toString().padStart(2, '0')}:${seconds
+          .toString()
+          .padStart(2, '0')}`;
+      
+        const isFinished = finishedVideos.includes(item.id);
+      
         return (
           <TouchableOpacity
             style={{
@@ -42,20 +45,29 @@ const Carousel = ({ list, carouselType }) => {
             }}
             onPress={() =>
               navigation.navigate(
-                carouselType === 'trending' ? 'VideoScreen' : 'VideoScreen',
+                'VideoScreen',
                 { selectedVideoId: item.id }
               )
             }
           >
             <View style={[styles.card, shadow.dark]}>
               <View style={styles.imageBox}>
-                <Image
-                  source={{ uri: item.image }}
-                  style={styles.image}
-                  onError={() => console.log(`Error loading image for ${item.title} with url ${item.image}`)}
-                />
+                {isFinished ? (
+                  <LottieView
+                    source={require('../../assets/lotties/done.json')}
+                    autoPlay
+                    loop={false}
+                    onAnimationFinish={() => onAnimationFinish(item.id)}
+                    style={styles.lottie}
+                  />
+                ) : (
+                  <Image
+                    source={{ uri: item.image }}
+                    style={styles.image}
+                    onError={() => console.log(`Error loading image for ${item.title}`)}
+                  />
+                )}
                 <Text style={styles.duration}>{durationString}</Text>
-                {/* Conditionally render the "already seen" icon */}
                 {item.watched && (
                   <Image
                     source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
@@ -69,7 +81,7 @@ const Carousel = ({ list, carouselType }) => {
             </View>
           </TouchableOpacity>
         );
-      }}
+      }}      
     />
   );
 };
@@ -120,9 +132,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 5,
     right: 5,
-    width: 24, // Adjust the size as needed
-    height: 24, // Adjust the size as needed
+    width: 24,
+    height: 24,
     resizeMode: 'contain',
+  },
+  lottie: {
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
   },
 });
 

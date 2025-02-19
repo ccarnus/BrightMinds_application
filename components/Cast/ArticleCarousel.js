@@ -38,12 +38,6 @@ const ArticleCarousel = ({ list }) => {
                 onError={() => console.log(`Error loading image for ${item.title} with url ${item.articleimageurl}`)}
               />
               <Text style={styles.duration}>{item.duration} min</Text>
-              {item.watched && (
-                <Image
-                  source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
-                  style={styles.watchedIcon}
-                />
-              )}
             </View>
           </View>
         </TouchableOpacity>

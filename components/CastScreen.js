@@ -10,7 +10,7 @@ import {
   RefreshControl,
   Dimensions
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import Carousel from './Cast/Carousel';
@@ -36,11 +36,26 @@ const CastScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
+  const [finishedVideos, setFinishedVideos] = useState([]);
 
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
+
+  const route = useRoute();
+
+useEffect(() => {
+  if (route.params?.finishedVideoId) {
+    console.log('Received finishedVideoId:', route.params.finishedVideoId);
+    const finishedId = route.params.finishedVideoId;
+    // Add the finished video ID if it’s not already in the list
+    setFinishedVideos((prev) =>
+      prev.includes(finishedId) ? prev : [...prev, finishedId]
+    );
+    // Optionally, you can also clear the route params here if needed.
+  }
+}, [route.params?.finishedVideoId]);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -305,7 +320,17 @@ const CastScreen = () => {
               <Text style={styles.sectionTitle}>For You</Text>
             </View>
             {suggestedCastData.length > 0 ? (
-              <Carousel list={suggestedCastData} carouselType="suggested" />
+             <Carousel
+                list={suggestedCastData}
+                carouselType="suggested"
+                finishedVideos={finishedVideos}
+                onAnimationFinish={(id) => {
+                  // Remove the finished video from the suggested list.
+                  setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+                  // Optionally, also remove it from the finishedVideos array:
+                  setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+                }}
+              />
             ) : (
               <Text style={styles.noDataText}>No suggestions available.</Text>
             )}
@@ -316,7 +341,17 @@ const CastScreen = () => {
               <Text style={styles.sectionTitle}>Trending Now</Text>
             </View>
             {trendingCastData.length > 0 ? (
-              <Carousel list={trendingCastData} carouselType="trending" />
+              <Carousel
+                list={trendingCastData}
+                carouselType="trending"
+                finishedVideos={finishedVideos}
+                onAnimationFinish={(id) => {
+                  // Remove the finished video from the suggested list.
+                  setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+                  // Optionally, also remove it from the finishedVideos array:
+                  setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+                }}
+              />
             ) : (
               <Text style={styles.noDataText}>No trending casts available.</Text>
             )}

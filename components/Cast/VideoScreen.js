@@ -127,7 +127,12 @@ const VideoScreen = ({ route, navigation }) => {
   };
 
   const handleCastDonePlaying = () => {
-    navigation.goBack();
+    //navigation.goBack({ finishedVideoId: video._id });
+    console.log('Navigating back with finished video id:', video._id);
+    navigation.navigate('BottomNav', {
+      screen: 'Cast',
+      params: { finishedVideoId: video._id },
+    });
   };
 
   // Pause video when the screen loses focus.
@@ -149,6 +154,7 @@ const VideoScreen = ({ route, navigation }) => {
         handleCastWatched();
       }
       if (status.didJustFinish) {
+        console.log('Video finished playing');
         handleCastDonePlaying();
       }
 
