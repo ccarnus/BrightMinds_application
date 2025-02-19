@@ -38,14 +38,14 @@ const CastScreen = () => {
   const [apiError, setApiError] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
-  const [finishedArticles, setFinishedArticles] = useState([]); // New state for articles
+  const [finishedArticles, setFinishedArticles] = useState([]);
 
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
-  // Listen for finishedVideoId and finishedArticleId coming from the VideoScreen or ArticleDetailsScreen.
+  // Listen for finished IDs passed via route params.
   useEffect(() => {
     if (route.params?.finishedVideoId) {
       console.log('Received finishedVideoId:', route.params.finishedVideoId);
@@ -63,7 +63,7 @@ const CastScreen = () => {
     }
   }, [route.params?.finishedVideoId, route.params?.finishedArticleId]);
 
-  // Retrieve user data from AsyncStorage
+  // Retrieve user data from AsyncStorage.
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -78,53 +78,104 @@ const CastScreen = () => {
     getUserData();
   }, []);
 
-  // Fetch watched content once the userId is available
+  // Fetch watched content once the userId is available.
   useEffect(() => {
     if (userId) {
-      fetchWatchedContent();
+      awaitFetchWatchedContent();
     }
   }, [userId]);
 
-  // Once the watched content lists are set, fetch all other content.
-  useEffect(() => {
-    if (watchedCastIds !== null && watchedArticleIds !== null) {
-      fetchAllContent();
-    }
-  }, [watchedCastIds, watchedArticleIds]);
-
-  const fetchWatchedContent = async () => {
+  // A combined refresh function that fetches watched content then all content.
+  const awaitFetchWatchedContent = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`);
       console.log(`${API_BASE_URL}/user/${userId}`);
       const userData = await response.json();
 
-      setWatchedCastIds(
+      const fetchedWatchedCastIds =
         userData.evaluation_list
           ?.filter(item => item.type === 'cast' && item.watched)
-          .map(item => item.contentid) || []
-      );
-      setWatchedArticleIds(
+          .map(item => item.contentid) || [];
+      const fetchedWatchedArticleIds =
         userData.evaluation_list
           ?.filter(item => item.type === 'article' && item.watched)
-          .map(item => item.contentid) || []
-      );
+          .map(item => item.contentid) || [];
 
-      fetchAllContent();
+      setWatchedCastIds(fetchedWatchedCastIds);
+      setWatchedArticleIds(fetchedWatchedArticleIds);
+
+      // Once watched content is fetched, fetch all other content.
+      await fetchAllContent(fetchedWatchedCastIds, fetchedWatchedArticleIds);
     } catch (error) {
       console.error('Error fetching watched content:', error);
       setApiError(true);
     }
   };
 
-  const fetchAllContent = async () => {
+  // Combine the fetching of content and filter before ending the loading state.
+  const fetchAllContent = async (watchedCasts, watchedArticles) => {
     setIsLoading(true);
     try {
-      await Promise.all([
-        fetchSuggestedCastData(),
-        fetchTrendingCastData(),
-        fetchArticleData(),
-        fetchAllCastData(),
+      const [
+        suggestedResponse,
+        trendingResponse,
+        articleResponse,
+        allCastsResponse
+      ] = await Promise.all([
+        fetch(`${API_BASE_URL}/user/${userId}/suggested/for/you`),
+        fetch(`${API_BASE_URL}/cast/trending/right/now`),
+        fetch(`${API_BASE_URL}/article`),
+        fetch(`${API_BASE_URL}/cast`)
       ]);
+
+      const suggestedData = await suggestedResponse.json();
+      const trendingData = await trendingResponse.json();
+      const articlesData = await articleResponse.json();
+      const allCastsData = await allCastsResponse.json();
+
+      // Filter the fetched data by removing items in watched AND finished arrays.
+      const filteredSuggested = Array.isArray(suggestedData)
+        ? suggestedData
+            .filter(
+              (cast) =>
+                !watchedCasts.includes(cast._id) &&
+                !finishedVideos.includes(cast._id)
+            )
+            .map((cast) => ({
+              id: cast._id,
+              image: cast.castimageurl,
+              title: cast.title,
+              duration: cast.duration,
+            }))
+        : [];
+
+      const filteredTrending = Array.isArray(trendingData)
+        ? trendingData
+            .filter(
+              (cast) =>
+                !watchedCasts.includes(cast._id) &&
+                !finishedVideos.includes(cast._id)
+            )
+            .map((cast) => ({
+              id: cast._id,
+              image: cast.castimageurl,
+              title: cast.title,
+              duration: cast.duration,
+            }))
+        : [];
+
+      const filteredArticles = Array.isArray(articlesData)
+        ? articlesData.filter(
+            (article) =>
+              !watchedArticles.includes(article._id) &&
+              !finishedArticles.includes(article._id)
+          )
+        : [];
+
+      setSuggestedCastData(filteredSuggested);
+      setTrendingCastData(filteredTrending);
+      setArticleData(filteredArticles);
+      setAllCasts(allCastsData);
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching content:', error);
@@ -132,95 +183,10 @@ const CastScreen = () => {
     }
   };
 
-  // Only include casts that have not been watched.
-  const fetchSuggestedCastData = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}/suggested/for/you`);
-      const data = await response.json();
-
-      if (Array.isArray(data)) {
-        const formattedData = data
-          .filter(cast => !watchedCastIds.includes(cast._id))
-          .map(cast => ({
-            id: cast._id,
-            image: cast.castimageurl,
-            title: cast.title,
-            duration: cast.duration,
-          }));
-        setSuggestedCastData(formattedData);
-      } else {
-        console.error('Unexpected data format for suggested casts:', data);
-        setSuggestedCastData([]);
-      }
-    } catch (error) {
-      console.error('Error fetching suggested casts:', error);
-      setSuggestedCastData([]);
-    }
-  };
-
-  const fetchTrendingCastData = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/cast/trending/right/now`);
-      const data = await response.json();
-
-      if (Array.isArray(data)) {
-        const formattedData = data
-          .filter(cast => !watchedCastIds.includes(cast._id))
-          .map(cast => ({
-            id: cast._id,
-            image: cast.castimageurl,
-            title: cast.title,
-            duration: cast.duration,
-          }));
-        setTrendingCastData(formattedData);
-      } else {
-        console.error('Unexpected data format for trending casts:', data);
-        setTrendingCastData([]);
-      }
-    } catch (error) {
-      console.error('Error fetching trending casts:', error);
-      setTrendingCastData([]);
-    }
-  };
-
-  const fetchAllCastData = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/cast`);
-      const data = await response.json();
-      setAllCasts(data);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  // Only include articles that have not been watched.
-  const fetchArticleData = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/article`);
-      const data = await response.json();
-
-      if (Array.isArray(data)) {
-        const formattedData = data
-          .filter(article => !watchedArticleIds.includes(article._id))
-          .map(article => ({
-            ...article,
-          }));
-        setArticleData(formattedData);
-      } else {
-        console.error('Unexpected data format for articles:', data);
-        setArticleData([]);
-      }
-    } catch (error) {
-      console.error('Error fetching articles:', error);
-      setArticleData([]);
-    }
-  };
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setApiError(false);
-    fetchWatchedContent();
-    fetchAllContent();
+    await awaitFetchWatchedContent();
     setRefreshing(false);
   }, [userId]);
 
@@ -232,11 +198,10 @@ const CastScreen = () => {
         <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
         <TouchableOpacity
           style={styles.refreshButton}
-          onPress={() => {
+          onPress={async () => {
             setApiError(false);
             setIsLoading(true);
-            fetchWatchedContent();
-            fetchAllContent();
+            await awaitFetchWatchedContent();
           }}
         >
           <Text style={styles.refreshButtonText}>Try Again</Text>
@@ -282,9 +247,7 @@ const CastScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-      >
+      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {/* Search Bar */}
         <View style={styles.searchContainerAndRandom}>
           <View style={styles.searchContainer}>
@@ -302,11 +265,7 @@ const CastScreen = () => {
               </TouchableOpacity>
             )}
           </View>
-
-          <TouchableOpacity 
-            style={styles.randomButton} 
-            onPress={() => navigation.navigate('DiscoverScreen')}
-          >
+          <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
             <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
           </TouchableOpacity>
         </View>
@@ -370,7 +329,7 @@ const CastScreen = () => {
             {articleData.length > 0 ? (
               <ArticleCarousel
                 list={articleData}
-                finishedArticles={finishedArticles}  // Pass finishedArticles to the carousel
+                finishedArticles={finishedArticles}
                 onAnimationFinish={(id) => {
                   setArticleData((prev) => prev.filter((item) => item._id !== id));
                   setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
@@ -387,10 +346,7 @@ const CastScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
-  },
+  container: { flex: 1, backgroundColor: colors.primaryBis },
   searchContainer: {
     flex: 1,
     flexDirection: 'row',

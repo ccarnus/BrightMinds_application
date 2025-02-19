@@ -27,6 +27,7 @@ import LoadingScreen from './Onboarding/LoadingScreen';
 import OnboardingScreen from './Onboarding/OnboardingScreen';
 import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
 import VideoScreen from './Cast/VideoScreen';
+import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
 
 const Stack = createStackNavigator();
 
@@ -118,6 +119,7 @@ const MainNavigator = () => {
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VideoScreen" component={VideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="DiscoverVideoScreen" component={DiscoverVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />

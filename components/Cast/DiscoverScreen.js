@@ -79,7 +79,6 @@ const DiscoverScreen = ({ navigation }) => {
           fetch(`${API_BASE_URL}/university/by/name/${cast.university}`)
             .then(res => res.json())
             .then(universityData => {
-              console.log(universityData.iconurl); // for debugging
               return { ...cast, universityLogo: universityData.iconurl };
             })
             .catch(() => ({ ...cast, universityLogo: null }))
@@ -140,7 +139,6 @@ const DiscoverScreen = ({ navigation }) => {
     <View style={styles.container}>
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          {console.log('Loader should be visible, state is: ' + isLoading)}
           <LottieView
             source={require('../../assets/Loader/loader.json')}
             autoPlay

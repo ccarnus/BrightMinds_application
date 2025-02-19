@@ -6,7 +6,8 @@ import {
   Text, 
   Image, 
   Dimensions, 
-  Share 
+  Share,
+  BackHandler
 } from 'react-native';
 import { Video } from 'expo-av';
 import Slider from '@react-native-community/slider';
@@ -73,7 +74,7 @@ const VideoScreen = ({ route, navigation }) => {
     getUserId();
   }, []);
 
-  // Once the userId is available, fetch the video.
+  // Once the userId and videoId are available, fetch the video.
   useEffect(() => {
     if (userId && videoId) {
       fetchVideo();
@@ -97,7 +98,7 @@ const VideoScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
-  // If a subtitle URL exists, fetch and parse the subtitle file.
+  // If a subtitle URL exists, fetch and parse it.
   useEffect(() => {
     if (video && video.subtitleurl) {
       fetch(video.subtitleurl)
@@ -106,14 +107,13 @@ const VideoScreen = ({ route, navigation }) => {
           const parsed = parseSRT(text);
           setParsedCaptions(parsed);
         })
-        .catch(error => {
-          console.error('Error fetching subtitles:', error);
-        });
+        .catch(error => console.error('Error fetching subtitles:', error));
     } else {
       setParsedCaptions([]);
     }
   }, [video]);
 
+  // Called when playback reaches 85%.
   const handleCastWatched = () => {
     if (!video || contentSubmitted) return;
     const castId = video._id;
@@ -126,14 +126,37 @@ const VideoScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
+  // When the video is finished, check if it was watched to 85%.
+  // If so, navigate back with finishedVideoId param; otherwise, simply go back.
   const handleCastDonePlaying = () => {
-    //navigation.goBack({ finishedVideoId: video._id });
-    console.log('Navigating back with finished video id:', video._id);
-    navigation.navigate('BottomNav', {
-      screen: 'Cast',
-      params: { finishedVideoId: video._id },
-    });
+    if (contentSubmitted) {
+      console.log('Navigating back with finished video id:', video._id);
+      navigation.navigate('BottomNav', {
+        screen: 'Cast',
+        params: { finishedVideoId: video._id },
+      });
+    } else {
+      console.log('Video finished but not watched 85%, not sending finishedVideoId');
+      navigation.goBack();
+    }
   };
+
+  // Intercept the hardware back button.
+  useEffect(() => {
+    const onBackPress = () => {
+      if (contentSubmitted && video) {
+        navigation.navigate('BottomNav', {
+          screen: 'Cast',
+          params: { finishedVideoId: video._id },
+        });
+      } else {
+        navigation.goBack();
+      }
+      return true; // Prevent default back behavior.
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backHandler.remove();
+  }, [contentSubmitted, video, navigation]);
 
   // Pause video when the screen loses focus.
   useEffect(() => {
@@ -158,7 +181,6 @@ const VideoScreen = ({ route, navigation }) => {
         handleCastDonePlaying();
       }
 
-      // Update custom caption overlay only if captions are enabled.
       if (captionsEnabled && parsedCaptions.length > 0) {
         const currentTime = status.positionMillis;
         const caption = parsedCaptions.find(cap => currentTime >= cap.start && currentTime < cap.end);
@@ -190,9 +212,11 @@ const VideoScreen = ({ route, navigation }) => {
         message: `Check out this video: ${video.casturl}`,
       });
       if (result.action === Share.sharedAction) {
-        console.log(result.activityType
-          ? 'Shared with activity type: ' + result.activityType
-          : 'Video shared successfully.');
+        console.log(
+          result.activityType
+            ? 'Shared with activity type: ' + result.activityType
+            : 'Video shared successfully.'
+        );
       } else if (result.action === Share.dismissedAction) {
         console.log('Share dismissed.');
       }
@@ -201,9 +225,6 @@ const VideoScreen = ({ route, navigation }) => {
     }
   };
 
-  // Determine which caption icon to use.
-  // If the video has a subtitle URL and captions are enabled, show caption_on;
-  // otherwise, show caption_off.
   let captionIcon = require('../../assets/Cast_screen_icons/caption_off.png');
   if (video && video.subtitleurl) {
     captionIcon = captionsEnabled
@@ -253,7 +274,6 @@ const VideoScreen = ({ route, navigation }) => {
           />
         </TouchableOpacity>
 
-        {/* Progress Slider */}
         <Slider
           style={styles.progressSlider}
           value={playbackInstancePosition / playbackInstanceDuration}
@@ -277,7 +297,6 @@ const VideoScreen = ({ route, navigation }) => {
           />
         </View>
 
-        {/* Buttons container (always visible) positioned just above the progress bar */}
         <View style={styles.buttonsContainer}>
           <TouchableOpacity onPress={() => setCaptionsEnabled(prev => !prev)}>
             <Image source={captionIcon} style={styles.icon} />
@@ -290,7 +309,6 @@ const VideoScreen = ({ route, navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Custom caption overlay (fully styleable) */}
         {currentCaption !== '' && (
           <View style={styles.captionOverlay}>
             <Text style={styles.captionText}>{currentCaption}</Text>
@@ -361,7 +379,7 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 55, // Just above the progress slider
+    bottom: 55,
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
