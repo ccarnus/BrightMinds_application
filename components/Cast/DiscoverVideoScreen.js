@@ -19,7 +19,7 @@ import { useKeepAwake } from 'expo-keep-awake';
 
 const { width, height } = Dimensions.get('window');
 
-// Converts a time string (e.g. "00:00:04,639") to milliseconds.
+// Utility: convert time string to millis.
 const timeStringToMillis = (timeString) => {
   const parts = timeString.split(/[:,]/);
   const hours = parseInt(parts[0], 10);
@@ -29,7 +29,7 @@ const timeStringToMillis = (timeString) => {
   return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis;
 };
 
-// Parses an SRT file string into an array of caption objects.
+// Utility: parse SRT file.
 const parseSRT = (data) => {
   const captions = [];
   const blocks = data.split(/\n\s*\n/);
@@ -74,7 +74,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
     getUserId();
   }, []);
 
-  // Once the userId and videoId are available, fetch the video.
+  // Fetch video when userId and videoId are available.
   useEffect(() => {
     if (userId && videoId) {
       fetchVideo();
@@ -98,7 +98,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
-  // If a subtitle URL exists, fetch and parse it.
+  // Fetch and parse subtitles if available.
   useEffect(() => {
     if (video && video.subtitleurl) {
       fetch(video.subtitleurl)
@@ -113,7 +113,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
     }
   }, [video]);
 
-  // Called when playback reaches 85%.
+  // Called when video reaches 85% progress.
   const handleCastWatched = () => {
     if (!video || contentSubmitted) return;
     const castId = video._id;
@@ -126,14 +126,13 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
-  // When the video is finished, check if it was watched to 85%.
-  // If so, navigate back with finishedVideoId param; otherwise, simply go back.
+  // When the video is finished (or user goes back), navigate back.
+  // If contentSubmitted is true, send finishedVideoId so the DiscoverScreen can play the done.json overlay.
   const handleCastDonePlaying = () => {
     if (contentSubmitted) {
       console.log('Navigating back with finished video id:', video._id);
-      navigation.navigate('BottomNav', {
-        screen: 'Cast',
-        params: { finishedVideoId: video._id },
+      navigation.navigate('DiscoverScreen', {
+        finishedVideoId: video._id,
       });
     } else {
       console.log('Video finished but not watched 85%, not sending finishedVideoId');
@@ -145,14 +144,13 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
   useEffect(() => {
     const onBackPress = () => {
       if (contentSubmitted && video) {
-        navigation.navigate('BottomNav', {
-          screen: 'Cast',
-          params: { finishedVideoId: video._id },
+        navigation.navigate('DiscoverScreen', {
+          finishedVideoId: video._id,
         });
       } else {
         navigation.goBack();
       }
-      return true; // Prevent default back behavior.
+      return true;
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => backHandler.remove();

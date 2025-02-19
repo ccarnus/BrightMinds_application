@@ -1,59 +1,71 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
+  StyleSheet, 
   TouchableOpacity, 
   Text, 
   Image, 
-  StyleSheet 
+  Dimensions, 
+  Share,
+  BackHandler
 } from 'react-native';
-import { Dimensions } from 'react-native';
+import { Video } from 'expo-av';
+import Slider from '@react-native-community/slider';
 import axios from 'axios';
-import { colors, sizes, spacing } from '../theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import LottieView from 'lottie-react-native';
-import { Button } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
-import departments from '../../lists/departments';
+import { colors, sizes, spacing } from '../theme';
+import { useKeepAwake } from 'expo-keep-awake';
 
 const { width, height } = Dimensions.get('window');
 
-const DiscoverScreen = ({ navigation }) => {
-  const [videos, setVideos] = useState([]);
-  const [apiError, setApiError] = useState(false);
-  const [focusedIndex, setFocusedIndex] = useState(0);
+// Utility to convert a time string to milliseconds.
+const timeStringToMillis = (timeString) => {
+  const parts = timeString.split(/[:,]/);
+  const hours = parseInt(parts[0], 10);
+  const minutes = parseInt(parts[1], 10);
+  const seconds = parseInt(parts[2], 10);
+  const millis = parseInt(parts[3], 10);
+  return hours * 3600000 + minutes * 60000 + seconds * 1000 + millis;
+};
+
+// Utility to parse SRT file into caption objects.
+const parseSRT = (data) => {
+  const captions = [];
+  const blocks = data.split(/\n\s*\n/);
+  blocks.forEach((block) => {
+    const lines = block.split('\n').filter(line => line.trim() !== '');
+    if (lines.length >= 2) {
+      const timeLine = lines[1];
+      const match = timeLine.match(/(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/);
+      if (match) {
+        const start = timeStringToMillis(match[1]);
+        const end = timeStringToMillis(match[2]);
+        const text = lines.slice(2).join('\n');
+        captions.push({ start, end, text });
+      }
+    }
+  });
+  return captions;
+};
+
+const DiscoverVideoScreen = ({ route, navigation }) => {
+  useKeepAwake();
+  const { selectedCastId, selectedVideoId } = route.params;
+  const videoId = selectedCastId || selectedVideoId;
+  const [video, setVideo] = useState(null);
+  const [videoStatus, setVideoStatus] = useState(true);
   const [userId, setUserId] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const serverError = require('../../assets/Cast_screen_icons/server_error.png');
+  const [playbackInstancePosition, setPlaybackInstancePosition] = useState(0);
+  const [playbackInstanceDuration, setPlaybackInstanceDuration] = useState(0);
+  const [contentSubmitted, setContentSubmitted] = useState(false);
+  const [captionsEnabled, setCaptionsEnabled] = useState(true);
+  const [parsedCaptions, setParsedCaptions] = useState([]);
+  const [currentCaption, setCurrentCaption] = useState('');
 
-  const departmentIcons = {
-    Medicine: require('../../assets/Virtual_labs/Medicine.png'),
-    SocialSciences: require('../../assets/Virtual_labs/SocialSciences.png'),
-    Engineering: require('../../assets/Virtual_labs/Engineering.png'),
-    ArtsandHumanities: require('../../assets/Virtual_labs/ArtsandHumanities.png'),
-    ComputerScience: require('../../assets/Virtual_labs/ComputerScience.png'),
-    BiochemistryGeneticsandMolecularBiology: require('../../assets/Virtual_labs/BiochemistryGeneticsandMolecularBiology.png'),
-    AgriculturalandBiologicalSciences: require('../../assets/Virtual_labs/AgriculturalandBiologicalSciences.png'),
-    EnvironmentalScience: require('../../assets/Virtual_labs/EnvironmentalScience.png'),
-    MaterialsScience: require('../../assets/Virtual_labs/MaterialsScience.png'),
-    PhysicsandAstronomy: require('../../assets/Virtual_labs/PhysicsandAstronomy.png'),
-    BusinessManagementandAccounting: require('../../assets/Virtual_labs/BusinessManagementandAccounting.png'),
-    HealthProfessions: require('../../assets/Virtual_labs/HealthProfessions.png'),
-    EconomicsEconometricsandFinance: require('../../assets/Virtual_labs/EconomicsEconometricsandFinance.png'),
-    Psychology: require('../../assets/Virtual_labs/Psychology.png'),
-    Chemistry: require('../../assets/Virtual_labs/Chemistry.png'),
-    EarthandPlanetarySciences: require('../../assets/Virtual_labs/EarthandPlanetarySciences.png'),
-    Neuroscience: require('../../assets/Virtual_labs/Neuroscience.png'),
-    Mathematics: require('../../assets/Virtual_labs/Neuroscience.png'),
-    ImmunologyandMicrobiology: require('../../assets/Virtual_labs/ImmunologyandMicrobiology.png'),
-    DecisionSciences: require('../../assets/Virtual_labs/DecisionSciences.png'),
-    Energy: require('../../assets/Virtual_labs/Energy.png'),
-    Nursing: require('../../assets/Virtual_labs/Nursing.png'),
-    PharmacologyToxicologyandPharmaceutics: require('../../assets/Virtual_labs/PharmacologyToxicologyandPharmaceutics.png'),
-    Dentistry: require('../../assets/Virtual_labs/Dentistry.png'),
-    ChemicalEngineering: require('../../assets/Virtual_labs/ChemicalEngineering.png'),
-    Veterinary: require('../../assets/Virtual_labs/Veterinary.png'),
-  };
+  const videoRef = useRef(null);
 
+  // Retrieve userId from AsyncStorage.
   useEffect(() => {
     const getUserId = async () => {
       const storedUserId = await AsyncStorage.getItem('userId');
@@ -62,312 +74,338 @@ const DiscoverScreen = ({ navigation }) => {
     getUserId();
   }, []);
 
+  // Fetch the video once userId and videoId are available.
   useEffect(() => {
-    if (userId) {
-      fetchVideos();
+    if (userId && videoId) {
+      fetchVideo();
     }
-  }, [userId]);
+  }, [userId, videoId]);
 
-  const fetchVideos = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${API_BASE_URL}/cast`);
-      if (!response.ok) throw new Error('Failed to fetch');
-      const data = await response.json();
-      if (data && data.length > 0) {
-        const fetchUniversityLogos = data.map(cast =>
-          fetch(`${API_BASE_URL}/university/by/name/${cast.university}`)
-            .then(res => res.json())
-            .then(universityData => {
-              return { ...cast, universityLogo: universityData.iconurl };
-            })
-            .catch(() => ({ ...cast, universityLogo: null }))
-        );
-        Promise.all(fetchUniversityLogos).then(dataWithLogos => {
-          setVideos(dataWithLogos);
-          setIsLoading(false);
-        });
-      } else {
-        setVideos([]);
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error('Fetching error:', error);
-      setApiError(true);
-      setIsLoading(false);
+  const fetchVideo = () => {
+    fetch(`${API_BASE_URL}/cast/${videoId}`)
+      .then(response => response.json())
+      .then(videoData => {
+        fetch(`${API_BASE_URL}/university/by/name/${videoData.university}`)
+          .then(res => res.json())
+          .then(universityData => {
+            const completeVideo = { 
+              ...videoData, 
+              universityLogo: universityData.iconurl 
+            };
+            setVideo(completeVideo);
+          });
+      })
+      .catch(error => console.error(error));
+  };
+
+  // Fetch and parse subtitles if available.
+  useEffect(() => {
+    if (video && video.subtitleurl) {
+      fetch(video.subtitleurl)
+        .then(response => response.text())
+        .then(text => {
+          const parsed = parseSRT(text);
+          setParsedCaptions(parsed);
+        })
+        .catch(error => console.error('Error fetching subtitles:', error));
+    } else {
+      setParsedCaptions([]);
+    }
+  }, [video]);
+
+  // Called when the playback reaches 85%.
+  const handleCastWatched = () => {
+    if (!video || contentSubmitted) return;
+    const castId = video._id;
+    axios
+      .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
+      .then(response => {
+        setContentSubmitted(true);
+        console.log("Content marked as watched at 85%");
+      })
+      .catch(error => console.error(error));
+  };
+
+  // When the video is finished (or user goes back), navigate back.
+  // If contentSubmitted is true, send finishedVideoId; otherwise, just go back.
+  const handleCastDonePlaying = () => {
+    if (contentSubmitted) {
+      console.log('Navigating back with finished video id:', video._id);
+      navigation.navigate('DiscoverScreen', {
+        finishedVideoId: video._id,
+      });
+    } else {
+      console.log('Video finished but not watched 85%, not sending finishedVideoId');
+      navigation.goBack();
     }
   };
 
-  if (apiError) {
+  // Intercept hardware back button.
+  useEffect(() => {
+    const onBackPress = () => {
+      if (contentSubmitted && video) {
+        navigation.navigate('DiscoverScreen', {
+          finishedVideoId: video._id,
+        });
+      } else {
+        navigation.goBack();
+      }
+      return true;
+    };
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backHandler.remove();
+  }, [contentSubmitted, video, navigation]);
+
+  // Pause video when screen loses focus.
+  useEffect(() => {
+    const pauseVideo = () => {
+      setVideoStatus(false);
+    };
+    const unsubscribe = navigation.addListener('blur', pauseVideo);
+    return unsubscribe;
+  }, [navigation]);
+
+  const onPlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      setPlaybackInstancePosition(status.positionMillis);
+      setPlaybackInstanceDuration(status.durationMillis);
+
+      const progress = status.positionMillis / status.durationMillis;
+      if (progress >= 0.85 && !contentSubmitted) {
+        handleCastWatched();
+      }
+      if (status.didJustFinish) {
+        console.log('Video finished playing');
+        handleCastDonePlaying();
+      }
+
+      if (captionsEnabled && parsedCaptions.length > 0) {
+        const currentTime = status.positionMillis;
+        const caption = parsedCaptions.find(cap => currentTime >= cap.start && currentTime < cap.end);
+        setCurrentCaption(caption ? caption.text : '');
+      } else {
+        setCurrentCaption('');
+      }
+    }
+  };
+
+  const getMMSSFromMillis = (millis) => {
+    const totalSeconds = millis / 1000;
+    const seconds = Math.floor(totalSeconds % 60);
+    const minutes = Math.floor(totalSeconds / 60);
+    const padWithZero = (number) => (number < 10 ? '0' + number : number);
+    return padWithZero(minutes) + ':' + padWithZero(seconds);
+  };
+
+  const handleSliderValueChange = async (value) => {
+    if (videoRef.current) {
+      const seekPosition = value * playbackInstanceDuration;
+      await videoRef.current.setPositionAsync(seekPosition);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Check out this video: ${video.casturl}`,
+      });
+      if (result.action === Share.sharedAction) {
+        console.log(
+          result.activityType
+            ? 'Shared with activity type: ' + result.activityType
+            : 'Video shared successfully.'
+        );
+      } else if (result.action === Share.dismissedAction) {
+        console.log('Share dismissed.');
+      }
+    } catch (error) {
+      console.error('Error sharing video:', error.message);
+    }
+  };
+
+  let captionIcon = require('../../assets/Cast_screen_icons/caption_off.png');
+  if (video && video.subtitleurl) {
+    captionIcon = captionsEnabled
+      ? require('../../assets/Cast_screen_icons/caption_on.png')
+      : require('../../assets/Cast_screen_icons/caption_off.png');
+  }
+
+  if (!video) {
     return (
-      <View style={styles.errorContainer}>
-        <Image source={serverError} style={styles.errorImage} />
-        <Text style={styles.errorText}>Whoops!</Text>
-        <Text style={styles.errorDetail}>Please try to come back later!</Text>
+      <View style={styles.loadingContainer}>
+        <Text>Loading...</Text>
       </View>
     );
   }
 
-  // Helper: Returns the display name for a given department key.
-  const getDepartmentDisplayName = (departmentKey) => {
-    const deptObj = departments.find(dept => dept.name === departmentKey);
-    return deptObj ? deptObj.display : '';
-  };
-
-  const getDepartmentIcon = (department) => {
-    return departmentIcons[department] || null;
-  };
-
-  const formatDuration = (duration) => {
-    const minutes = Math.floor(duration);
-    const seconds = Math.round((duration - minutes) * 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  // When the image is pressed, navigate to VideoScreen with the selected cast's ID
-  const togglePlay = () => {
-    const selectedVideo = videos[focusedIndex];
-    navigation.navigate('VideoScreen', { selectedCastId: selectedVideo._id });
-  };
-
-  const handleNextVideoPress = () => {
-    const nextIndex = (focusedIndex + 1) % videos.length;
-    setFocusedIndex(nextIndex);
-  };
-
   return (
     <View style={styles.container}>
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <LottieView
-            source={require('../../assets/Loader/loader.json')}
-            autoPlay
-            loop
-            style={{ width: 200, height: 200 }}
+      <View style={styles.videoContainer}>
+        <TouchableOpacity
+          style={styles.videoWrapper}
+          onPress={() => setVideoStatus(!videoStatus)}
+        >
+          <Video
+            ref={videoRef}
+            source={{ uri: video.casturl }}
+            shouldPlay={videoStatus}
+            resizeMode="contain"
+            style={styles.video}
+            onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+            textTracks={
+              video.subtitleurl
+                ? [
+                    {
+                      uri: video.subtitleurl,
+                      language: 'en',
+                      title: 'English Subtitles',
+                      type: 'srt'
+                    }
+                  ]
+                : []
+            }
+            selectedTextTrack={
+              video.subtitleurl
+                ? (captionsEnabled ? { type: 'index', value: 0 } : { type: 'disabled' })
+                : { type: 'disabled' }
+            }
+          />
+        </TouchableOpacity>
+
+        <Slider
+          style={styles.progressSlider}
+          value={playbackInstancePosition / playbackInstanceDuration}
+          minimumValue={0}
+          maximumValue={1}
+          minimumTrackTintColor={colors.primary}
+          maximumTrackTintColor={colors.secondary}
+          thumbTintColor={colors.primary}
+          onSlidingComplete={handleSliderValueChange}
+        />
+
+        <Text style={styles.duration}>
+          {getMMSSFromMillis(playbackInstancePosition)} / {getMMSSFromMillis(playbackInstanceDuration)}
+        </Text>
+
+        <View style={styles.UniversityContainer}>
+          <Image
+            source={{ uri: video.universityLogo }}
+            style={styles.universityIcon}
+            resizeMode="contain"
           />
         </View>
-      ) : (
-        <>
-          {videos.length > 0 && videos[focusedIndex] && (
-            <>
-            <View style={styles.topSection}>
-                <View style={styles.titleView}>
-                  <Text style={styles.videoTitle}>
-                    {videos[focusedIndex].title}
-                  </Text>
-                </View>
-                <TouchableOpacity
-                  style={[styles.imageContainer, { height: width / 1.5 }]}
-                  onPress={togglePlay}
-                  activeOpacity={1}
-                >
-                  <Image
-                    source={{ uri: videos[focusedIndex].castimageurl }}
-                    style={{ width: width, height: width / 1.5 }}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.playIconContainer}>
-                    <Image
-                      source={require('../../assets/Cast_icons/play_icon.png')}
-                      style={styles.playIcon}
-                    />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
 
-          <View style={styles.bottomSection}>
-            <View style={styles.middleband}>
-            <View style={styles.leftColumn}>
-              {videos[focusedIndex] && videos[focusedIndex].department && (
-                <View style={{ alignItems: 'center' }}>
-                  <Image
-                    source={getDepartmentIcon(videos[focusedIndex].department)}
-                    style={styles.departmentIcon}
-                    resizeMode="contain"
-                  />
-                  <Text style={styles.departmentLabel}>
-                    {getDepartmentDisplayName(videos[focusedIndex].department)}
-                  </Text>
-                </View>
-              )}
-            </View>
-              <View style={styles.separator} />
-              <View style={styles.middleColumn}>
-                {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
-                  <Image
-                    source={{ uri: videos[focusedIndex].universityLogo }}
-                    style={styles.universityIconMain}
-                    resizeMode="contain"
-                  />
-                )}
-              </View>
-              <View style={styles.separator} />
-              <View style={styles.rightColumn}>
-                <Text style={styles.durationText}>
-                  {videos[focusedIndex] ? formatDuration(videos[focusedIndex].duration) : '00:00'}
-                </Text>
-              </View>
-            </View>
-            <View style={styles.band}>
-              <Button
-                mode="contained"
-                onPress={handleNextVideoPress}
-                buttonColor={colors.darkGreen}
-                icon={require('../../assets/Discover_icons/next.png')}
-                contentStyle={{ flexDirection: 'row-reverse' }}
-                labelStyle={{
-                  fontSize: sizes.h2,
-                  fontFamily: 'Montserrat',
-                  textAlign: 'center',
-                  paddingTop: spacing.s,
-                }}
-                style={{
-                  marginBottom: spacing.s,
-                  borderRadius: sizes.buttonRadius,
-                }}
-              >
-                Explore Next
-              </Button>
-            </View>
+        <View style={styles.buttonsContainer}>
+          <TouchableOpacity onPress={() => setCaptionsEnabled(prev => !prev)}>
+            <Image source={captionIcon} style={styles.icon} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleShare}>
+            <Image
+              source={require('../../assets/Cast_screen_icons/share.png')}
+              style={styles.icon}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {currentCaption !== '' && (
+          <View style={styles.captionOverlay}>
+            <Text style={styles.captionText}>{currentCaption}</Text>
           </View>
-        </>
-      )}
+        )}
+      </View>
     </View>
   );
 };
 
+const windowWidth = Dimensions.get('window').width;
+const windowHeight = Dimensions.get('window').height;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primary,
-  },
-  topSection: {
-    flex: 1,
-    marginTop: height * 0.15,
-  },
-  bottomSection: {
-    flex: 1,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginTop: height * 0.15,
-  },
-  band: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    padding: spacing.m,
-  },
-  middleband: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-  },
-  leftColumn: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  separator: {
-    width: 1,
-    height: '60%',
     backgroundColor: colors.secondary,
-  },
-  middleColumn: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  rightColumn: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  universityIconMain: {
-    width: width * 0.18,
-    height: width * 0.18,
-  },
-  departmentIcon: {
-    width: width * 0.15,
-    height: width * 0.15,
-  },
-  durationText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  imageContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-    position: 'relative',
-    width: width,
-    height: width / 1.75,
-  },
-  playIconContainer: {
-    position: 'absolute',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    height: '100%',
-  },
-  playIcon: {
-    width: 54,
-    height: 54,
-  },
-  titleView: {
-    marginLeft: spacing.s,
-    marginRight: spacing.s,
-    height: height * 0.2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  videoTitle: {
-    fontSize: sizes.h1,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-  },
-  departmentLabel: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    marginTop: spacing.s,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  errorContainer: {
-    flex: 1,
+  videoContainer: {
+    width: windowWidth,
+    height: windowHeight,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  errorImage: {
-    width: width * 0.5,
-    height: width * 0.5,
-    marginBottom: 20,
+  videoWrapper: {
+    width: '100%',
+    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
   },
-  errorText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
+  video: {
+    width: '100%',
+    height: '100%',
+  },
+  progressSlider: {
+    position: 'absolute',
+    bottom: 30,
+    width: '90%',
+  },
+  duration: {
+    position: 'absolute',
+    bottom: 10,
+    color: 'white',
     textAlign: 'center',
-    fontFamily: 'MontserratBold',
-  },
-  errorDetail: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    textAlign: 'center',
+    width: '100%',
     fontFamily: 'Montserrat',
-    marginTop: 10,
+  },
+  UniversityContainer: {
+    width: width / 6,
+    height: width / 6,
+    position: 'absolute',
+    top: spacing.xl * 2,
+    right: spacing.l,
+    alignItems: 'center',
+  },
+  universityIcon: {
+    width: "100%",
+    height: "100%",
+    marginHorizontal: 12,
+  },
+  buttonsContainer: {
+    position: 'absolute',
+    bottom: 55,
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  icon: {
+    width: width / 9,
+    height: width / 9,
+    marginHorizontal: spacing.s,
+    tintColor: 'white',
+  },
+  captionOverlay: {
+    position: 'absolute',
+    bottom: width / 3,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  captionText: {
+    color: colors.primary,
+    fontSize: sizes.h2,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontFamily: 'Montserrat',
   },
 });
 
-export default DiscoverScreen;
+export default DiscoverVideoScreen;
