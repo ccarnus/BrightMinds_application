@@ -22,6 +22,7 @@ const { width, height } = Dimensions.get('window');
 
 const CastScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
@@ -32,7 +33,6 @@ const CastScreen = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
@@ -42,8 +42,6 @@ const CastScreen = () => {
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
-
-  const route = useRoute();
 
 useEffect(() => {
   if (route.params?.finishedVideoId) {
@@ -57,6 +55,7 @@ useEffect(() => {
   }
 }, [route.params?.finishedVideoId]);
 
+  // Retrieve user data from AsyncStorage
   useEffect(() => {
     const getUserData = async () => {
       try {
@@ -71,12 +70,14 @@ useEffect(() => {
     getUserData();
   }, []);
 
+  // Fetch watched content once the userId is available
   useEffect(() => {
     if (userId) {
       fetchWatchedContent();
     }
   }, [userId]);
 
+  // Once the watched content lists are set, fetch all other content.
   useEffect(() => {
     if (watchedCastIds !== null && watchedArticleIds !== null) {
       fetchAllContent();
@@ -123,19 +124,21 @@ useEffect(() => {
     }
   };
 
+  // Only include casts that have not been watched.
   const fetchSuggestedCastData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}/suggested/for/you`);
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        const formattedData = data.map(cast => ({
-          id: cast._id,
-          image: cast.castimageurl,
-          title: cast.title,
-          duration: cast.duration,
-          watched: watchedCastIds.includes(cast._id),
-        }));
+        const formattedData = data
+          .filter(cast => !watchedCastIds.includes(cast._id))
+          .map(cast => ({
+            id: cast._id,
+            image: cast.castimageurl,
+            title: cast.title,
+            duration: cast.duration,
+          }));
         setSuggestedCastData(formattedData);
       } else {
         console.error('Unexpected data format for suggested casts:', data);
@@ -153,13 +156,14 @@ useEffect(() => {
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        const formattedData = data.map(cast => ({
-          id: cast._id,
-          image: cast.castimageurl,
-          title: cast.title,
-          duration: cast.duration,
-          watched: watchedCastIds.includes(cast._id),
-        }));
+        const formattedData = data
+          .filter(cast => !watchedCastIds.includes(cast._id))
+          .map(cast => ({
+            id: cast._id,
+            image: cast.castimageurl,
+            title: cast.title,
+            duration: cast.duration,
+          }));
         setTrendingCastData(formattedData);
       } else {
         console.error('Unexpected data format for trending casts:', data);
@@ -181,16 +185,19 @@ useEffect(() => {
     }
   };
 
+  // Only include articles that have not been watched.
   const fetchArticleData = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/article`);
       const data = await response.json();
 
       if (Array.isArray(data)) {
-        const formattedData = data.map(article => ({
-          ...article,
-          watched: watchedArticleIds.includes(article._id),
-        }));
+        const formattedData = data
+          .filter(article => !watchedArticleIds.includes(article._id))
+          .map(article => ({
+            ...article,
+            // You can omit the watched property since we’re filtering them out.
+          }));
         setArticleData(formattedData);
       } else {
         console.error('Unexpected data format for articles:', data);
@@ -250,7 +257,7 @@ useEffect(() => {
 
   const handleSearchResultPress = (id) => {
     navigation.navigate('VideoScreen', { selectedCastId: id });
-    console.log(id)
+    console.log(id);
   };
 
   if (isLoading) {
@@ -300,15 +307,11 @@ useEffect(() => {
         {/* Search Results */}
         {searchResults.length > 0 ? (
           <View style={styles.searchResultsContainer}>
-            {searchResults.length > 0 ? (
-            searchResults.map((cast) => (
+            {searchResults.map((cast) => (
               <TouchableOpacity key={cast._id} onPress={() => handleSearchResultPress(cast._id)}>
                 <Text style={styles.searchResultItem}>{cast.title}</Text>
               </TouchableOpacity>
-            ))
-          ) : searchQuery.trim().length > 0 ? (
-            <Text style={styles.noResultsText}>No results.</Text>
-          ) : null}
+            ))}
           </View>
         ) : searchQuery.length > 0 ? (
           <Text style={styles.noResultsText}>No results found.</Text>
@@ -320,7 +323,7 @@ useEffect(() => {
               <Text style={styles.sectionTitle}>For You</Text>
             </View>
             {suggestedCastData.length > 0 ? (
-             <Carousel
+              <Carousel
                 list={suggestedCastData}
                 carouselType="suggested"
                 finishedVideos={finishedVideos}
@@ -347,7 +350,7 @@ useEffect(() => {
                 finishedVideos={finishedVideos}
                 onAnimationFinish={(id) => {
                   // Remove the finished video from the suggested list.
-                  setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+                  setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
                   // Optionally, also remove it from the finishedVideos array:
                   setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
                 }}
@@ -466,8 +469,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorImage: {
-    width: width*0.5,
-    height: width*0.5,
+    width: width * 0.5,
+    height: width * 0.5,
     marginBottom: 20,
   },
   errorText: {

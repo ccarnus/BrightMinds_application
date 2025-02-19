@@ -26,7 +26,8 @@ const ArticleCarousel = ({ list }) => {
             marginBottom: spacing.xl,
             marginRight: index === list.length - 1 ? spacing.l : 0,
           }}
-          onPress={() => navigation.navigate('ArticleDetails', { selectedArticleId: item._id })}>
+          onPress={() => navigation.navigate('ArticleDetails', { selectedArticleId: item._id })}
+        >
           <View style={[styles.card, shadow.dark]}>
             <View style={styles.titleBox}>
               <Text style={styles.title}>{item.title}</Text>
@@ -87,13 +88,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     fontSize: sizes.h5,
-  },
-  watchedIcon: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 24,
-    height: 24,
   },
 });
 

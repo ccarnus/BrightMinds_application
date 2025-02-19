@@ -68,12 +68,6 @@ const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }
                   />
                 )}
                 <Text style={styles.duration}>{durationString}</Text>
-                {item.watched && (
-                  <Image
-                    source={require('../../assets/Cast_screen_icons/already_watched_icon.png')}
-                    style={styles.alreadySeenIcon}
-                  />
-                )}
               </View>
               <View style={styles.titleBox}>
                 <Text style={styles.title}>{item.title}</Text>
@@ -122,19 +116,11 @@ const styles = StyleSheet.create({
     bottom: 5,
     right: 5,
     color: 'white',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 4,
     fontSize: sizes.h5,
-  },
-  alreadySeenIcon: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
   },
   lottie: {
     width: CARD_WIDTH,
