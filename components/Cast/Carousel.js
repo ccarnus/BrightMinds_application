@@ -34,9 +34,9 @@ const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }
         const durationString = `${minutes.toString().padStart(2, '0')}:${seconds
           .toString()
           .padStart(2, '0')}`;
-      
+
         const isFinished = finishedVideos.includes(item.id);
-      
+
         return (
           <TouchableOpacity
             style={{
@@ -44,27 +44,25 @@ const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }
               marginRight: index === list.length - 1 ? spacing.l : 0,
             }}
             onPress={() =>
-              navigation.navigate(
-                'VideoScreen',
-                { selectedVideoId: item.id }
-              )
+              navigation.navigate('VideoScreen', { selectedVideoId: item.id })
             }
           >
             <View style={[styles.card, shadow.dark]}>
               <View style={styles.imageBox}>
-                {isFinished ? (
+                {/* Always render the image as the background */}
+                <Image
+                  source={{ uri: item.image }}
+                  style={styles.image}
+                  onError={() => console.log(`Error loading image for ${item.title}`)}
+                />
+                {/* If finished, overlay the Lottie animation on top */}
+                {isFinished && (
                   <LottieView
                     source={require('../../assets/lotties/done.json')}
                     autoPlay
                     loop={false}
                     onAnimationFinish={() => onAnimationFinish(item.id)}
-                    style={styles.lottie}
-                  />
-                ) : (
-                  <Image
-                    source={{ uri: item.image }}
-                    style={styles.image}
-                    onError={() => console.log(`Error loading image for ${item.title}`)}
+                    style={styles.lottieOverlay}
                   />
                 )}
                 <Text style={styles.duration}>{durationString}</Text>
@@ -75,7 +73,7 @@ const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }
             </View>
           </TouchableOpacity>
         );
-      }}      
+      }}
     />
   );
 };
@@ -99,6 +97,14 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     resizeMode: 'cover',
   },
+  lottieOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    zIndex: 1,
+  },
   titleBox: {
     position: 'absolute',
     top: CARD_HEIGHT_TOTAL - 30,
@@ -121,10 +127,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
     fontSize: sizes.h5,
-  },
-  lottie: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    zIndex: 2, // make sure the duration text is above the image and possibly above the Lottie if needed
   },
 });
 

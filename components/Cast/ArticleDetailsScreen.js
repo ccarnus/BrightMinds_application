@@ -81,14 +81,19 @@ const ArticleDetailsScreen = ({ route }) => {
 
       const result = await response.json();
       if (response.ok) {
-        navigation.goBack();
+        // Instead of simply going back, pass finishedArticleId as parameter.
+        console.log('Article marked as watched');
+        navigation.navigate('BottomNav', {  // Adjust as needed for your navigation structure
+          screen: 'Cast',
+          params: { finishedArticleId: selectedArticleId }
+        });
       } else {
-        console.error('Failed to add cast to list:', result);
-        alert('Failed to add cast to your list.');
+        console.error('Failed to add article to list:', result);
+        alert('Failed to add article to your list.');
       }
     } catch (error) {
-      console.error('Error adding cast to list:', error);
-      alert('Error adding cast to your list.');
+      console.error('Error adding article to list:', error);
+      alert('Error adding article to your list.');
     }
   };
 
@@ -136,7 +141,6 @@ const ArticleDetailsScreen = ({ route }) => {
     );
   }
 
-  // Get the department details
   const departmentDetails = getDepartmentDetails(article.department);
   const departmentDisplayName = departmentDetails ? departmentDetails.display : article.department;
 
@@ -145,7 +149,6 @@ const ArticleDetailsScreen = ({ route }) => {
       <ScrollView style={styles.containerScroll}>
         <Image source={{ uri: article.articleimageurl }} style={styles.image} />
 
-        {/* University Info */}
         {universityLogo && (
           <View style={styles.topIconContainer}>
             <Image source={{ uri: universityLogo }} style={styles.icon} />
@@ -153,7 +156,6 @@ const ArticleDetailsScreen = ({ route }) => {
           </View>
         )}
 
-        {/* Department Info */}
         {departmentDetails && (
           <View style={styles.topIconContainer}>
             <Image source={departmentDetails.image} style={styles.icon} />
@@ -161,7 +163,6 @@ const ArticleDetailsScreen = ({ route }) => {
           </View>
         )}
 
-        {/* Date Added */}
         <View style={styles.dateContainer}>
           <Text style={styles.dateText}>{getTimeSincePosted(article.dateadded)}</Text>
         </View>

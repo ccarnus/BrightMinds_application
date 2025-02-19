@@ -23,6 +23,7 @@ const { width, height } = Dimensions.get('window');
 const CastScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
@@ -37,23 +38,30 @@ const CastScreen = () => {
   const [apiError, setApiError] = useState(false);
   const [allCasts, setAllCasts] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
+  const [finishedArticles, setFinishedArticles] = useState([]); // New state for articles
 
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
-useEffect(() => {
-  if (route.params?.finishedVideoId) {
-    console.log('Received finishedVideoId:', route.params.finishedVideoId);
-    const finishedId = route.params.finishedVideoId;
-    // Add the finished video ID if it’s not already in the list
-    setFinishedVideos((prev) =>
-      prev.includes(finishedId) ? prev : [...prev, finishedId]
-    );
-    // Optionally, you can also clear the route params here if needed.
-  }
-}, [route.params?.finishedVideoId]);
+  // Listen for finishedVideoId and finishedArticleId coming from the VideoScreen or ArticleDetailsScreen.
+  useEffect(() => {
+    if (route.params?.finishedVideoId) {
+      console.log('Received finishedVideoId:', route.params.finishedVideoId);
+      const finishedId = route.params.finishedVideoId;
+      setFinishedVideos((prev) =>
+        prev.includes(finishedId) ? prev : [...prev, finishedId]
+      );
+    }
+    if (route.params?.finishedArticleId) {
+      console.log('Received finishedArticleId:', route.params.finishedArticleId);
+      const finishedArticleId = route.params.finishedArticleId;
+      setFinishedArticles((prev) =>
+        prev.includes(finishedArticleId) ? prev : [...prev, finishedArticleId]
+      );
+    }
+  }, [route.params?.finishedVideoId, route.params?.finishedArticleId]);
 
   // Retrieve user data from AsyncStorage
   useEffect(() => {
@@ -196,7 +204,6 @@ useEffect(() => {
           .filter(article => !watchedArticleIds.includes(article._id))
           .map(article => ({
             ...article,
-            // You can omit the watched property since we’re filtering them out.
           }));
         setArticleData(formattedData);
       } else {
@@ -328,9 +335,7 @@ useEffect(() => {
                 carouselType="suggested"
                 finishedVideos={finishedVideos}
                 onAnimationFinish={(id) => {
-                  // Remove the finished video from the suggested list.
                   setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
-                  // Optionally, also remove it from the finishedVideos array:
                   setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
                 }}
               />
@@ -349,9 +354,7 @@ useEffect(() => {
                 carouselType="trending"
                 finishedVideos={finishedVideos}
                 onAnimationFinish={(id) => {
-                  // Remove the finished video from the suggested list.
                   setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
-                  // Optionally, also remove it from the finishedVideos array:
                   setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
                 }}
               />
@@ -365,7 +368,14 @@ useEffect(() => {
               <Text style={styles.sectionTitle}>Articles</Text>
             </View>
             {articleData.length > 0 ? (
-              <ArticleCarousel list={articleData} />
+              <ArticleCarousel
+                list={articleData}
+                finishedArticles={finishedArticles}  // Pass finishedArticles to the carousel
+                onAnimationFinish={(id) => {
+                  setArticleData((prev) => prev.filter((item) => item._id !== id));
+                  setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
+                }}
+              />
             ) : (
               <Text style={styles.noDataText}>No articles available.</Text>
             )}
