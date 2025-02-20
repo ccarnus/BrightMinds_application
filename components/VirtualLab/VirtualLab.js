@@ -207,7 +207,7 @@ const VirtualLab = ({ route }) => {
                           size={width * 0.35}
                           width={10}
                           fill={activityFill}
-                          tintColor={colors.darkblue}
+                          tintColor={colors.lightTeal}
                           backgroundColor={colors.primaryBis}
                           rotation={-115}
                           arcSweepAngle={230}
@@ -227,7 +227,7 @@ const VirtualLab = ({ route }) => {
                           size={width * 0.35}
                           width={10}
                           fill={impactFill}
-                          tintColor={colors.darkblue}
+                          tintColor={colors.darkTeal}
                           backgroundColor={colors.primaryBis}
                           rotation={-115}
                           arcSweepAngle={230}
