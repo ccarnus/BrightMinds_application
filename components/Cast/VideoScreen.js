@@ -64,6 +64,10 @@ const VideoScreen = ({ route, navigation }) => {
   const [currentCaption, setCurrentCaption] = useState('');
 
   const videoRef = useRef(null);
+  // Use a ref to ensure we only trigger the watched event once.
+  const hasTriggeredWatched = useRef(false);
+  // Use a ref to store previous progress so we detect the transition.
+  const prevProgress = useRef(0);
 
   // Retrieve userId from AsyncStorage.
   useEffect(() => {
@@ -74,7 +78,7 @@ const VideoScreen = ({ route, navigation }) => {
     getUserId();
   }, []);
 
-  // Once the userId and videoId are available, fetch the video.
+  // Once userId and videoId are available, fetch the video.
   useEffect(() => {
     if (userId && videoId) {
       fetchVideo();
@@ -98,7 +102,7 @@ const VideoScreen = ({ route, navigation }) => {
       .catch(error => console.error(error));
   };
 
-  // If a subtitle URL exists, fetch and parse it.
+  // Fetch and parse subtitles if available.
   useEffect(() => {
     if (video && video.subtitleurl) {
       fetch(video.subtitleurl)
@@ -113,13 +117,14 @@ const VideoScreen = ({ route, navigation }) => {
     }
   }, [video]);
 
-  // Called when playback reaches 85%.
+  // Called when progress crosses 85% for the first time.
   const handleCastWatched = () => {
-    if (!video || contentSubmitted) return;
+    if (!video || hasTriggeredWatched.current) return;
     const castId = video._id;
     axios
       .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
+        hasTriggeredWatched.current = true;
         setContentSubmitted(true);
         console.log("Content marked as watched at 85%");
       })
@@ -127,7 +132,7 @@ const VideoScreen = ({ route, navigation }) => {
   };
 
   // When the video is finished, check if it was watched to 85%.
-  // If so, navigate back with finishedVideoId param; otherwise, simply go back.
+  // If so, navigate back with finishedVideoId param; otherwise, just go back.
   const handleCastDonePlaying = () => {
     if (contentSubmitted) {
       console.log('Navigating back with finished video id:', video._id);
@@ -152,13 +157,13 @@ const VideoScreen = ({ route, navigation }) => {
       } else {
         navigation.goBack();
       }
-      return true; // Prevent default back behavior.
+      return true;
     };
     const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
     return () => backHandler.remove();
   }, [contentSubmitted, video, navigation]);
 
-  // Pause video when the screen loses focus.
+  // Pause video when screen loses focus.
   useEffect(() => {
     const pauseVideo = () => {
       setVideoStatus(false);
@@ -173,9 +178,12 @@ const VideoScreen = ({ route, navigation }) => {
       setPlaybackInstanceDuration(status.durationMillis);
 
       const progress = status.positionMillis / status.durationMillis;
-      if (progress >= 0.85 && !contentSubmitted) {
+      // Only trigger if crossing from below 85% to above 85%.
+      if (progress >= 0.85 && prevProgress.current < 0.85 && !hasTriggeredWatched.current) {
         handleCastWatched();
       }
+      prevProgress.current = progress;
+
       if (status.didJustFinish) {
         console.log('Video finished playing');
         handleCastDonePlaying();

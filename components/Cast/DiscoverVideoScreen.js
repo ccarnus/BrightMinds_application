@@ -64,8 +64,12 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
   const [currentCaption, setCurrentCaption] = useState('');
 
   const videoRef = useRef(null);
+  // Ref to ensure the watched event is triggered only once.
+  const hasTriggeredWatched = useRef(false);
+  // Ref to store previous progress value.
+  const prevProgress = useRef(0);
 
-  // Retrieve userId from AsyncStorage.
+  // Retrieve userId.
   useEffect(() => {
     const getUserId = async () => {
       const storedUserId = await AsyncStorage.getItem('userId');
@@ -113,21 +117,21 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
     }
   }, [video]);
 
-  // Called when video reaches 85% progress.
+  // Called when playback first crosses 85%.
   const handleCastWatched = () => {
-    if (!video || contentSubmitted) return;
+    if (!video || hasTriggeredWatched.current) return;
     const castId = video._id;
     axios
       .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })
       .then(response => {
+        hasTriggeredWatched.current = true;
         setContentSubmitted(true);
         console.log("Content marked as watched at 85%");
       })
       .catch(error => console.error(error));
   };
 
-  // When the video is finished (or user goes back), navigate back.
-  // If contentSubmitted is true, send finishedVideoId so the DiscoverScreen can play the done.json overlay.
+  // When finished, navigate back with finishedVideoId if 85% was reached.
   const handleCastDonePlaying = () => {
     if (contentSubmitted) {
       console.log('Navigating back with finished video id:', video._id);
@@ -140,7 +144,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
     }
   };
 
-  // Intercept the hardware back button.
+  // Intercept hardware back button.
   useEffect(() => {
     const onBackPress = () => {
       if (contentSubmitted && video) {
@@ -156,7 +160,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
     return () => backHandler.remove();
   }, [contentSubmitted, video, navigation]);
 
-  // Pause video when the screen loses focus.
+  // Pause video when screen loses focus.
   useEffect(() => {
     const pauseVideo = () => {
       setVideoStatus(false);
@@ -171,9 +175,12 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
       setPlaybackInstanceDuration(status.durationMillis);
 
       const progress = status.positionMillis / status.durationMillis;
-      if (progress >= 0.85 && !contentSubmitted) {
+      // Trigger the watched event only when crossing from below 85% to above 85%.
+      if (progress >= 0.85 && prevProgress.current < 0.85 && !hasTriggeredWatched.current) {
         handleCastWatched();
       }
+      prevProgress.current = progress;
+
       if (status.didJustFinish) {
         console.log('Video finished playing');
         handleCastDonePlaying();

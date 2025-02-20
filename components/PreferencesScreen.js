@@ -33,7 +33,7 @@ const PreferencesScreen = ({ navigation }) => {
           modification: 'positive',
         });
       }
-      navigation.navigate('LoadingScreen');
+      navigation.navigate('WelcomeScreen');
     } catch (error) {
       console.error('Failed to set preferences:', error);
     }

@@ -28,6 +28,7 @@ import OnboardingScreen from './Onboarding/OnboardingScreen';
 import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
 import VideoScreen from './Cast/VideoScreen';
 import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
+import WelcomeScreen from './Onboarding/WelcomeScreen';
 
 const Stack = createStackNavigator();
 
@@ -114,6 +115,7 @@ const MainNavigator = () => {
         <Stack.Screen name="PostCast" component={PostCast} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PostArticle" component={PostArticle} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="LoadingScreen" component={LoadingScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />

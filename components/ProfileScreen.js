@@ -70,7 +70,7 @@ const ProfileScreen = () => {
     setUserData(null);
     setUserPreferences([]);
     setTrackingData({ objective: '', progress: 0 });
-    navigation.navigate('LoginScreen');
+    navigation.navigate('AuthChoice');
   };
 
   const handleEditProfile = () => {

@@ -18,7 +18,7 @@ const LoadingScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <LottieView
-        source={require('../../assets/Loader/Welcome.json')}
+        source={require('../../assets/Loader/loader.json')}
         autoPlay
         loop={false}
         onAnimationFinish={() => navigation.replace('BottomNav')}
