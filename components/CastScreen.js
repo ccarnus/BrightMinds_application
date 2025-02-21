@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  TextInput,
   RefreshControl,
   Dimensions
 } from 'react-native';
@@ -17,6 +16,8 @@ import Carousel from './Cast/Carousel';
 import ArticleCarousel from './Cast/ArticleCarousel';
 import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
+import { Searchbar } from 'react-native-paper';
+import { RFValue } from "react-native-responsive-fontsize";
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,13 +40,29 @@ const CastScreen = () => {
   const [allCasts, setAllCasts] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
   const [finishedArticles, setFinishedArticles] = useState([]);
-
+  const [selectedCategory, setSelectedCategory] = useState('Article');
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
-  // Listen for finished IDs passed via route params.
+  // Helper function to return an icon based on the selected category.
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'Article':
+        return require('../assets/Cast_screen_icons/article_icon.png');
+      case 'Topic':
+        // Replace with your topic icon asset
+        return require('../assets/Cast_screen_icons/article_icon.png');
+      case 'Video':
+        // Replace with your video icon asset
+        return require('../assets/Cast_screen_icons/article_icon.png');
+      default:
+        return null;
+    }
+  };
+
+  // Listen for finished IDs from route params.
   useEffect(() => {
     if (route.params?.finishedVideoId) {
       console.log('Received finishedVideoId:', route.params.finishedVideoId);
@@ -78,14 +95,14 @@ const CastScreen = () => {
     getUserData();
   }, []);
 
-  // Fetch watched content once the userId is available.
+  // Fetch watched content when userId is available.
   useEffect(() => {
     if (userId) {
       awaitFetchWatchedContent();
     }
   }, [userId]);
 
-  // A combined refresh function that fetches watched content then all content.
+  // Combined function to fetch watched content then all casts/articles.
   const awaitFetchWatchedContent = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`);
@@ -104,7 +121,7 @@ const CastScreen = () => {
       setWatchedCastIds(fetchedWatchedCastIds);
       setWatchedArticleIds(fetchedWatchedArticleIds);
 
-      // Once watched content is fetched, fetch all other content.
+      // Now fetch all content.
       await fetchAllContent(fetchedWatchedCastIds, fetchedWatchedArticleIds);
     } catch (error) {
       console.error('Error fetching watched content:', error);
@@ -112,7 +129,6 @@ const CastScreen = () => {
     }
   };
 
-  // Combine the fetching of content and filter before ending the loading state.
   const fetchAllContent = async (watchedCasts, watchedArticles) => {
     setIsLoading(true);
     try {
@@ -183,6 +199,52 @@ const CastScreen = () => {
     }
   };
 
+  // Configurable search function – different APIs can be used based on selectedCategory.
+  const handleSearch = async (text) => {
+    setSearchQuery(text);
+    if (!text.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    // Replace the below local filtering with API calls as needed.
+    let results = [];
+    switch (selectedCategory) {
+      case 'Article':
+        // Call Article search API here.
+        results = allCasts.filter((cast) =>
+          cast.title.toLowerCase().includes(text.toLowerCase())
+        );
+        break;
+      case 'Topic':
+        // Call Topic search API here.
+        results = allCasts.filter((cast) =>
+          cast.title.toLowerCase().includes(text.toLowerCase())
+        );
+        break;
+      case 'Video':
+        // Call Video search API here.
+        results = allCasts.filter((cast) =>
+          cast.title.toLowerCase().includes(text.toLowerCase())
+        );
+        break;
+      default:
+        results = allCasts.filter((cast) =>
+          cast.title.toLowerCase().includes(text.toLowerCase())
+        );
+    }
+    setSearchResults(results);
+  };
+
+  const clearSearch = () => {
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleSearchResultPress = (id) => {
+    navigation.navigate('VideoScreen', { selectedCastId: id });
+    console.log(id);
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setApiError(false);
@@ -210,33 +272,11 @@ const CastScreen = () => {
     );
   }
 
-  const handleSearch = (text) => {
-    setSearchQuery(text);
-    if (!text.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    const filteredCasts = allCasts.filter((cast) =>
-      cast.title.toLowerCase().includes(text.toLowerCase())
-    );
-    setSearchResults(filteredCasts);
-  };
-
-  const clearSearch = () => {
-    setSearchQuery('');
-    setSearchResults([]);
-  };
-
-  const handleSearchResultPress = (id) => {
-    navigation.navigate('VideoScreen', { selectedCastId: id });
-    console.log(id);
-  };
-
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <LottieView
-          source={require('../assets/Loader/loader.json')}
+          source={serverError}
           autoPlay
           loop
           style={styles.lottie}
@@ -248,25 +288,40 @@ const CastScreen = () => {
   return (
     <View style={styles.container}>
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {/* Search Bar */}
-        <View style={styles.searchContainerAndRandom}>
-          <View style={styles.searchContainer}>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="I want to learn about.."
-              placeholderTextColor={colors.secondary}
-              onChangeText={handleSearch}
-              value={searchQuery}
-              clearButtonMode="while-editing"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-                <Text style={styles.clearButtonText}>✕</Text>
+        {/* Search Section */}
+        <View style={styles.searchSection}>
+          <Text style={styles.titleText}>What do you want to learn about?</Text>
+          <Searchbar
+            placeholder="Type your search..."
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
+          <View style={styles.categoryRow}>
+            {['Article', 'Topic', 'Video'].map((category) => (
+              <TouchableOpacity
+                key={category}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === category && styles.selectedCategoryButton
+                ]}
+                onPress={() => setSelectedCategory(category)}
+              >
+                <Image source={getCategoryIcon(category)} style={styles.categoryIcon} />
+                <Text
+                  style={[
+                    styles.categoryButtonText,
+                    selectedCategory === category && styles.selectedCategoryButtonText
+                  ]}
+                >
+                  {category}
+                </Text>
               </TouchableOpacity>
-            )}
+            ))}
           </View>
           <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
             <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
+            <Text style={styles.randomButtonText}>Random</Text>
           </TouchableOpacity>
         </View>
 
@@ -347,54 +402,87 @@ const CastScreen = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primaryBis },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: sizes.radius,
+  searchSection: {
     paddingHorizontal: spacing.m,
-    height: 40,
-    flexShrink: 1,
+    paddingTop: spacing.m,
+    paddingBottom: spacing.l,
+    backgroundColor: colors.primary,
+    borderBottomLeftRadius: sizes.radius,
+    borderBottomRightRadius: sizes.radius,
   },
-  searchContainerAndRandom: {
+  titleText: {
+    fontSize: RFValue(sizes.h3),
+    fontFamily: 'MontserratBold',
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: spacing.m,
+  },
+  searchBar: {
+    backgroundColor: colors.primaryBis,
+    borderRadius: sizes.radius,
+    marginBottom: spacing.m,
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: spacing.m,
+  },
+  categoryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.m,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.primaryBis,
   },
-  searchInput: {
-    flex: 1,
+  selectedCategoryButton: {
+    backgroundColor: colors.secondary,
+  },
+  categoryButtonText: {
     color: colors.white,
-    fontSize: sizes.h4,
     fontFamily: 'Montserrat',
+    fontSize: RFValue(sizes.h4),
   },
-  clearButton: {
-    marginLeft: spacing.s,
+  selectedCategoryButtonText: {
+    color: colors.primary,
   },
-  clearButtonText: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
+  categoryIcon: {
+    width: 20,
+    height: 20,
+    marginRight: spacing.s,
+    tintColor: colors.white,
+  },
+  randomButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginTop: spacing.m,
+    backgroundColor: colors.secondary,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
+    borderRadius: sizes.radius,
+  },
+  randomButtonIcon: {
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
+    tintColor: colors.primary,
+    marginRight: spacing.s,
+  },
+  randomButtonText: {
+    color: colors.primary,
+    fontSize: RFValue(sizes.h4),
+    fontFamily: 'Montserrat',
   },
   searchResultsContainer: {
     paddingHorizontal: spacing.m,
   },
   searchResultItem: {
     paddingVertical: spacing.m,
-  },
-  searchResultText: {
-    color: colors.white,
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
+    color: colors.white,
   },
   noResultsText: {
     textAlign: 'center',
@@ -464,18 +552,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  randomButton: {
-    flex: 0,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: spacing.m,
-    marginRight: spacing.s,
   },
-  randomButtonIcon: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-    tintColor: colors.lightGreen,
+  lottie: {
+    width: 200,
+    height: 200,
   },
 });
 
