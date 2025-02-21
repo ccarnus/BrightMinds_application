@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import InfoIcon from '../../assets/Virtual_lab_icons/info_icon.png';
-import ArticleIcon from '../../assets/Cast_screen_icons/article_logo.png';
-import CastIcon from '../../assets/Cast_screen_icons/cast_logo.png';
+import ActivityImage from '../../assets/Virtual_lab_icons/activity.png';
+import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import departments from '../../lists/departments';
@@ -79,6 +79,7 @@ const VirtualLab = ({ route }) => {
   };
 
   const handleTopicPress = (topicId) => {
+    console.log('Topic ID:', topicId);
     navigation.navigate('TopicDetailScreen', { selectedTopicId: topicId });
   };
 
@@ -176,73 +177,88 @@ const VirtualLab = ({ route }) => {
                 const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
 
                 return (
-                  <TouchableOpacity
-                    key={topic._id}
-                    style={styles.topicContainer}
-                    onPress={() => handleTopicPress(topic._id)}
-                  >
-                    <Text 
-                      style={styles.topicName}
-                      numberOfLines={3}
-                      ellipsizeMode='tail'
+                  <View key={topic._id} style={styles.topicContainer}>
+                    <TouchableOpacity
+                      onPress={() => handleTopicPress(topic._id)}
+                      activeOpacity={0.8}
                     >
-                      {topic.name}
-                    </Text>
+                      <Text 
+                        style={styles.topicName}
+                        numberOfLines={3}
+                        ellipsizeMode='tail'
+                      >
+                        {topic.name}
+                      </Text>
 
-                    <View style={styles.topicStats}>
-                      <View style={styles.statItem}>
-                        <Image source={ArticleIcon} style={styles.statIcon} />
-                        <Text style={styles.statText}>{topic.articleCount}</Text>
-                      </View>
-                      <View style={styles.statItem}>
-                        <Image source={CastIcon} style={styles.statIcon} />
-                        <Text style={styles.statText}>{topic.castCount}</Text>
-                      </View>
-                    </View>
+                      {/* Two gauges side by side */}
+                      <View style={styles.gaugeRow}>
+                        <View style={styles.gaugeContainer}>
+                          <AnimatedCircularProgress
+                            size={width * 0.35}
+                            width={10}
+                            fill={activityFill}
+                            tintColor={colors.lightTeal}
+                            backgroundColor={colors.primaryBis}
+                            rotation={-115}
+                            arcSweepAngle={230}
+                            lineCap="round"
+                          >
+                            {() => (
+                              <Image 
+                                source={ActivityImage} 
+                                style={styles.gaugeIcon} 
+                                resizeMode="contain"
+                              />
+                            )}
+                          </AnimatedCircularProgress>
+                        </View>
 
-                    {/* Two gauges side by side */}
-                    <View style={styles.gaugeRow}>
-                      <View style={styles.gaugeContainer}>
-                        <AnimatedCircularProgress
-                          size={width * 0.35}
-                          width={10}
-                          fill={activityFill}
-                          tintColor={colors.lightTeal}
-                          backgroundColor={colors.primaryBis}
-                          rotation={-115}
-                          arcSweepAngle={230}
-                          lineCap="round"
-                        >
-                          {(fill) => (
-                            <Text style={styles.gaugeText}>
-                              {topic.activity.toFixed(2)}
-                            </Text>
-                          )}
-                        </AnimatedCircularProgress>
-                        <Text style={styles.gaugeLabel}>Activity</Text>
+                        <View style={styles.gaugeContainer}>
+                          <AnimatedCircularProgress
+                            size={width * 0.35}
+                            width={10}
+                            fill={impactFill}
+                            tintColor={colors.darkTeal}
+                            backgroundColor={colors.primaryBis}
+                            rotation={-115}
+                            arcSweepAngle={230}
+                            lineCap="round"
+                          >
+                            {() => (
+                              <View>
+                                <Image 
+                                source={ImpactImage} 
+                                style={styles.gaugeIcon} 
+                                resizeMode="contain"
+                              />
+                              {/*<Text style={styles.gaugeLabel}>Impact</Text>*/}
+                              </View>
+                            )}
+                          </AnimatedCircularProgress>
+                        </View>
                       </View>
-
-                      <View style={styles.gaugeContainer}>
-                        <AnimatedCircularProgress
-                          size={width * 0.35}
-                          width={10}
-                          fill={impactFill}
-                          tintColor={colors.darkTeal}
-                          backgroundColor={colors.primaryBis}
-                          rotation={-115}
-                          arcSweepAngle={230}
-                          lineCap="round"
-                        >
-                          {(fill) => (
-                            <Text style={styles.gaugeText}>
-                              {topic.impact.toFixed(2)}
-                            </Text>
-                          )}
-                        </AnimatedCircularProgress>
-                        <Text style={styles.gaugeLabel}>Impact</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                    {/* Explore Button at the bottom of the topic container */}
+                    <Button
+                      mode="contained"
+                      onPress={() => handleTopicPress(topic._id)}
+                      buttonColor={colors.darkGreen}
+                      contentStyle={{ flexDirection: 'row-reverse' }}
+                      icon={require('../../assets/Discover_icons/next.png')}
+                      labelStyle={{
+                        fontSize: sizes.h3,
+                        fontFamily: 'Montserrat',
+                        textAlign: 'center'
+                      }}
+                      style={{
+                        marginTop: spacing.m,
+                        marginHorizontal: spacing.xs,
+                        borderRadius: sizes.buttonRadius,
+                      }}
+                    >
+                      Explore
+                    </Button>
+                  </View>
                 );
               })
             )}
@@ -341,27 +357,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     marginBottom: spacing.s,
   },
-  topicStats: {
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    marginBottom: spacing.s,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: spacing.m,
-  },
-  statIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 5,
-  },
-  statText: {
-    fontSize: sizes.body,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  // New style for displaying two gauges in a row
   gaugeRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -371,17 +366,17 @@ const styles = StyleSheet.create({
   gaugeContainer: {
     alignItems: 'center',
   },
-  gaugeText: {
-    fontSize: RFValue(16),
-    color: colors.darkblue,
-    fontFamily: 'Montserrat',
-    position: 'absolute',
+  gaugeIcon: {
+    width: RFValue(48),
+    height: RFValue(48),
   },
   gaugeLabel: {
     fontSize: RFValue(14),
     color: colors.secondary,
     fontFamily: 'Montserrat',
+    fontStyle: 'italic',
     marginTop: spacing.s / 2,
+    textAlign: 'center',
   },
   modalContainer: {
     backgroundColor: 'white',
@@ -391,7 +386,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: RFValue(22),
+    fontSize: RFValue(sizes.title),
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',
@@ -417,7 +412,7 @@ const styles = StyleSheet.create({
   lottie: {
     width: 200,
     height: 200,
-  },
+  }
 });
 
 export default VirtualLab;
