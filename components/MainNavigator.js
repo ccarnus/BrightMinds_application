@@ -29,6 +29,7 @@ import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
 import VideoScreen from './Cast/VideoScreen';
 import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
 import WelcomeScreen from './Onboarding/WelcomeScreen';
+import TopicDetailScreen from './VirtualLab/TopicDetailScreen';
 
 const Stack = createStackNavigator();
 
@@ -133,6 +134,7 @@ const MainNavigator = () => {
             },
           })}/>
         <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="TopicDetailScreen" component={TopicDetailScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PreferencesScreen" component={PreferencesScreen} options={{ headerShown: false, tabBarVisible: false }} />
       </Stack.Navigator>
     </NavigationContainer>

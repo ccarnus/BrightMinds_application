@@ -70,7 +70,7 @@ const VirtualLab = ({ route }) => {
   const minHeaderHeight = height / 9;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
 
-  // Interpolated values for the header, image, title, and info icon.
+  // Interpolated values for header, image, title, and info icon.
   const headerHeight = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
     outputRange: [initialHeaderHeight, minHeaderHeight],
@@ -109,8 +109,7 @@ const VirtualLab = ({ route }) => {
   };
 
   const handleTopicPress = (topicId) => {
-    console.log('Topic ID:', topicId);
-    navigation.navigate('TopicDetailScreen', { selectedTopicId: topicId });
+    navigation.navigate('TopicDetailScreen', { topicId });
   };
 
   const showInfoModal = () => {
@@ -169,7 +168,12 @@ const VirtualLab = ({ route }) => {
                 resizeMode="contain"
               />
             )}
-            <Animated.Text style={[styles.labTitle, { fontSize: titleFontSize }]}>
+            <Animated.Text
+              style={[styles.labTitle, { fontSize: titleFontSize, flexShrink: 1 }]}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.5}
+              numberOfLines={3}
+            >
               {labDisplayName || 'Virtual Laboratory'}
             </Animated.Text>
           </View>
