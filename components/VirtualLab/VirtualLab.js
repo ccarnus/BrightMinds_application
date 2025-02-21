@@ -70,7 +70,7 @@ const VirtualLab = ({ route }) => {
   const minHeaderHeight = height / 9;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
 
-  // Interpolated values for the header
+  // Interpolated values for the header, image, title, and info icon.
   const headerHeight = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
     outputRange: [initialHeaderHeight, minHeaderHeight],
@@ -83,7 +83,12 @@ const VirtualLab = ({ route }) => {
   });
   const titleFontSize = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
-    outputRange: [RFValue(sizes.h1), RFValue(sizes.h3)],
+    outputRange: [RFValue(sizes.h2), RFValue(sizes.h3)],
+    extrapolate: 'clamp',
+  });
+  const infoIconSize = scrollY.interpolate({
+    inputRange: [0, headerShrinkRange],
+    outputRange: [RFValue(30), RFValue(20)],
     extrapolate: 'clamp',
   });
 
@@ -170,7 +175,11 @@ const VirtualLab = ({ route }) => {
           </View>
           <View style={styles.topRightButtons}>
             <TouchableOpacity onPress={showInfoModal}>
-              <Image source={InfoIcon} style={styles.topRightIcon} />
+              <Animated.Image 
+                source={InfoIcon} 
+                style={[styles.topRightIcon, { width: infoIconSize, height: infoIconSize }]} 
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           </View>
         </AnimatedLinearGradient>
@@ -196,7 +205,6 @@ const VirtualLab = ({ route }) => {
               <Text style={styles.noDataText}>No topics available.</Text>
             ) : (
               filteredTopics.map((topic) => {
-                // Normalize the gauge values to a 0-100 fill range.
                 const activityFill = maxActivity ? (topic.activity / maxActivity) * 100 : 0;
                 const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
                 return (
@@ -315,16 +323,16 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    // height is animated
     backgroundColor: colors.secondary,
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.m,
     zIndex: 1000,
   },
   headerContent: {
+    flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', // vertically centered
+    justifyContent: 'center', // centers the row horizontally
   },
   departmentImage: {
     marginRight: spacing.m,
@@ -337,13 +345,11 @@ const styles = StyleSheet.create({
   topRightButtons: {
     position: 'absolute',
     right: spacing.m,
-    bottom: spacing.l,
+    bottom: spacing.m, // placed at the bottom right of the header
     alignItems: 'center',
+    justifyContent: 'center',
   },
   topRightIcon: {
-    width: 30,
-    height: 30,
-    marginVertical: spacing.s,
     tintColor: colors.primary,
   },
   bottomSection: {
@@ -395,7 +401,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: RFValue(sizes.title),
+    fontSize: RFValue(sizes.h1),
     color: colors.secondary,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',
