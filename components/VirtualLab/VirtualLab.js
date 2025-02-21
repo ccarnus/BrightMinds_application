@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  ScrollView, 
+  Animated,
   Image, 
   TouchableOpacity, 
   Dimensions 
@@ -52,6 +52,8 @@ const departmentImages = {
   Veterinary: require('../../assets/Virtual_labs/Veterinary.png'),
 };
 
+const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+
 const VirtualLab = ({ route }) => {
   const { labId, labDisplayName } = route.params;
   const [topics, setTopics] = useState([]);
@@ -62,6 +64,28 @@ const VirtualLab = ({ route }) => {
   const [departmentDescription, setDepartmentDescription] = useState('');
   const departmentImageSource =
     departmentImages[labId] || departmentImages[labDisplayName] || null;
+
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const initialHeaderHeight = height / 4;
+  const minHeaderHeight = height / 9;
+  const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
+
+  // Interpolated values for the header
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, headerShrinkRange],
+    outputRange: [initialHeaderHeight, minHeaderHeight],
+    extrapolate: 'clamp',
+  });
+  const imageSize = scrollY.interpolate({
+    inputRange: [0, headerShrinkRange],
+    outputRange: [80, 40],
+    extrapolate: 'clamp',
+  });
+  const titleFontSize = scrollY.interpolate({
+    inputRange: [0, headerShrinkRange],
+    outputRange: [RFValue(sizes.h1), RFValue(sizes.h3)],
+    extrapolate: 'clamp',
+  });
 
   useEffect(() => {
     fetchTopics();
@@ -90,7 +114,6 @@ const VirtualLab = ({ route }) => {
         dep.display.toLowerCase() === labDisplayName?.toLowerCase() ||
         dep.name.toLowerCase() === labId?.toLowerCase()
     );
-
     if (department) {
       setDepartmentDescription(department.description);
     } else {
@@ -104,14 +127,13 @@ const VirtualLab = ({ route }) => {
     setDepartmentDescription('');
   };
 
-  // Helper function to determine font size based on text length
-  const getFontSize = (text) => {
-    const maxLength = 30; // Adjust as needed
-    if (text.length > maxLength) {
-      return RFValue(18); // Smaller font size for longer text
-    }
-    return RFValue(24); // Default font size
-  };
+  // Filter topics based on the search query (case-insensitive)
+  const filteredTopics = topics.filter(topic =>
+    topic.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
+  const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
 
   if (isLoading) {
     return (
@@ -126,59 +148,50 @@ const VirtualLab = ({ route }) => {
     );
   }
 
-  // Filter topics based on the search query (case-insensitive)
-  const filteredTopics = topics.filter(topic =>
-    topic.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
-  const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
-
   return (
     <Provider>
       <View style={styles.container}>
-        <LinearGradient
+        {/* Animated Header */}
+        <AnimatedLinearGradient
           colors={[colors.secondary, colors.primaryBis]}
-          style={styles.topSection}
+          style={[styles.topSection, { height: headerHeight }]}
         >
           <View style={styles.headerContent}>
-            {/* Department Image */}
             {departmentImageSource && (
-              <Image
+              <Animated.Image
                 source={departmentImageSource}
-                style={styles.departmentImage}
+                style={[styles.departmentImage, { width: imageSize, height: imageSize }]}
                 resizeMode="contain"
               />
             )}
-
-            {/* Lab Title */}
-            <Text 
-              style={[
-                styles.labTitle, 
-                { fontSize: getFontSize(labDisplayName || 'Virtual Laboratory') }
-              ]}
-              numberOfLines={3}
-              ellipsizeMode='tail'
-            >
+            <Animated.Text style={[styles.labTitle, { fontSize: titleFontSize }]}>
               {labDisplayName || 'Virtual Laboratory'}
-            </Text>
+            </Animated.Text>
           </View>
-
           <View style={styles.topRightButtons}>
             <TouchableOpacity onPress={showInfoModal}>
               <Image source={InfoIcon} style={styles.topRightIcon} />
             </TouchableOpacity>
           </View>
-        </LinearGradient>
+        </AnimatedLinearGradient>
 
-        <ScrollView style={styles.bottomSection}>
+        {/* Scrollable Content */}
+        <Animated.ScrollView
+          style={styles.bottomSection}
+          contentContainerStyle={{ paddingTop: initialHeaderHeight }}
+          scrollEventThrottle={16}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: false }
+          )}
+        >
           <Searchbar
             placeholder="Search topics..."
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchBar}
           />
-          <View style={{ marginBottom: spacing.l }} >
+          <View style={{ marginBottom: spacing.l }}>
             {filteredTopics.length === 0 ? (
               <Text style={styles.noDataText}>No topics available.</Text>
             ) : (
@@ -186,20 +199,16 @@ const VirtualLab = ({ route }) => {
                 // Normalize the gauge values to a 0-100 fill range.
                 const activityFill = maxActivity ? (topic.activity / maxActivity) * 100 : 0;
                 const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
-
                 return (
                   <View key={topic._id} style={styles.topicContainer}>
-                    <View
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity onPress={() => handleTopicPress(topic._id)} activeOpacity={0.8}>
                       <Text 
                         style={styles.topicName}
                         numberOfLines={3}
-                        ellipsizeMode='tail'
+                        ellipsizeMode="tail"
                       >
                         {topic.name}
                       </Text>
-
                       {/* Two gauges side by side */}
                       <View style={styles.gaugeRow}>
                         <View style={styles.gaugeContainer}>
@@ -222,7 +231,6 @@ const VirtualLab = ({ route }) => {
                             )}
                           </AnimatedCircularProgress>
                         </View>
-
                         <View style={styles.gaugeContainer}>
                           <AnimatedCircularProgress
                             size={width * 0.35}
@@ -244,8 +252,8 @@ const VirtualLab = ({ route }) => {
                           </AnimatedCircularProgress>
                         </View>
                       </View>
-                    </View>
-                    {/* Explore Button at the bottom of the topic container */}
+                    </TouchableOpacity>
+                    {/* Explore Button */}
                     <Button
                       mode="contained"
                       onPress={() => handleTopicPress(topic._id)}
@@ -270,7 +278,7 @@ const VirtualLab = ({ route }) => {
               })
             )}
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
 
         {/* Info Modal */}
         <Portal>
@@ -303,29 +311,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topSection: {
-    height: height / 4,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    // height is animated
     backgroundColor: colors.secondary,
-    elevation: 5,
-    justifyContent: 'center',
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.m,
+    zIndex: 1000,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 1,
   },
   departmentImage: {
-    width: 80,
-    height: 80,
     marginRight: spacing.m,
   },
   labTitle: {
     color: colors.primary,
     fontFamily: 'Montserrat',
     textAlign: 'center',
-    flexShrink: 1,
   },
   topRightButtons: {
     position: 'absolute',
@@ -341,8 +348,6 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     backgroundColor: colors.primaryBis,
-    paddingVertical: spacing.m,
-    width: width,
   },
   searchBar: {
     marginHorizontal: spacing.m,
@@ -382,14 +387,6 @@ const styles = StyleSheet.create({
     width: RFValue(48),
     height: RFValue(48),
   },
-  gaugeLabel: {
-    fontSize: RFValue(14),
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    fontStyle: 'italic',
-    marginTop: spacing.s / 2,
-    textAlign: 'center',
-  },
   modalContainer: {
     backgroundColor: 'white',
     padding: 18,
@@ -424,7 +421,7 @@ const styles = StyleSheet.create({
   lottie: {
     width: 200,
     height: 200,
-  }
+  },
 });
 
 export default VirtualLab;
