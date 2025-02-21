@@ -15,7 +15,7 @@ import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import departments from '../../lists/departments';
-import { Modal, Portal, Button, Provider } from 'react-native-paper';
+import { Modal, Portal, Button, Provider, Searchbar } from 'react-native-paper';
 import { API_BASE_URL } from '../APIConfig';
 import LottieView from 'lottie-react-native';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
@@ -56,6 +56,7 @@ const VirtualLab = ({ route }) => {
   const { labId, labDisplayName } = route.params;
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
   const [infoVisible, setInfoVisible] = useState(false);
   const [departmentDescription, setDepartmentDescription] = useState('');
@@ -95,7 +96,6 @@ const VirtualLab = ({ route }) => {
     } else {
       setDepartmentDescription('Description not available.');
     }
-
     setInfoVisible(true);
   };
 
@@ -125,6 +125,11 @@ const VirtualLab = ({ route }) => {
       </View>
     );
   }
+
+  // Filter topics based on the search query (case-insensitive)
+  const filteredTopics = topics.filter(topic =>
+    topic.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
   const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
@@ -167,19 +172,24 @@ const VirtualLab = ({ route }) => {
         </LinearGradient>
 
         <ScrollView style={styles.bottomSection}>
+          <Searchbar
+            placeholder="Search topics..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+          />
           <View style={{ marginBottom: spacing.l }} >
-            {topics.length === 0 ? (
+            {filteredTopics.length === 0 ? (
               <Text style={styles.noDataText}>No topics available.</Text>
             ) : (
-              topics.map((topic) => {
+              filteredTopics.map((topic) => {
                 // Normalize the gauge values to a 0-100 fill range.
                 const activityFill = maxActivity ? (topic.activity / maxActivity) * 100 : 0;
                 const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
 
                 return (
                   <View key={topic._id} style={styles.topicContainer}>
-                    <TouchableOpacity
-                      onPress={() => handleTopicPress(topic._id)}
+                    <View
                       activeOpacity={0.8}
                     >
                       <Text 
@@ -225,19 +235,16 @@ const VirtualLab = ({ route }) => {
                             lineCap="round"
                           >
                             {() => (
-                              <View>
-                                <Image 
+                              <Image 
                                 source={ImpactImage} 
                                 style={styles.gaugeIcon} 
                                 resizeMode="contain"
                               />
-                              {/*<Text style={styles.gaugeLabel}>Impact</Text>*/}
-                              </View>
                             )}
                           </AnimatedCircularProgress>
                         </View>
                       </View>
-                    </TouchableOpacity>
+                    </View>
                     {/* Explore Button at the bottom of the topic container */}
                     <Button
                       mode="contained"
@@ -336,6 +343,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
     paddingVertical: spacing.m,
     width: width,
+  },
+  searchBar: {
+    marginHorizontal: spacing.m,
+    marginBottom: spacing.m,
+    backgroundColor: colors.primary,
   },
   noDataText: {
     fontSize: sizes.body,
