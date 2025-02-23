@@ -52,11 +52,9 @@ const CastScreen = () => {
       case 'Article':
         return require('../assets/Cast_screen_icons/article_icon.png');
       case 'Topic':
-        // Replace with your topic icon asset
-        return require('../assets/Cast_screen_icons/article_icon.png');
+        return require('../assets/Bottom_icons/lab.png');
       case 'Video':
-        // Replace with your video icon asset
-        return require('../assets/Cast_screen_icons/article_icon.png');
+        return require('../assets/Cast_screen_icons/cast_icon.png');
       default:
         return null;
     }
@@ -290,7 +288,7 @@ const CastScreen = () => {
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {/* Search Section */}
         <View style={styles.searchSection}>
-          <Text style={styles.titleText}>What do you want to learn about?</Text>
+          <Text style={styles.titleText}>I want to know about..</Text>
           <Searchbar
             placeholder="Type your search..."
             onChangeText={handleSearch}
@@ -307,7 +305,13 @@ const CastScreen = () => {
                 ]}
                 onPress={() => setSelectedCategory(category)}
               >
-                <Image source={getCategoryIcon(category)} style={styles.categoryIcon} />
+                <Image 
+                  source={getCategoryIcon(category)} 
+                  style={[
+                    styles.categoryIcon, 
+                    selectedCategory === category && { tintColor: colors.primary }
+                  ]} 
+                />
                 <Text
                   style={[
                     styles.categoryButtonText,
@@ -321,7 +325,6 @@ const CastScreen = () => {
           </View>
           <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
             <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
-            <Text style={styles.randomButtonText}>Random</Text>
           </TouchableOpacity>
         </View>
 
@@ -406,21 +409,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     paddingTop: spacing.m,
     paddingBottom: spacing.l,
-    backgroundColor: colors.primary,
-    borderBottomLeftRadius: sizes.radius,
-    borderBottomRightRadius: sizes.radius,
+    backgroundColor: colors.primaryBis,
   },
   titleText: {
-    fontSize: RFValue(sizes.h3),
+    fontSize: RFValue(sizes.h1),
     fontFamily: 'MontserratBold',
     color: colors.white,
     textAlign: 'center',
-    marginBottom: spacing.m,
+    marginBottom: spacing.xl,
+    marginTop: spacing.m,
   },
   searchBar: {
-    backgroundColor: colors.primaryBis,
-    borderRadius: sizes.radius,
+    marginHorizontal: spacing.xs,
     marginBottom: spacing.m,
+    backgroundColor: colors.primary,
   },
   categoryRow: {
     flexDirection: 'row',
@@ -436,10 +438,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   selectedCategoryButton: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.darkTeal,
   },
   categoryButtonText: {
-    color: colors.white,
+    color: colors.secondary,
     fontFamily: 'Montserrat',
     fontSize: RFValue(sizes.h4),
   },
@@ -447,10 +449,10 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   categoryIcon: {
-    width: 20,
-    height: 20,
+    width: RFValue(20),
+    height: RFValue(20),
     marginRight: spacing.s,
-    tintColor: colors.white,
+    tintColor: colors.secondary,
   },
   randomButton: {
     flexDirection: 'row',
@@ -458,22 +460,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     marginTop: spacing.m,
-    backgroundColor: colors.secondary,
-    paddingVertical: spacing.s,
+    backgroundColor: colors.lightOrange,
+    paddingVertical: spacing.m,
     paddingHorizontal: spacing.m,
-    borderRadius: sizes.radius,
+    borderRadius: 50,
   },
   randomButtonIcon: {
-    width: 24,
-    height: 24,
+    width: RFValue(24),
+    height: RFValue(24),
     resizeMode: 'contain',
-    tintColor: colors.primary,
-    marginRight: spacing.s,
-  },
-  randomButtonText: {
-    color: colors.primary,
-    fontSize: RFValue(sizes.h4),
-    fontFamily: 'Montserrat',
+    tintColor: colors.primaryBis
   },
   searchResultsContainer: {
     paddingHorizontal: spacing.m,
