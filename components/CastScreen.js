@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,8 @@ import {
   ScrollView,
   Image,
   RefreshControl,
-  Dimensions
+  Dimensions,
+  Keyboard
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,6 +26,7 @@ const CastScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
+  // Existing state variables...
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
@@ -41,12 +43,19 @@ const CastScreen = () => {
   const [finishedVideos, setFinishedVideos] = useState([]);
   const [finishedArticles, setFinishedArticles] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Article');
+
+  // New state to track if the search bar is active (pressed)
+  const [isSearching, setIsSearching] = useState(false);
+  // Ref for the pinned search bar
+  const searchBarRef = useRef(null);
+
+  // Icon definitions...
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
-  // Helper function to return an icon based on the selected category.
+  // Helper to return an icon based on category.
   const getCategoryIcon = (category) => {
     switch (category) {
       case 'Article':
@@ -59,6 +68,13 @@ const CastScreen = () => {
         return null;
     }
   };
+
+  // Focus the search bar when isSearching becomes true.
+  useEffect(() => {
+    if (isSearching && searchBarRef.current) {
+      searchBarRef.current.focus();
+    }
+  }, [isSearching]);
 
   // Listen for finished IDs from route params.
   useEffect(() => {
@@ -207,7 +223,6 @@ const CastScreen = () => {
       try {
         const response = await fetch('https://api.brightmindsresearch.com/cast/all/simplified');
         const data = await response.json();
-        // Filter the list of videos based on the text input
         const results = data.filter(item =>
           item.title.toLowerCase().includes(text.toLowerCase())
         );
@@ -217,10 +232,8 @@ const CastScreen = () => {
       }
     } else if (selectedCategory === 'Topic') {
       try {
-        // The API requires a full word, so we use the current text
         const response = await fetch(`https://api.openalex.org/topics?search=${text}&select=id,display_name&per_page=50`);
         const data = await response.json();
-        // OpenAlex returns topics in a "results" array.
         const results = data.results || [];
         setSearchResults(results);
       } catch (error) {
@@ -240,6 +253,8 @@ const CastScreen = () => {
   const handleSearchResultPress = (id) => {
     navigation.navigate('VideoScreen', { selectedCastId: id });
     console.log(id);
+    setIsSearching(false);
+    clearSearch();
   };
 
   const onRefresh = useCallback(async () => {
@@ -284,16 +299,30 @@ const CastScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-        {/* Search Section */}
-        <View style={styles.searchSection}>
-          <Text style={styles.titleText}>What do you want to learn about?</Text>
-          <Searchbar
-            placeholder="Type your search..."
-            onChangeText={handleSearch}
-            value={searchQuery}
-            style={styles.searchBar}
-          />
+      {isSearching ? (
+        // Pinned search layout: search bar at the top with the category row immediately below.
+        <View style={{ flex: 1 }}>
+          <View style={styles.searchHeader}>
+            <Searchbar
+              ref={searchBarRef}
+              placeholder="Type your search..."
+              onChangeText={handleSearch}
+              value={searchQuery}
+              style={styles.searchBar}
+              autoFocus
+              onFocus={() => setIsSearching(true)}
+            />
+            <TouchableOpacity
+              onPress={() => {
+                setIsSearching(false);
+                clearSearch();
+                Keyboard.dismiss();
+              }}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+          {/* Category row under the search bar */}
           <View style={styles.categoryRow}>
             {['Article', 'Topic', 'Video'].map((category) => (
               <TouchableOpacity
@@ -308,7 +337,6 @@ const CastScreen = () => {
                   source={getCategoryIcon(category)}
                   style={[
                     styles.categoryIcon,
-                    // Change the icon tint to white when selected
                     selectedCategory === category && { tintColor: colors.primary }
                   ]}
                 />
@@ -323,95 +351,171 @@ const CastScreen = () => {
               </TouchableOpacity>
             ))}
           </View>
-          <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
-            <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Search Results */}
-        {searchResults.length > 0 ? (
-          <View style={styles.searchResultsContainer}>
-            {searchResults.map((item) => (
-              <TouchableOpacity
-                key={item._id ? item._id : item.id}
-                onPress={() =>
-                  handleSearchResultPress(item._id ? item._id : item.id)
-                }
-              >
-                <Text style={styles.searchResultItem}>
-                  {selectedCategory === 'Topic' ? item.display_name : item.title}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.searchResultsWrapper}>
+            {searchResults.length > 0 ? (
+              <ScrollView>
+                {searchResults.map((item) => (
+                  <TouchableOpacity
+                    key={item._id ? item._id : item.id}
+                    onPress={() =>
+                      handleSearchResultPress(item._id ? item._id : item.id)
+                    }
+                  >
+                    <Text style={styles.searchResultItem}>
+                      {selectedCategory === 'Topic' ? item.display_name : item.title}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : searchQuery.length > 0 ? (
+              <Text style={styles.noResultsText}>No results found.</Text>
+            ) : null}
           </View>
-        ) : searchQuery.length > 0 ? (
-          <Text style={styles.noResultsText}>No results found.</Text>
-        ) : (
-          <>
-            {/* Suggested For You */}
-            <View style={styles.sectionHeader}>
-              <Image source={forYouIcon} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>For You</Text>
+        </View>
+      ) : (
+        // Normal layout with search bar under "What do you want to learn about?"
+        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+          <View style={styles.searchSection}>
+            <Text style={styles.titleText}>What do you want to learn about?</Text>
+            <Searchbar
+              placeholder="Type your search..."
+              onChangeText={handleSearch}
+              value={searchQuery}
+              style={styles.searchBar}
+              onFocus={() => setIsSearching(true)}
+            />
+            <View style={styles.categoryRow}>
+              {['Article', 'Topic', 'Video'].map((category) => (
+                <TouchableOpacity
+                  key={category}
+                  style={[
+                    styles.categoryButton,
+                    selectedCategory === category && styles.selectedCategoryButton
+                  ]}
+                  onPress={() => setSelectedCategory(category)}
+                >
+                  <Image
+                    source={getCategoryIcon(category)}
+                    style={[
+                      styles.categoryIcon,
+                      selectedCategory === category && { tintColor: colors.primary }
+                    ]}
+                  />
+                  <Text
+                    style={[
+                      styles.categoryButtonText,
+                      selectedCategory === category && styles.selectedCategoryButtonText
+                    ]}
+                  >
+                    {category}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            {suggestedCastData.length > 0 ? (
-              <Carousel
-                list={suggestedCastData}
-                carouselType="suggested"
-                finishedVideos={finishedVideos}
-                onAnimationFinish={(id) => {
-                  setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
-                  setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-                }}
-              />
-            ) : (
-              <Text style={styles.noDataText}>No suggestions available.</Text>
-            )}
+            <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
+              <Image source={require('../assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
+            </TouchableOpacity>
+          </View>
 
-            {/* Trending Now */}
-            <View style={styles.sectionHeader}>
-              <Image source={trendingIcon} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>Trending Now</Text>
-            </View>
-            {trendingCastData.length > 0 ? (
-              <Carousel
-                list={trendingCastData}
-                carouselType="trending"
-                finishedVideos={finishedVideos}
-                onAnimationFinish={(id) => {
-                  setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
-                  setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-                }}
-              />
-            ) : (
-              <Text style={styles.noDataText}>No trending casts available.</Text>
-            )}
+          {/* Suggested For You */}
+          <View style={styles.sectionHeader}>
+            <Image source={forYouIcon} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>For You</Text>
+          </View>
+          {suggestedCastData.length > 0 ? (
+            <Carousel
+              list={suggestedCastData}
+              carouselType="suggested"
+              finishedVideos={finishedVideos}
+              onAnimationFinish={(id) => {
+                setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+                setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+              }}
+            />
+          ) : (
+            <Text style={styles.noDataText}>No suggestions available.</Text>
+          )}
 
-            {/* Articles */}
-            <View style={styles.sectionHeader}>
-              <Image source={articleIcon} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>Articles</Text>
-            </View>
-            {articleData.length > 0 ? (
-              <ArticleCarousel
-                list={articleData}
-                finishedArticles={finishedArticles}
-                onAnimationFinish={(id) => {
-                  setArticleData((prev) => prev.filter((item) => item._id !== id));
-                  setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
-                }}
-              />
-            ) : (
-              <Text style={styles.noDataText}>No articles available.</Text>
-            )}
-          </>
-        )}
-      </ScrollView>
+          {/* Trending Now */}
+          <View style={styles.sectionHeader}>
+            <Image source={trendingIcon} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Trending Now</Text>
+          </View>
+          {trendingCastData.length > 0 ? (
+            <Carousel
+              list={trendingCastData}
+              carouselType="trending"
+              finishedVideos={finishedVideos}
+              onAnimationFinish={(id) => {
+                setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
+                setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+              }}
+            />
+          ) : (
+            <Text style={styles.noDataText}>No trending casts available.</Text>
+          )}
+
+          {/* Articles */}
+          <View style={styles.sectionHeader}>
+            <Image source={articleIcon} style={styles.sectionIcon} />
+            <Text style={styles.sectionTitle}>Articles</Text>
+          </View>
+          {articleData.length > 0 ? (
+            <ArticleCarousel
+              list={articleData}
+              finishedArticles={finishedArticles}
+              onAnimationFinish={(id) => {
+                setArticleData((prev) => prev.filter((item) => item._id !== id));
+                setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
+              }}
+            />
+          ) : (
+            <Text style={styles.noDataText}>No articles available.</Text>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primaryBis },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.m,
+    backgroundColor: colors.primaryBis,
+  },
+  searchBar: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
+  cancelText: {
+    marginLeft: spacing.s,
+    color: colors.secondary,
+    fontSize: RFValue(sizes.h4),
+    fontFamily: 'Montserrat',
+  },
+  searchResultsWrapper: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.m,
+  },
+  searchResultItem: {
+    paddingVertical: spacing.m,
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    color: colors.white,
+  },
+  noResultsText: {
+    textAlign: 'center',
+    color: colors.secondary,
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    marginTop: spacing.l,
+  },
   searchSection: {
     paddingHorizontal: spacing.m,
     paddingTop: spacing.m,
@@ -425,11 +529,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xl,
     marginTop: spacing.m,
-  },
-  searchBar: {
-    marginHorizontal: spacing.xs,
-    marginBottom: spacing.m,
-    backgroundColor: colors.primary,
   },
   categoryRow: {
     flexDirection: 'row',
@@ -476,23 +575,7 @@ const styles = StyleSheet.create({
     width: RFValue(24),
     height: RFValue(24),
     resizeMode: 'contain',
-    tintColor: colors.primaryBis
-  },
-  searchResultsContainer: {
-    paddingHorizontal: spacing.m,
-  },
-  searchResultItem: {
-    paddingVertical: spacing.m,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    color: colors.white,
-  },
-  noResultsText: {
-    textAlign: 'center',
-    color: colors.secondary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    marginTop: spacing.l,
+    tintColor: colors.primaryBis,
   },
   sectionHeader: {
     flexDirection: 'row',
