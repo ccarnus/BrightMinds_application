@@ -197,40 +197,39 @@ const CastScreen = () => {
     }
   };
 
-  // Configurable search function – different APIs can be used based on selectedCategory.
   const handleSearch = async (text) => {
     setSearchQuery(text);
     if (!text.trim()) {
       setSearchResults([]);
       return;
     }
-    // Replace the below local filtering with API calls as needed.
-    let results = [];
-    switch (selectedCategory) {
-      case 'Article':
-        // Call Article search API here.
-        results = allCasts.filter((cast) =>
-          cast.title.toLowerCase().includes(text.toLowerCase())
+    if (selectedCategory === 'Video') {
+      try {
+        const response = await fetch('https://api.brightmindsresearch.com/cast/all/simplified');
+        const data = await response.json();
+        // Filter the list of videos based on the text input
+        const results = data.filter(item =>
+          item.title.toLowerCase().includes(text.toLowerCase())
         );
-        break;
-      case 'Topic':
-        // Call Topic search API here.
-        results = allCasts.filter((cast) =>
-          cast.title.toLowerCase().includes(text.toLowerCase())
-        );
-        break;
-      case 'Video':
-        // Call Video search API here.
-        results = allCasts.filter((cast) =>
-          cast.title.toLowerCase().includes(text.toLowerCase())
-        );
-        break;
-      default:
-        results = allCasts.filter((cast) =>
-          cast.title.toLowerCase().includes(text.toLowerCase())
-        );
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Error fetching video data:', error);
+      }
+    } else if (selectedCategory === 'Topic') {
+      try {
+        // The API requires a full word, so we use the current text
+        const response = await fetch(`https://api.openalex.org/topics?search=${text}&select=id,display_name&per_page=50`);
+        const data = await response.json();
+        // OpenAlex returns topics in a "results" array.
+        const results = data.results || [];
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Error fetching topic data:', error);
+      }
+    } else if (selectedCategory === 'Article') {
+      // Leave Article search empty for now.
+      setSearchResults([]);
     }
-    setSearchResults(results);
   };
 
   const clearSearch = () => {
@@ -288,7 +287,7 @@ const CastScreen = () => {
       <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {/* Search Section */}
         <View style={styles.searchSection}>
-          <Text style={styles.titleText}>I want to know about..</Text>
+          <Text style={styles.titleText}>What do you want to learn about?</Text>
           <Searchbar
             placeholder="Type your search..."
             onChangeText={handleSearch}
@@ -305,12 +304,13 @@ const CastScreen = () => {
                 ]}
                 onPress={() => setSelectedCategory(category)}
               >
-                <Image 
-                  source={getCategoryIcon(category)} 
+                <Image
+                  source={getCategoryIcon(category)}
                   style={[
-                    styles.categoryIcon, 
+                    styles.categoryIcon,
+                    // Change the icon tint to white when selected
                     selectedCategory === category && { tintColor: colors.primary }
-                  ]} 
+                  ]}
                 />
                 <Text
                   style={[
@@ -331,9 +331,16 @@ const CastScreen = () => {
         {/* Search Results */}
         {searchResults.length > 0 ? (
           <View style={styles.searchResultsContainer}>
-            {searchResults.map((cast) => (
-              <TouchableOpacity key={cast._id} onPress={() => handleSearchResultPress(cast._id)}>
-                <Text style={styles.searchResultItem}>{cast.title}</Text>
+            {searchResults.map((item) => (
+              <TouchableOpacity
+                key={item._id ? item._id : item.id}
+                onPress={() =>
+                  handleSearchResultPress(item._id ? item._id : item.id)
+                }
+              >
+                <Text style={styles.searchResultItem}>
+                  {selectedCategory === 'Topic' ? item.display_name : item.title}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
