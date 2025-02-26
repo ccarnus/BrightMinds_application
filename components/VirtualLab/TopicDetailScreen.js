@@ -45,11 +45,9 @@ const TopicDetailScreen = ({ route }) => {
     extrapolate: 'clamp',
   });
 
-  // Fetch data from Brightminds API then OpenAlex API.
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // First API call
         const res1 = await fetch(`https://api.brightmindsresearch.com/topic/${topicId}`);
         if (!res1.ok) {
           throw new Error('Failed to fetch Brightminds topic details');
@@ -57,7 +55,6 @@ const TopicDetailScreen = ({ route }) => {
         const bright = await res1.json();
         setBrightData(bright);
 
-        // Second API call using openalexID from brightData
         const openalexID = bright.openalexID;
         const res2 = await fetch(`https://api.openalex.org/topics/${openalexID}`);
         if (!res2.ok) {

@@ -5,15 +5,15 @@ import {
   Image, 
   ScrollView, 
   StyleSheet, 
-  ActivityIndicator, 
+  Dimensions, 
   Linking, 
-  Dimensions 
+  Alert 
 } from 'react-native';
+import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from 'react-native-paper';
-import { API_BASE_URL } from '../../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,8 +36,20 @@ const SearchArticleResults = ({ route }) => {
     if (articleId) {
       fetchArticle();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [articleId]);
+
+  // Start a 15-second timeout to handle excessive loading time
+  useEffect(() => {
+    const timeoutTimer = setTimeout(() => {
+      if (!article) {
+        Alert.alert("Error", "Loading took too long, please try again later.", [
+          { text: "OK", onPress: () => navigation.navigate('BottomNav') }
+        ]);
+      }
+    }, 20000);
+
+    return () => clearTimeout(timeoutTimer);
+  }, [article, navigation]);
 
   const fetchArticle = async () => {
     setIsLoading(true);
@@ -46,18 +58,12 @@ const SearchArticleResults = ({ route }) => {
         `https://api.semanticscholar.org/graph/v1/paper/${articleId}?fields=title,abstract,url,publicationDate`
       );
       const data = await response.json();
-      // Check that all required fields are present
-      if (
-        data &&
-        data.title &&
-        data.abstract &&
-        data.url &&
-        data.publicationDate
-      ) {
+      // Ensure all required fields are present
+      if (data && data.title && data.abstract && data.url && data.publicationDate) {
         setArticle(data);
         setIsLoading(false);
       } else {
-        // If any field is missing, wait and try again
+        // If fields are missing, retry after 2 seconds
         setTimeout(fetchArticle, 2000);
       }
     } catch (error) {
@@ -66,12 +72,12 @@ const SearchArticleResults = ({ route }) => {
     }
   };
 
-  // Adds the article to the user's cast list (for now, simply navigates back)
+  // Navigate back to the Cast screen
   const handleAddToCastList = async () => {
     navigation.navigate('BottomNav', { screen: 'Cast' });
   };
 
-  // Opens the full research URL provided by Semantic Scholar
+  // Open the full research URL
   const handleAccessFullResearch = () => {
     if (article && article.url) {
       Linking.openURL(article.url).catch((err) =>
@@ -82,7 +88,7 @@ const SearchArticleResults = ({ route }) => {
     }
   };
 
-  // Helper function to display the publication date as "days ago" or "years ago"
+  // Helper: Display publication time as "days ago" or "years ago"
   const getTimeSincePublication = (dateString) => {
     const publicationDate = new Date(dateString);
     const now = new Date();
@@ -99,7 +105,12 @@ const SearchArticleResults = ({ route }) => {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <LottieView
+          source={require('../../../assets/Loader/loader.json')}
+          autoPlay
+          loop={true}
+          style={styles.lottie}
+        />
       </View>
     );
   }
@@ -115,7 +126,7 @@ const SearchArticleResults = ({ route }) => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.containerScroll}>
-        {/* Using a placeholder image as the Semantic Scholar payload does not provide one */}
+        {/* Placeholder image since Semantic Scholar doesn't return one */}
         <Image 
           source={{ uri: 'https://via.placeholder.com/600x300?text=Research+Article' }} 
           style={styles.image} 
@@ -231,6 +242,10 @@ const styles = StyleSheet.create({
     right: 0,
     backgroundColor: 'transparent',
     padding: spacing.m,
+  },
+  lottie: {
+    width: width * 0.6,
+    height: width * 0.6,
   },
 });
 
