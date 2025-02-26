@@ -249,15 +249,18 @@ const CastScreen = () => {
         console.error('Error fetching topic data:', error);
       }
     } else if (selectedCategory === 'Article') {
-      try {
-        const response = await fetch(`https://api.semanticscholar.org/graph/v1/paper/autocomplete?query=${encodeURIComponent(text)}`);
-        const data = await response.json();
-        const results = data.matches || [];
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error fetching article data:', error);
+        try {
+          const response = await fetch(
+            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
+          );
+          const data = await response.json();
+          const results = data.data || [];
+          setSearchResults(results);
+        } catch (error) {
+          console.error('Error fetching article data:', error);
+        }
       }
-    }
+    
   };
 
   const clearSearch = () => {
@@ -265,10 +268,11 @@ const CastScreen = () => {
     setSearchResults([]);
   };
 
-  // Modified search result press handler to navigate to different screens based on category.
   const handleSearchResultPress = (id) => {
     if (selectedCategory === 'Article') {
       navigation.navigate('SearchArticleResults', { articleId: id });
+    } else if (selectedCategory === 'Topic') {
+      navigation.navigate('SearchTopicResult', { topicId: id });
     } else {
       navigation.navigate('VideoScreen', { selectedCastId: id });
     }
@@ -276,6 +280,7 @@ const CastScreen = () => {
     setIsSearching(false);
     clearSearch();
   };
+  
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -373,20 +378,20 @@ const CastScreen = () => {
           <View style={styles.searchResultsWrapper}>
             {searchResults.length > 0 ? (
               <ScrollView>
-                {searchResults.map((item) => (
-                  <TouchableOpacity
-                    key={item._id ? item._id : item.id}
-                    onPress={() =>
-                      handleSearchResultPress(item._id ? item._id : item.id)
-                    }
-                  >
-                    <Text style={styles.searchResultItem}>
-                      {selectedCategory === 'Topic'
-                        ? item.display_name
-                        : item.title}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                  {searchResults.map((item) => {
+                  // Use paperId if the category is Article, otherwise fall back to the existing id logic.
+                  const itemId = selectedCategory === 'Article' ? item.paperId : (item._id ? item._id : item.id);
+                  return (
+                    <TouchableOpacity
+                      key={itemId}
+                      onPress={() => handleSearchResultPress(itemId)}
+                    >
+                      <Text style={styles.searchResultItem}>
+                        {selectedCategory === 'Topic' ? item.display_name : item.title}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </ScrollView>
             ) : searchQuery.length > 0 ? (
               <Text style={styles.noResultsText}>No results found.</Text>
