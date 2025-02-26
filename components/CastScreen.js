@@ -76,6 +76,14 @@ const CastScreen = () => {
     }
   }, [isSearching]);
 
+  // When the selected category changes, if there is an existing search query, refresh the search.
+  useEffect(() => {
+    if (searchQuery.trim()) {
+      handleSearch(searchQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory]);
+
   // Listen for finished IDs from route params.
   useEffect(() => {
     if (route.params?.finishedVideoId) {
@@ -213,6 +221,7 @@ const CastScreen = () => {
     }
   };
 
+  // Modified search handler to account for all categories.
   const handleSearch = async (text) => {
     setSearchQuery(text);
     if (!text.trim()) {
@@ -240,8 +249,14 @@ const CastScreen = () => {
         console.error('Error fetching topic data:', error);
       }
     } else if (selectedCategory === 'Article') {
-      // Leave Article search empty for now.
-      setSearchResults([]);
+      try {
+        const response = await fetch(`https://api.semanticscholar.org/graph/v1/paper/autocomplete?query=${encodeURIComponent(text)}`);
+        const data = await response.json();
+        const results = data.matches || [];
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Error fetching article data:', error);
+      }
     }
   };
 
@@ -250,8 +265,13 @@ const CastScreen = () => {
     setSearchResults([]);
   };
 
+  // Modified search result press handler to navigate to different screens based on category.
   const handleSearchResultPress = (id) => {
-    navigation.navigate('VideoScreen', { selectedCastId: id });
+    if (selectedCategory === 'Article') {
+      navigation.navigate('SearchArticleResults', { articleId: id });
+    } else {
+      navigation.navigate('VideoScreen', { selectedCastId: id });
+    }
     console.log(id);
     setIsSearching(false);
     clearSearch();
@@ -300,7 +320,6 @@ const CastScreen = () => {
   return (
     <View style={styles.container}>
       {isSearching ? (
-        // Pinned search layout: search bar at the top with the category row immediately below.
         <View style={{ flex: 1 }}>
           <View style={styles.searchHeader}>
             <Searchbar
@@ -323,7 +342,7 @@ const CastScreen = () => {
             </TouchableOpacity>
           </View>
           {/* Category row under the search bar */}
-          <View style={styles.categoryRow}>
+          <View style={styles.categoryRowExpended}>
             {['Article', 'Topic', 'Video'].map((category) => (
               <TouchableOpacity
                 key={category}
@@ -362,7 +381,9 @@ const CastScreen = () => {
                     }
                   >
                     <Text style={styles.searchResultItem}>
-                      {selectedCategory === 'Topic' ? item.display_name : item.title}
+                      {selectedCategory === 'Topic'
+                        ? item.display_name
+                        : item.title}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -376,7 +397,7 @@ const CastScreen = () => {
         // Normal layout with search bar under "What do you want to learn about?"
         <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
           <View style={styles.searchSection}>
-            <Text style={styles.titleText}>What do you want to learn about?</Text>
+            <Text style={styles.titleText}>I want to learn about..</Text>
             <Searchbar
               placeholder="Type your search..."
               onChangeText={handleSearch}
@@ -533,7 +554,13 @@ const styles = StyleSheet.create({
   categoryRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: spacing.m,
+    marginBottom: spacing.l,
+    marginTop: spacing.m,
+  },
+  categoryRowExpended: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginHorizontal: spacing.m,
   },
   categoryButton: {
     flexDirection: 'row',
