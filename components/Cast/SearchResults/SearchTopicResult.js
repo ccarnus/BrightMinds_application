@@ -4,15 +4,16 @@ import {
   Text, 
   StyleSheet, 
   Animated,
-  ActivityIndicator,
   ScrollView,
   Dimensions,
-  TouchableOpacity
+  TouchableOpacity,
+  Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Provider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { RFValue } from "react-native-responsive-fontsize";
+import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '../../theme';
 
 const { width, height } = Dimensions.get('window');
@@ -73,10 +74,28 @@ const SearchTopicResult = ({ route }) => {
     fetchTopicData();
   }, [openAlexId]);
 
+  // Add a 20-second timeout similar to SearchArticleResults
+  useEffect(() => {
+    const timeoutTimer = setTimeout(() => {
+      if (!topicData) {
+        Alert.alert("Error", "Loading took too long, please try again later.", [
+          { text: "OK", onPress: () => navigation.navigate('BottomNav') }
+        ]);
+      }
+    }, 20000);
+
+    return () => clearTimeout(timeoutTimer);
+  }, [topicData, navigation]);
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00aaff" />
+        <LottieView
+          source={require('../../../assets/Loader/loader.json')}
+          autoPlay
+          loop={true}
+          style={styles.lottie}
+        />
       </View>
     );
   }
@@ -236,6 +255,10 @@ const styles = StyleSheet.create({
     fontSize: RFValue(16),
     color: 'red',
     marginBottom: spacing.m,
+  },
+  lottie: {
+    width: width * 0.8,
+    height: width * 0.8,
   },
 });
 
