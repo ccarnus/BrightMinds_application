@@ -31,7 +31,7 @@ import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
 import WelcomeScreen from './Onboarding/WelcomeScreen';
 import TopicDetailScreen from './VirtualLab/TopicDetailScreen';
 import SearchArticleResults from './Cast/SearchResults/SearchArticleResults';
-import SearchTopicResult from './Cast/SearchResults/SearchTOpicResult';
+import SearchTopicResult from './Cast/SearchResults/SearchTopicResult';
 
 const Stack = createStackNavigator();
 

@@ -7,7 +7,8 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   Linking, 
-  Dimensions 
+  Dimensions,
+  TouchableOpacity
 } from 'react-native';
 import { colors, sizes, spacing } from '../theme';
 import { useNavigation } from '@react-navigation/native';
@@ -157,11 +158,20 @@ const ArticleDetailsScreen = ({ route }) => {
         )}
 
         {departmentDetails && (
-          <View style={styles.topIconContainer}>
+          <TouchableOpacity
+            style={styles.topIconContainer}
+            onPress={() =>
+              navigation.navigate('VirtualLab', {
+                labId: departmentDetails.name,
+                labDisplayName: departmentDetails.display,
+              })
+            }
+          >
             <Image source={departmentDetails.image} style={styles.icon} />
             <Text style={styles.iconTextDepartment}>{departmentDisplayName}</Text>
-          </View>
+          </TouchableOpacity>
         )}
+
 
         <View style={styles.dateContainer}>
           <Text style={styles.dateText}>{getTimeSincePosted(article.dateadded)}</Text>

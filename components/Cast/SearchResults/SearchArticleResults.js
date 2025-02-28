@@ -7,15 +7,43 @@ import {
   StyleSheet, 
   Dimensions, 
   Linking, 
-  Alert 
+  Alert,
+  TouchableOpacity
 } from 'react-native';
 import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Button } from 'react-native-paper';
+import departments from '../../../lists/departments';
 
 const { width, height } = Dimensions.get('window');
+
+const fieldMapping = {
+  "Computer Science": "ComputerScience",
+  "Medicine": "Medicine",
+  "Chemistry": "Chemistry",
+  "Biology": "BiochemistryGeneticsandMolecularBiology",
+  "Materials Science": "MaterialsScience",
+  "Physics": "PhysicsandAstronomy",
+  "Geology": "EarthandPlanetarySciences",
+  "Psychology": "Psychology",
+  "Art": "ArtsandHumanities",
+  "History": "ArtsandHumanities",
+  "Geography": "EarthandPlanetarySciences",
+  "Sociology": "SocialSciences",
+  "Business": "BusinessManagementandAccounting",
+  "Political Science": "SocialSciences",
+  "Economics": "EconomicsEconometricsandFinance",
+  "Philosophy": "ArtsandHumanities",
+  "Mathematics": "Mathematics",
+  "Engineering": "Engineering",
+  "Environmental Science": "EnvironmentalScience",
+  "Agricultural and Food Sciences": "AgriculturalandBiologicalSciences",
+  "Education": "SocialSciences",
+  "Law": "SocialSciences",
+  "Linguistics": "ArtsandHumanities",
+};
 
 const SearchArticleResults = ({ route }) => {
   const { articleId } = route.params;
@@ -38,7 +66,7 @@ const SearchArticleResults = ({ route }) => {
     }
   }, [articleId]);
 
-  // Start a 15-second timeout to handle excessive loading time
+  // 20-second timeout for excessive loading time
   useEffect(() => {
     const timeoutTimer = setTimeout(() => {
       if (!article) {
@@ -55,15 +83,14 @@ const SearchArticleResults = ({ route }) => {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `https://api.semanticscholar.org/graph/v1/paper/${articleId}?fields=title,abstract,url,publicationDate`
+        `https://api.semanticscholar.org/graph/v1/paper/${articleId}?fields=title,abstract,url,publicationDate,fieldsOfStudy`
       );
       const data = await response.json();
-      // Ensure all required fields are present
+      // Accept the response if all required fields are present
       if (data && data.title && data.abstract && data.url && data.publicationDate) {
         setArticle(data);
         setIsLoading(false);
       } else {
-        // If fields are missing, retry after 2 seconds
         setTimeout(fetchArticle, 2000);
       }
     } catch (error) {
@@ -72,23 +99,7 @@ const SearchArticleResults = ({ route }) => {
     }
   };
 
-  // Navigate back to the Cast screen
-  const handleAddToCastList = async () => {
-    navigation.navigate('BottomNav', { screen: 'Cast' });
-  };
-
-  // Open the full research URL
-  const handleAccessFullResearch = () => {
-    if (article && article.url) {
-      Linking.openURL(article.url).catch((err) =>
-        console.error('Failed to open URL:', err)
-      );
-    } else {
-      alert('No link available for this article.');
-    }
-  };
-
-  // Helper: Display publication time as "days ago" or "years ago"
+  // Helper: convert publication date to "days ago" or "years ago"
   const getTimeSincePublication = (dateString) => {
     const publicationDate = new Date(dateString);
     const now = new Date();
@@ -101,6 +112,21 @@ const SearchArticleResults = ({ route }) => {
       return `${years} ${years === 1 ? 'year' : 'years'} ago`;
     }
   };
+
+  // Modified helper: use the mapping to return the department from the imported list.
+  const getDepartmentDetails = (field) => {
+    if (!field) return null;
+    const mappedField = fieldMapping[field] || null;
+    if (!mappedField) return null;
+    return departments.find(dept => 
+      dept.name.toLowerCase() === mappedField.toLowerCase()
+    );
+  };
+
+  // Determine department from the first fieldOfStudy
+  const department = article && article.fieldsOfStudy && article.fieldsOfStudy.length > 0
+    ? getDepartmentDetails(article.fieldsOfStudy[0])
+    : null;
 
   if (isLoading) {
     return (
@@ -126,24 +152,30 @@ const SearchArticleResults = ({ route }) => {
   return (
     <View style={styles.container}>
       <ScrollView style={styles.containerScroll}>
-        {/* Placeholder image since Semantic Scholar doesn't return one */}
-        <Image 
-          source={{ uri: 'https://via.placeholder.com/600x300?text=Research+Article' }} 
-          style={styles.image} 
-        />
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>
-            {getTimeSincePublication(article.publicationDate)}
-          </Text>
-        </View>
         <View style={styles.content}>
           <Text style={styles.title}>{article.title}</Text>
+          {/* Render department info if available and make it clickable */}
+          {department && (
+            <TouchableOpacity 
+              style={styles.topIconContainer}
+              onPress={() => navigation.navigate('VirtualLab', { labId: department.name, labDisplayName: department.display })}
+            >
+              <Image source={department.image} style={styles.icon} />
+              <Text style={styles.iconTextDepartment}>{department.display}</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.dateContainer}>
+            <Text style={styles.dateText}>
+              {getTimeSincePublication(article.publicationDate)}
+            </Text>
+          </View>
           <Text style={styles.description}>{article.abstract}</Text>
         </View>
         <View style={styles.buttonContainer}>
           <Button
             mode="contained"
-            onPress={handleAddToCastList}
+            onPress={() => navigation.navigate('BottomNav', { screen: 'Cast' })}
             buttonColor={colors.darkGreen}
             icon={require('../../../assets/Cast_screen_icons/like.png')}
             labelStyle={{
@@ -168,7 +200,13 @@ const SearchArticleResults = ({ route }) => {
       <View style={styles.fixedButtonContainer}>
         <Button
           mode="contained"
-          onPress={handleAccessFullResearch}
+          onPress={() => {
+            if (article && article.url) {
+              Linking.openURL(article.url).catch(err => console.error('Failed to open URL:', err));
+            } else {
+              alert('No link available for this article.');
+            }
+          }}
           buttonColor={colors.darkblue}
           icon={require('../../../assets/Cast_screen_icons/link.png')}
           labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
@@ -188,25 +226,13 @@ const SearchArticleResults = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
-  },
-  containerScroll: {
-    backgroundColor: colors.primaryBis,
-  },
-  image: {
-    width: '100%',
-    height: height * 0.3,
-    resizeMode: 'cover',
-    marginBottom: spacing.s,
-  },
-  content: {
-    padding: spacing.m,
-  },
+  container: { flex: 1, backgroundColor: colors.primaryBis },
+  containerScroll: { backgroundColor: colors.primaryBis },
+  content: { padding: spacing.m },
   title: {
     fontSize: sizes.h1,
     marginBottom: spacing.l,
+    marginTop: spacing.l,
     fontFamily: 'MontserratBold',
     textAlign: 'center',
   },
@@ -216,14 +242,31 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     fontFamily: 'Montserrat',
   },
-  centered: {
-    flex: 1,
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  topIconContainer: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    alignSelf: 'center',
+    marginVertical: spacing.s,
+  },
+  icon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+    marginRight: spacing.s,
+  },
+  iconTextDepartment: {
+    fontSize: sizes.h3,
+    color: colors.black,
+    fontFamily: 'Montserrat',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    textAlign: 'center',
   },
   dateContainer: {
     alignItems: 'center',
-    marginBottom: spacing.s,
+    marginBottom: spacing.l,
     marginTop: spacing.s,
   },
   dateText: {
@@ -243,10 +286,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     padding: spacing.m,
   },
-  lottie: {
-    width: width * 0.6,
-    height: width * 0.6,
-  },
+  lottie: { width: width * 0.6, height: width * 0.6 },
 });
 
 export default SearchArticleResults;

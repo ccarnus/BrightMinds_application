@@ -26,7 +26,7 @@ const CastScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  // Existing state variables...
+  // Existing state variables…
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
@@ -36,6 +36,7 @@ const CastScreen = () => {
   const [userRole, setUserRole] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState(false);
@@ -49,7 +50,7 @@ const CastScreen = () => {
   // Ref for the pinned search bar
   const searchBarRef = useRef(null);
 
-  // Icon definitions...
+  // Icon definitions…
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
@@ -76,9 +77,10 @@ const CastScreen = () => {
     }
   }, [isSearching]);
 
-  // When the selected category changes, if there is an existing search query, refresh the search.
+  // When the selected category changes, clear previous results and re-run the search if there’s a query.
   useEffect(() => {
     if (searchQuery.trim()) {
+      setSearchResults([]); // clear previous results
       handleSearch(searchQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -221,13 +223,14 @@ const CastScreen = () => {
     }
   };
 
-  // Modified search handler to account for all categories.
+  // Modified search handler with dedicated loader flag.
   const handleSearch = async (text) => {
     setSearchQuery(text);
     if (!text.trim()) {
       setSearchResults([]);
       return;
     }
+    setSearchLoading(true);
     if (selectedCategory === 'Video') {
       try {
         const response = await fetch('https://api.brightmindsresearch.com/cast/all/simplified');
@@ -238,6 +241,8 @@ const CastScreen = () => {
         setSearchResults(results);
       } catch (error) {
         console.error('Error fetching video data:', error);
+      } finally {
+        setSearchLoading(false);
       }
     } else if (selectedCategory === 'Topic') {
       try {
@@ -247,20 +252,23 @@ const CastScreen = () => {
         setSearchResults(results);
       } catch (error) {
         console.error('Error fetching topic data:', error);
+      } finally {
+        setSearchLoading(false);
       }
     } else if (selectedCategory === 'Article') {
-        try {
-          const response = await fetch(
-            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
-          );
-          const data = await response.json();
-          const results = data.data || [];
-          setSearchResults(results);
-        } catch (error) {
-          console.error('Error fetching article data:', error);
-        }
+      try {
+        const response = await fetch(
+          `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
+        );
+        const data = await response.json();
+        const results = data.data || [];
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Error fetching article data:', error);
+      } finally {
+        setSearchLoading(false);
       }
-    
+    }
   };
 
   const clearSearch = () => {
@@ -280,7 +288,6 @@ const CastScreen = () => {
     setIsSearching(false);
     clearSearch();
   };
-  
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -376,11 +383,21 @@ const CastScreen = () => {
             ))}
           </View>
           <View style={styles.searchResultsWrapper}>
-            {searchResults.length > 0 ? (
+            {searchLoading ? (
+              <View style={styles.searchLoaderContainer}>
+                <LottieView
+                  source={require('../assets/Loader/loader.json')}
+                  autoPlay
+                  loop
+                  style={styles.searchLoader}
+                />
+              </View>
+            ) : searchResults.length > 0 ? (
               <ScrollView>
-                  {searchResults.map((item) => {
-                  // Use paperId if the category is Article, otherwise fall back to the existing id logic.
-                  const itemId = selectedCategory === 'Article' ? item.paperId : (item._id ? item._id : item.id);
+                {searchResults.map((item) => {
+                  const itemId = selectedCategory === 'Article'
+                    ? item.paperId
+                    : (item._id ? item._id : item.id);
                   return (
                     <TouchableOpacity
                       key={itemId}
@@ -513,10 +530,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
     backgroundColor: colors.primaryBis,
   },
-  searchBar: {
-    flex: 1,
-    backgroundColor: colors.primary,
-  },
+  searchBar: { flex: 1, backgroundColor: colors.primary },
   cancelText: {
     marginLeft: spacing.s,
     color: colors.secondary,
@@ -575,17 +589,13 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
     backgroundColor: colors.primaryBis,
   },
-  selectedCategoryButton: {
-    backgroundColor: colors.darkTeal,
-  },
+  selectedCategoryButton: { backgroundColor: colors.darkTeal },
   categoryButtonText: {
     color: colors.secondary,
     fontFamily: 'Montserrat',
     fontSize: RFValue(sizes.h4),
   },
-  selectedCategoryButtonText: {
-    color: colors.primary,
-  },
+  selectedCategoryButtonText: { color: colors.primary },
   categoryIcon: {
     width: RFValue(20),
     height: RFValue(20),
@@ -670,15 +680,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lottie: {
-    width: 200,
-    height: 200,
-  },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  lottie: { width: 200, height: 200 },
+  searchLoaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.m },
+  searchLoader: { width: 150, height: 150 }
 });
 
 export default CastScreen;
