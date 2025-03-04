@@ -256,19 +256,34 @@ const CastScreen = () => {
         setSearchLoading(false);
       }
     } else if (selectedCategory === 'Article') {
-      try {
-        const response = await fetch(
-          `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
-        );
-        const data = await response.json();
-        const results = data.data || [];
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error fetching article data:', error);
-      } finally {
-        setSearchLoading(false);
+      let data = null;
+      let retries = 0;
+      const maxRetries = 10; // set a sensible upper limit to avoid an infinite loop
+      while (retries < maxRetries) {
+        try {
+          const response = await fetch(
+            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
+          );
+          data = await response.json();
+          // Check if the API returned a rate-limit error message.
+          if (data.message && data.message.includes("Too Many Requests")) {
+            console.warn("Rate limited. Retrying...");
+            retries++;
+            await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds before retrying
+            continue;
+          }
+          // If we get here, we assume a valid JSON was returned.
+          break;
+        } catch (error) {
+          console.error('Error fetching article data:', error);
+          break;
+        }
       }
-    }
+      // Process the data once a valid response is received.
+      const results = data && data.data ? data.data : [];
+      setSearchResults(results);
+      setSearchLoading(false);
+    }    
   };
 
   const clearSearch = () => {
@@ -563,8 +578,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryBis,
   },
   titleText: {
-    fontSize: RFValue(sizes.h1),
-    fontFamily: 'MontserratBold',
+    fontSize: RFValue(sizes.title),
+    fontFamily: 'Montserrat',
     color: colors.white,
     textAlign: 'center',
     marginBottom: spacing.xl,
