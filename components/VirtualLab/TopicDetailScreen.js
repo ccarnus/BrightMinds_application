@@ -16,12 +16,10 @@ import { useNavigation } from '@react-navigation/native';
 import { RFValue } from "react-native-responsive-fontsize";
 import { colors, sizes, spacing } from '../theme';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
-
-// Import images for the gauges and buttons.
 import ActivityImage from '../../assets/Virtual_lab_icons/activity.png';
 import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import citationIcon from '../../assets/Virtual_lab_icons/citation.png';
-import worksIcon from '../../assets/Cast_screen_icons/article_icon.png';
+import worksIcon from '../../assets/Virtual_lab_icons/works.png';
 import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
 import articleIcon from '../../assets/Cast_screen_icons/article_icon.png';
 
@@ -100,7 +98,7 @@ const TopicDetailScreen = ({ route }) => {
   const topicTitle = display_name || brightName || 'Topic Detail';
   const activityFill = brightData ? (activity / 9000) * 100 : 0;
   const impactFill = brightData ? (impact / 2000) * 100 : 0;
-  const citationFill = openData ? (cited_by_count / 1000000) * 100 : 0;
+  const citationFill = openData ? (cited_by_count / 8000000) * 100 : 0;
 
   return (
     <Provider>
@@ -154,7 +152,7 @@ const TopicDetailScreen = ({ route }) => {
                     />
                   )}
                 </AnimatedCircularProgress>
-                <Text style={styles.gaugeLabel}>Activity</Text>
+                <Text style={styles.gaugeLabelActivity}>Activity</Text>
               </View>
               <View style={styles.gaugeContainer}>
                 <AnimatedCircularProgress
@@ -175,13 +173,16 @@ const TopicDetailScreen = ({ route }) => {
                     />
                   )}
                 </AnimatedCircularProgress>
-                <Text style={styles.gaugeLabel}>Impact</Text>
+                <Text style={styles.gaugeLabelImpact}>Impact</Text>
               </View>
             </View>
 
             {/* Horizontal Gauge for Citations, positioned above the buttons */}
+            <View style={styles.citationIconContainer}>
+              <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+              <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
+            </View>
             <View style={styles.horizontalGaugeWrapper}>
-              <Text style={styles.horizontalGaugeLabel}>Citations</Text>
               <View style={styles.horizontalGaugeContainer}>
                 <View style={styles.horizontalGaugeBackground}>
                   <Animated.View 
@@ -191,7 +192,6 @@ const TopicDetailScreen = ({ route }) => {
                     ]}
                   />
                 </View>
-                <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
               </View>
             </View>
 
@@ -200,17 +200,17 @@ const TopicDetailScreen = ({ route }) => {
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
                 <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Works</Text>
-                <Text style={styles.statButtonCount}>{works_count}</Text>
+               {/* <Text style={styles.statButtonCount}>{works_count}</Text>*/}
               </TouchableOpacity>
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Casts onPress handler */ }}>
                 <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Casts</Text>
-                <Text style={styles.statButtonCount}>{castCount}</Text>
+                {/*<Text style={styles.statButtonCount}>{castCount}</Text>*/}
               </TouchableOpacity>
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Articles onPress handler */ }}>
                 <Image source={articleIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Articles</Text>
-                <Text style={styles.statButtonCount}>{articleCount}</Text>
+                {/*<Text style={styles.statButtonCount}>{articleCount}</Text>*/}
               </TouchableOpacity>
             </View>
 
@@ -299,29 +299,30 @@ const styles = StyleSheet.create({
     width: RFValue(48),
     height: RFValue(48),
   },
-  gaugeLabel: {
-    marginTop: spacing.s,
+  gaugeLabelImpact: {
+    marginTop: -spacing.m,
     fontSize: RFValue(14),
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    fontFamily: 'MontserratBold',
+    color: colors.darkTeal,
+  },
+  gaugeLabelActivity: {
+    marginTop: -spacing.m,
+    fontSize: RFValue(14),
+    fontFamily: 'MontserratBold',
+    color: colors.lightTeal,
   },
   horizontalGaugeWrapper: {
-    marginVertical: spacing.m,
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
     alignItems: 'center',
-  },
-  horizontalGaugeLabel: {
-    fontSize: RFValue(14),
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    marginBottom: spacing.s,
   },
   horizontalGaugeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     width: width * 0.8,
     height: RFValue(20),
-    borderWidth: 1,
-    borderColor: colors.secondary,
+    borderWidth: 0,
+    borderColor: colors.darkblue,
     borderRadius: sizes.radius,
     overflow: 'hidden',
     backgroundColor: colors.primaryBis,
@@ -332,39 +333,51 @@ const styles = StyleSheet.create({
   },
   horizontalGaugeFill: {
     height: '100%',
-    backgroundColor: colors.lightTeal,
+    backgroundColor: colors.lightblue,
   },
   horizontalGaugeIcon: {
-    width: RFValue(20),
-    height: RFValue(20),
+    width: RFValue(32),
+    height: RFValue(32),
     marginHorizontal: spacing.s,
+  },
+  citationCountText: {
+    fontSize: RFValue(14),
+    fontFamily: 'MontserratBold',
+    color: colors.lightblue,
+    alignItems: "center",
+  },
+  citationIconContainer: {
+    alignItems: 'center',
+    marginTop: spacing.s,
   },
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: spacing.m,
+    marginTop: spacing.m,
   },
   statButton: {
     alignItems: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: colors.lightGreen,
     padding: spacing.m,
     borderRadius: sizes.radius,
     elevation: 3,
   },
   statButtonIcon: {
-    width: RFValue(40),
-    height: RFValue(40),
+    width: RFValue(36),
+    height: RFValue(36),
     marginBottom: spacing.s,
+    tintColor: colors.primary,
   },
   statButtonLabel: {
     fontSize: RFValue(14),
     color: colors.secondary,
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
   },
   statButtonCount: {
     fontSize: RFValue(16),
     color: colors.darkblue,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
   },
   departmentContainer: {
     marginTop: spacing.m,
@@ -391,32 +404,32 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     marginBottom: spacing.m,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: colors.secondary,
     paddingBottom: spacing.s,
   },
   descriptionText: {
-    fontSize: RFValue(16),
+    fontSize: RFValue(sizes.h4),
     fontFamily: 'Montserrat',
     color: colors.secondary,
     lineHeight: 22,
   },
   keywordsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // Allow keywords to wrap into 2 or 3 lines.
+    flexWrap: 'wrap', // Allows wrapping into 2-3 lines.
     alignItems: 'center',
   },
   keywordChip: {
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.darkOrange,
     borderRadius: 16,
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s / 2,
     marginRight: spacing.xs,
-    marginBottom: spacing.xs, // Space between rows
+    marginBottom: spacing.xs, // Space between rows.
   },
   keywordText: {
     fontSize: RFValue(12),
-    fontFamily: 'Montserrat',
-    color: colors.lightOrange,
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
