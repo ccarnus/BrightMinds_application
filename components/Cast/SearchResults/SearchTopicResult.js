@@ -7,7 +7,8 @@ import {
   ScrollView,
   Dimensions,
   TouchableOpacity,
-  Alert
+  Alert,
+  Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Provider } from 'react-native-paper';
@@ -16,17 +17,20 @@ import { RFValue } from "react-native-responsive-fontsize";
 import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '../../theme';
 
+import citationIcon from '../../../assets/Virtual_lab_icons/citation.png';
+import worksIcon from '../../../assets/Virtual_lab_icons/works.png';
+
 const { width, height } = Dimensions.get('window');
 
 const SearchTopicResult = ({ route }) => {
-  // Expecting route.params.topicId to be something like "https://openalex.org/T11577"
+  // Expecting route.params.topicId to be a full OpenAlex URL, e.g., "https://openalex.org/T11577"
   const { topicId } = route.params;
   const navigation = useNavigation();
   const [topicData, setTopicData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Extract the OpenAlex ID (e.g., "T11577") from the full URL.
+  // Extract the OpenAlex ID from the full URL.
   const extractTopicId = (id) => {
     if (id) {
       const parts = id.split('/');
@@ -37,12 +41,11 @@ const SearchTopicResult = ({ route }) => {
 
   const openAlexId = extractTopicId(topicId);
 
-  // Animated header variables
+  // Animated header variables.
   const scrollY = useRef(new Animated.Value(0)).current;
   const initialHeaderHeight = height / 4;
   const minHeaderHeight = height / 9;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
-
   const headerHeight = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
     outputRange: [initialHeaderHeight, minHeaderHeight],
@@ -74,7 +77,7 @@ const SearchTopicResult = ({ route }) => {
     fetchTopicData();
   }, [openAlexId]);
 
-  // Add a 20-second timeout similar to SearchArticleResults
+  // Add a 20-second timeout.
   useEffect(() => {
     const timeoutTimer = setTimeout(() => {
       if (!topicData) {
@@ -83,7 +86,6 @@ const SearchTopicResult = ({ route }) => {
         ]);
       }
     }, 20000);
-
     return () => clearTimeout(timeoutTimer);
   }, [topicData, navigation]);
 
@@ -93,13 +95,12 @@ const SearchTopicResult = ({ route }) => {
         <LottieView
           source={require('../../../assets/Loader/loader.json')}
           autoPlay
-          loop={true}
+          loop
           style={styles.lottie}
         />
       </View>
     );
   }
-
   if (error || !topicData) {
     return (
       <View style={styles.errorContainer}>
@@ -109,8 +110,10 @@ const SearchTopicResult = ({ route }) => {
     );
   }
 
-  // Destructure the fields from the OpenAlex topic data.
-  const { display_name, description, works_count, cited_by_count } = topicData;
+  // Destructure fields from OpenAlex topic data.
+  const { display_name, description, works_count, cited_by_count, keywords } = topicData;
+  // For the horizontal citation gauge, we assume a maximum of 8,000,000 citations.
+  const citationFill = topicData ? (cited_by_count / 8000000) * 100 : 0;
 
   return (
     <Provider>
@@ -142,23 +145,61 @@ const SearchTopicResult = ({ route }) => {
           )}
         >
           <View style={styles.overviewContainer}>
-            <View style={styles.statRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{works_count}</Text>
-                <Text style={styles.statLabel}>Works</Text>
+            {/* Works Statistic Button */}
+            <View style={styles.buttonsRow}>
+              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
+                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Works</Text>
+                <Text style={styles.statButtonCount}>{works_count}</Text>
+              </TouchableOpacity>
+            </View>
+            {/* Horizontal Citation Gauge */}
+            <View style={styles.citationGaugeWrapper}>
+              <View style={styles.citationIconContainer}>
+                <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+                <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
               </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{cited_by_count}</Text>
-                <Text style={styles.statLabel}>Citations</Text>
+              <View style={styles.horizontalGaugeWrapper}>
+                <View style={styles.horizontalGaugeContainer}>
+                  <View style={styles.horizontalGaugeBackground}>
+                    <Animated.View 
+                      style={[
+                        styles.horizontalGaugeFill, 
+                        { width: `${citationFill}%` }
+                      ]}
+                    />
+                  </View>
+                </View>
               </View>
             </View>
           </View>
 
+          {/* Content Section */}
           <View style={styles.contentContainer}>
-            <Text style={styles.sectionHeader}>Description</Text>
-            <Text style={styles.descriptionText}>
-              {description || "No description available."}
-            </Text>
+            {/* Description Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionHeader}>Description</Text>
+              <Text style={styles.descriptionText}>
+                {description || "No description available."}
+              </Text>
+            </View>
+            {/* Keywords Section */}
+            {keywords && keywords.length > 0 && (
+              <View style={styles.sectionContainer}>
+                <Text style={styles.sectionHeader}>Keywords</Text>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false} 
+                  contentContainerStyle={styles.keywordsContainer}
+                >
+                  {keywords.map((word, index) => (
+                    <View key={index} style={styles.keywordChip}>
+                      <Text style={styles.keywordText}>{word}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
           </View>
         </Animated.ScrollView>
       </View>
@@ -196,33 +237,84 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     margin: spacing.m,
     padding: spacing.m,
-    borderRadius: 8,
+    borderRadius: sizes.radius,
     elevation: 3,
   },
-  statRow: {
+  buttonsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.m,
+    justifyContent: 'center',
+    marginVertical: spacing.m,
   },
-  statBox: {
+  statButton: {
     alignItems: 'center',
+    backgroundColor: colors.lightGreen,
+    padding: spacing.m,
+    borderRadius: sizes.radius,
+    elevation: 3,
   },
-  statValue: {
-    fontSize: RFValue(20),
+  statButtonIcon: {
+    width: RFValue(36),
+    height: RFValue(36),
+    marginBottom: spacing.s,
+    tintColor: colors.primary,
+  },
+  statButtonLabel: {
+    fontSize: RFValue(14),
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
+  },
+  statButtonCount: {
+    fontSize: RFValue(16),
     fontFamily: 'Montserrat',
     color: colors.darkblue,
   },
-  statLabel: {
+  citationGaugeWrapper: {
+    marginVertical: spacing.m,
+    alignItems: 'center',
+  },
+  citationIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.s,
+  },
+  horizontalGaugeIcon: {
+    width: RFValue(32),
+    height: RFValue(32),
+    marginHorizontal: spacing.s,
+  },
+  citationCountText: {
     fontSize: RFValue(14),
-    color: colors.secondary,
-    marginTop: 4,
+    fontFamily: 'MontserratBold',
+    color: colors.lightblue,
+  },
+  horizontalGaugeWrapper: {
+    width: width * 0.8,
+    height: RFValue(20),
+    borderRadius: sizes.radius,
+    overflow: 'hidden',
+    backgroundColor: colors.primaryBis,
+  },
+  horizontalGaugeContainer: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  horizontalGaugeBackground: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  horizontalGaugeFill: {
+    height: '100%',
+    backgroundColor: colors.lightblue,
   },
   contentContainer: {
     backgroundColor: colors.primary,
     margin: spacing.m,
     padding: spacing.m,
-    borderRadius: 8,
+    borderRadius: sizes.radius,
     elevation: 3,
+  },
+  sectionContainer: {
+    marginBottom: spacing.m,
   },
   sectionHeader: {
     fontSize: RFValue(sizes.h2),
@@ -230,14 +322,32 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     marginBottom: spacing.m,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: colors.secondary,
     paddingBottom: spacing.s,
   },
   descriptionText: {
-    fontSize: RFValue(16),
+    fontSize: RFValue(sizes.h4),
     fontFamily: 'Montserrat',
     color: colors.secondary,
     lineHeight: 22,
+  },
+  keywordsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap', // Allows wrapping into 2-3 lines.
+    alignItems: 'center',
+  },
+  keywordChip: {
+    backgroundColor: colors.darkOrange,
+    borderRadius: 16,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s / 2,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs, // Space between rows.
+  },
+  keywordText: {
+    fontSize: RFValue(12),
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
   },
   loadingContainer: {
     flex: 1,
