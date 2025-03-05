@@ -16,8 +16,11 @@ import { useNavigation } from '@react-navigation/native';
 import { RFValue } from "react-native-responsive-fontsize";
 import { colors, sizes, spacing } from '../theme';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
+
+// Import images for the gauges and buttons.
 import ActivityImage from '../../assets/Virtual_lab_icons/activity.png';
 import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
+import citationIcon from '../../assets/Virtual_lab_icons/citation.png';
 import worksIcon from '../../assets/Cast_screen_icons/article_icon.png';
 import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
 import articleIcon from '../../assets/Cast_screen_icons/article_icon.png';
@@ -97,6 +100,7 @@ const TopicDetailScreen = ({ route }) => {
   const topicTitle = display_name || brightName || 'Topic Detail';
   const activityFill = brightData ? (activity / 9000) * 100 : 0;
   const impactFill = brightData ? (impact / 2000) * 100 : 0;
+  const citationFill = openData ? (cited_by_count / 1000000) * 100 : 0;
 
   return (
     <Provider>
@@ -129,7 +133,7 @@ const TopicDetailScreen = ({ route }) => {
         >
           {/* Overview Section */}
           <View style={styles.overviewContainer}>
-            {/* Gauge Row for Activity and Impact */}
+            {/* Gauges Row for Activity and Impact */}
             <View style={styles.gaugeRow}>
               <View style={styles.gaugeContainer}>
                 <AnimatedCircularProgress
@@ -175,6 +179,22 @@ const TopicDetailScreen = ({ route }) => {
               </View>
             </View>
 
+            {/* Horizontal Gauge for Citations, positioned above the buttons */}
+            <View style={styles.horizontalGaugeWrapper}>
+              <Text style={styles.horizontalGaugeLabel}>Citations</Text>
+              <View style={styles.horizontalGaugeContainer}>
+                <View style={styles.horizontalGaugeBackground}>
+                  <Animated.View 
+                    style={[
+                      styles.horizontalGaugeFill, 
+                      { width: `${citationFill}%` }
+                    ]}
+                  />
+                </View>
+                <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+              </View>
+            </View>
+
             {/* Buttons Row for Works, Casts, and Articles */}
             <View style={styles.buttonsRow}>
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
@@ -204,20 +224,28 @@ const TopicDetailScreen = ({ route }) => {
 
           {/* Content Section */}
           <View style={styles.contentContainer}>
-            <Text style={styles.sectionHeader}>Description</Text>
-            <Text style={styles.descriptionText}>{description}</Text>
+            {/* Description Section */}
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionHeader}>Description</Text>
+              <Text style={styles.descriptionText}>{description}</Text>
+            </View>
 
+            {/* Keywords Section with multi-line wrapping and horizontal scrolling */}
             {keywords && keywords.length > 0 && (
-              <>
+              <View style={styles.sectionContainer}>
                 <Text style={styles.sectionHeader}>Keywords</Text>
-                <View style={styles.keywordsContainer}>
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={false} 
+                  contentContainerStyle={styles.keywordsContainer}
+                >
                   {keywords.map((word, index) => (
                     <View key={index} style={styles.keywordChip}>
                       <Text style={styles.keywordText}>{word}</Text>
                     </View>
                   ))}
-                </View>
-              </>
+                </ScrollView>
+              </View>
             )}
           </View>
         </Animated.ScrollView>
@@ -277,6 +305,40 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     color: colors.secondary,
   },
+  horizontalGaugeWrapper: {
+    marginVertical: spacing.m,
+    alignItems: 'center',
+  },
+  horizontalGaugeLabel: {
+    fontSize: RFValue(14),
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    marginBottom: spacing.s,
+  },
+  horizontalGaugeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: width * 0.8,
+    height: RFValue(20),
+    borderWidth: 1,
+    borderColor: colors.secondary,
+    borderRadius: sizes.radius,
+    overflow: 'hidden',
+    backgroundColor: colors.primaryBis,
+  },
+  horizontalGaugeBackground: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  horizontalGaugeFill: {
+    height: '100%',
+    backgroundColor: colors.lightTeal,
+  },
+  horizontalGaugeIcon: {
+    width: RFValue(20),
+    height: RFValue(20),
+    marginHorizontal: spacing.s,
+  },
   buttonsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -320,6 +382,9 @@ const styles = StyleSheet.create({
     borderRadius: sizes.radius,
     elevation: 3,
   },
+  sectionContainer: {
+    marginBottom: spacing.m,
+  },
   sectionHeader: {
     fontSize: RFValue(sizes.h2),
     fontFamily: 'Montserrat',
@@ -337,15 +402,16 @@ const styles = StyleSheet.create({
   },
   keywordsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: spacing.m,
+    flexWrap: 'wrap', // Allow keywords to wrap into 2 or 3 lines.
+    alignItems: 'center',
   },
   keywordChip: {
     backgroundColor: colors.primaryBis,
     borderRadius: 16,
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s / 2,
-    margin: spacing.xs,
+    marginRight: spacing.xs,
+    marginBottom: spacing.xs, // Space between rows
   },
   keywordText: {
     fontSize: RFValue(12),
