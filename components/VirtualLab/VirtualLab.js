@@ -136,8 +136,10 @@ const VirtualLab = ({ route }) => {
     topic.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
-  const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
+  //const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
+  const maxActivity = 9000;
+  //const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
+  const maxImpact = 2000;
 
   if (isLoading) {
     return (

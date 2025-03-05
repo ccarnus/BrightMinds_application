@@ -7,28 +7,30 @@ import {
   ActivityIndicator,
   ScrollView,
   Dimensions,
-  TouchableOpacity
+  TouchableOpacity,
+  Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Button, Provider } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { RFValue } from "react-native-responsive-fontsize";
 import { colors, sizes, spacing } from '../theme';
+import { AnimatedCircularProgress } from 'react-native-circular-progress';
+import ActivityImage from '../../assets/Virtual_lab_icons/activity.png';
+import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
+import worksIcon from '../../assets/Cast_screen_icons/article_icon.png';
+import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
+import articleIcon from '../../assets/Cast_screen_icons/article_icon.png';
 
 const { width, height } = Dimensions.get('window');
 
 const TopicDetailScreen = ({ route }) => {
-  // Make sure the parameter key matches what you pass from the previous screen.
   const { topicId } = route.params;
   const navigation = useNavigation();
-
-  // States for API data and loading/error states.
   const [brightData, setBrightData] = useState(null);
   const [openData, setOpenData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Animated scroll value and header interpolation values.
   const scrollY = useRef(new Animated.Value(0)).current;
   const initialHeaderHeight = height / 4;
   const minHeaderHeight = height / 9;
@@ -90,11 +92,11 @@ const TopicDetailScreen = ({ route }) => {
     );
   }
 
-  // Destructure data from the APIs (with fallbacks)
   const { name: brightName, departmentName, articleCount, castCount, activity, impact } = brightData || {};
   const { display_name, description, keywords, works_count, cited_by_count } = openData || {};
-
-  const topicTitle = display_name || brightName;
+  const topicTitle = display_name || brightName || 'Topic Detail';
+  const activityFill = brightData ? (activity / 9000) * 100 : 0;
+  const impactFill = brightData ? (impact / 2000) * 100 : 0;
 
   return (
     <Provider>
@@ -109,7 +111,6 @@ const TopicDetailScreen = ({ route }) => {
               style={[styles.headerTitle, { fontSize: titleFontSize }]}
               adjustsFontSizeToFit={true}
               minimumFontScale={0.5}
-              // Remove numberOfLines prop to allow wrapping
             >
               {topicTitle}
             </Animated.Text>
@@ -126,38 +127,74 @@ const TopicDetailScreen = ({ route }) => {
             { useNativeDriver: false }
           )}
         >
-          {/* Section 1: Topic Overview */}
+          {/* Overview Section */}
           <View style={styles.overviewContainer}>
-            <View style={styles.statRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{articleCount}</Text>
-                <Text style={styles.statLabel}>Articles</Text>
+            {/* Gauge Row for Activity and Impact */}
+            <View style={styles.gaugeRow}>
+              <View style={styles.gaugeContainer}>
+                <AnimatedCircularProgress
+                  size={width * 0.35}
+                  width={10}
+                  fill={activityFill}
+                  tintColor={colors.lightTeal}
+                  backgroundColor={colors.primaryBis}
+                  rotation={-115}
+                  arcSweepAngle={230}
+                  lineCap="round"
+                >
+                  {() => (
+                    <Image 
+                      source={ActivityImage} 
+                      style={styles.gaugeIcon} 
+                      resizeMode="contain"
+                    />
+                  )}
+                </AnimatedCircularProgress>
+                <Text style={styles.gaugeLabel}>Activity</Text>
               </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{castCount}</Text>
-                <Text style={styles.statLabel}>Casts</Text>
+              <View style={styles.gaugeContainer}>
+                <AnimatedCircularProgress
+                  size={width * 0.35}
+                  width={10}
+                  fill={impactFill}
+                  tintColor={colors.darkTeal}
+                  backgroundColor={colors.primaryBis}
+                  rotation={-115}
+                  arcSweepAngle={230}
+                  lineCap="round"
+                >
+                  {() => (
+                    <Image 
+                      source={ImpactImage} 
+                      style={styles.gaugeIcon} 
+                      resizeMode="contain"
+                    />
+                  )}
+                </AnimatedCircularProgress>
+                <Text style={styles.gaugeLabel}>Impact</Text>
               </View>
             </View>
-            <View style={styles.statRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{activity.toFixed(2)}</Text>
-                <Text style={styles.statLabel}>Activity</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{impact.toFixed(2)}</Text>
-                <Text style={styles.statLabel}>Impact</Text>
-              </View>
+
+            {/* Buttons Row for Works, Casts, and Articles */}
+            <View style={styles.buttonsRow}>
+              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
+                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Works</Text>
+                <Text style={styles.statButtonCount}>{works_count}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Casts onPress handler */ }}>
+                <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Casts</Text>
+                <Text style={styles.statButtonCount}>{castCount}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Articles onPress handler */ }}>
+                <Image source={articleIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Articles</Text>
+                <Text style={styles.statButtonCount}>{articleCount}</Text>
+              </TouchableOpacity>
             </View>
-            <View style={styles.statRow}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{works_count}</Text>
-                <Text style={styles.statLabel}>Works</Text>
-              </View>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{cited_by_count}</Text>
-                <Text style={styles.statLabel}>Citations</Text>
-              </View>
-            </View>
+
+            {/* Department Information */}
             {departmentName && (
               <View style={styles.departmentContainer}>
                 <Text style={styles.departmentText}>Department: {departmentName}</Text>
@@ -165,7 +202,7 @@ const TopicDetailScreen = ({ route }) => {
             )}
           </View>
 
-          {/* Section 2: Topic Content */}
+          {/* Content Section */}
           <View style={styles.contentContainer}>
             <Text style={styles.sectionHeader}>Description</Text>
             <Text style={styles.descriptionText}>{description}</Text>
@@ -219,26 +256,53 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     margin: spacing.m,
     padding: spacing.m,
-    borderRadius: 8,
+    borderRadius: sizes.radius,
     elevation: 3,
   },
-  statRow: {
+  gaugeRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginBottom: spacing.m,
+    marginVertical: spacing.m,
   },
-  statBox: {
+  gaugeContainer: {
     alignItems: 'center',
   },
-  statValue: {
-    fontSize: RFValue(20),
-    fontFamily: 'Montserrat',
-    color: colors.darkblue,
+  gaugeIcon: {
+    width: RFValue(48),
+    height: RFValue(48),
   },
-  statLabel: {
+  gaugeLabel: {
+    marginTop: spacing.s,
+    fontSize: RFValue(14),
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+  },
+  buttonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginVertical: spacing.m,
+  },
+  statButton: {
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    padding: spacing.m,
+    borderRadius: sizes.radius,
+    elevation: 3,
+  },
+  statButtonIcon: {
+    width: RFValue(40),
+    height: RFValue(40),
+    marginBottom: spacing.s,
+  },
+  statButtonLabel: {
     fontSize: RFValue(14),
     color: colors.secondary,
-    marginTop: 4,
+    fontFamily: 'Montserrat',
+  },
+  statButtonCount: {
+    fontSize: RFValue(16),
+    color: colors.darkblue,
+    fontFamily: 'MontserratBold',
   },
   departmentContainer: {
     marginTop: spacing.m,
@@ -253,7 +317,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     margin: spacing.m,
     padding: spacing.m,
-    borderRadius: 8,
+    borderRadius: sizes.radius,
     elevation: 3,
   },
   sectionHeader: {

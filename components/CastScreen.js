@@ -623,7 +623,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     alignSelf: 'center',
     marginTop: spacing.m,
-    backgroundColor: colors.lightOrange,
+    backgroundColor: colors.darkGreen,
     paddingVertical: spacing.m,
     paddingHorizontal: spacing.m,
     borderRadius: 50,
