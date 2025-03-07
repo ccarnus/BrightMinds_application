@@ -145,14 +145,6 @@ const SearchTopicResult = ({ route }) => {
           )}
         >
           <View style={styles.overviewContainer}>
-            {/* Works Statistic Button */}
-            <View style={styles.buttonsRow}>
-              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
-                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
-                <Text style={styles.statButtonLabel}>Works</Text>
-                <Text style={styles.statButtonCount}>{works_count}</Text>
-              </TouchableOpacity>
-            </View>
             {/* Horizontal Citation Gauge */}
             <View style={styles.citationGaugeWrapper}>
               <View style={styles.citationIconContainer}>
@@ -171,6 +163,13 @@ const SearchTopicResult = ({ route }) => {
                   </View>
                 </View>
               </View>
+            </View>
+            {/* Works Statistic Button */}
+            <View style={styles.buttonsRow}>
+              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
+                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Works</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
