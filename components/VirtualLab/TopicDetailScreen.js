@@ -11,7 +11,7 @@ import {
   Image
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Provider } from 'react-native-paper';
+import { Button, Provider, Snackbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { RFValue } from "react-native-responsive-fontsize";
 import { colors, sizes, spacing } from '../theme';
@@ -32,6 +32,7 @@ const TopicDetailScreen = ({ route }) => {
   const [openData, setOpenData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
   const initialHeaderHeight = height / 4;
   const minHeaderHeight = height / 9;
@@ -200,14 +201,19 @@ const TopicDetailScreen = ({ route }) => {
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
                 <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Works</Text>
-               {/* <Text style={styles.statButtonCount}>{works_count}</Text>*/}
               </TouchableOpacity>
               <TouchableOpacity 
                 style={styles.statButton} 
-                onPress={() => navigation.navigate('CastListScreen', { 
-                  department: departmentName, 
-                  topic: topicTitle 
-                })}
+                onPress={() => {
+                  if (castCount === 0) {
+                    setSnackbarVisible(true);
+                  } else {
+                    navigation.navigate('CastListScreen', { 
+                      department: departmentName, 
+                      topic: topicTitle 
+                    });
+                  }
+                }}
               >
                 <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Casts</Text>
@@ -215,7 +221,6 @@ const TopicDetailScreen = ({ route }) => {
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Articles onPress handler */ }}>
                 <Image source={articleIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Articles</Text>
-                {/*<Text style={styles.statButtonCount}>{articleCount}</Text>*/}
               </TouchableOpacity>
             </View>
 
@@ -254,6 +259,16 @@ const TopicDetailScreen = ({ route }) => {
             )}
           </View>
         </Animated.ScrollView>
+
+        {/* Snackbar to display "No casts available" */}
+        <Snackbar
+          visible={snackbarVisible}
+          onDismiss={() => setSnackbarVisible(false)}
+          duration={3000}
+          style={styles.snackbar}
+        >
+          No casts available.
+        </Snackbar>
       </View>
     </Provider>
   );
@@ -375,7 +390,6 @@ const styles = StyleSheet.create({
   },
   statButtonLabel: {
     fontSize: RFValue(14),
-    color: colors.secondary,
     fontFamily: 'MontserratBold',
     color: colors.primary,
   },
@@ -420,7 +434,7 @@ const styles = StyleSheet.create({
   },
   keywordsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // Allows wrapping into 2-3 lines.
+    flexWrap: 'wrap',
     alignItems: 'center',
   },
   keywordChip: {
@@ -429,7 +443,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s / 2,
     marginRight: spacing.xs,
-    marginBottom: spacing.xs, // Space between rows.
+    marginBottom: spacing.xs,
   },
   keywordText: {
     fontSize: RFValue(12),
@@ -447,11 +461,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: colors.primaryBis,
   },
   errorText: {
     fontSize: RFValue(16),
     color: 'red',
     marginBottom: spacing.m,
+  },
+  snackbar: {
+    position: 'absolute',
+    bottom: 0,
+    backgroundColor: colors.darkGray,
   },
 });
 

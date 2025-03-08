@@ -133,6 +133,7 @@ const styles = StyleSheet.create({
   container: {
     padding: spacing.m,
     marginTop: spacing.l,
+    marginBottom: spacing.xl,    
     backgroundColor: colors.primaryBis,
   },
   searchBar: {
@@ -160,11 +161,10 @@ const styles = StyleSheet.create({
   castCard: {
     backgroundColor: colors.primary,
     borderRadius: sizes.radius,
-    marginBottom: spacing.m,
+    marginBottom: spacing.l,
     overflow: 'hidden',
     elevation: 3,
   },
-  // Display the cast image with a 16:9 aspect ratio
   castImage: {
     width: '100%',
     aspectRatio: 16 / 9,
@@ -203,7 +203,6 @@ const styles = StyleSheet.create({
   placeholderIcon: {
     width: '100%',
     height: '100%',
-    backgroundColor: colors.darkOrange, // a placeholder color if icon not available
   },
   noDataText: {
     textAlign: 'center',
