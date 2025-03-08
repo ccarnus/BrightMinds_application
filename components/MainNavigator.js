@@ -32,6 +32,7 @@ import WelcomeScreen from './Onboarding/WelcomeScreen';
 import TopicDetailScreen from './VirtualLab/TopicDetailScreen';
 import SearchArticleResults from './Cast/SearchResults/SearchArticleResults';
 import SearchTopicResult from './Cast/SearchResults/SearchTopicResult';
+import CastListScreen from './VirtualLab/CastListScreen';
 
 const Stack = createStackNavigator();
 
@@ -127,6 +128,7 @@ const MainNavigator = () => {
         <Stack.Screen name="DiscoverVideoScreen" component={DiscoverVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="CastListScreen" component={CastListScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VirtualLab" component={VirtualLab} options={{ headerShown: false, tabBarVisible: false }}  
           listeners={({ navigation }) => ({

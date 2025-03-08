@@ -202,10 +202,15 @@ const TopicDetailScreen = ({ route }) => {
                 <Text style={styles.statButtonLabel}>Works</Text>
                {/* <Text style={styles.statButtonCount}>{works_count}</Text>*/}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Casts onPress handler */ }}>
+              <TouchableOpacity 
+                style={styles.statButton} 
+                onPress={() => navigation.navigate('CastListScreen', { 
+                  department: departmentName, 
+                  topic: topicTitle 
+                })}
+              >
                 <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Casts</Text>
-                {/*<Text style={styles.statButtonCount}>{castCount}</Text>*/}
               </TouchableOpacity>
               <TouchableOpacity style={styles.statButton} onPress={() => { /* add Articles onPress handler */ }}>
                 <Image source={articleIcon} style={styles.statButtonIcon} resizeMode="contain" />
