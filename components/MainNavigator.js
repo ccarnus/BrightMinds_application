@@ -27,12 +27,14 @@ import LoadingScreen from './Onboarding/LoadingScreen';
 import OnboardingScreen from './Onboarding/OnboardingScreen';
 import AuthChoiceScreen from './Onboarding/AuthChoiceScreen';
 import VideoScreen from './Cast/VideoScreen';
+import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
 import WelcomeScreen from './Onboarding/WelcomeScreen';
 import TopicDetailScreen from './VirtualLab/TopicDetailScreen';
 import SearchArticleResults from './Cast/SearchResults/SearchArticleResults';
 import SearchTopicResult from './Cast/SearchResults/SearchTopicResult';
 import CastListScreen from './VirtualLab/CastListScreen';
+import WorksListScreen from './VirtualLab/WorksListScreen';
 
 const Stack = createStackNavigator();
 
@@ -126,6 +128,8 @@ const MainNavigator = () => {
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="VideoScreen" component={VideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverVideoScreen" component={DiscoverVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="VirtualLabVideoScreen" component={VirtualLabVideoScreen} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="WorksListScreen" component={WorksListScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="Objective" component={Objective} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="CastListScreen" component={CastListScreen} options={{ headerShown: false, tabBarVisible: false }} />

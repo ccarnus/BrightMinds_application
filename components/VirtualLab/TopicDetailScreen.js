@@ -21,12 +21,12 @@ import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import citationIcon from '../../assets/Virtual_lab_icons/citation.png';
 import worksIcon from '../../assets/Virtual_lab_icons/works.png';
 import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
-import articleIcon from '../../assets/Cast_screen_icons/article_icon.png';
 
 const { width, height } = Dimensions.get('window');
 
 const TopicDetailScreen = ({ route }) => {
   const { topicId } = route.params;
+  const OpenAlexId = useRef(null);
   const navigation = useNavigation();
   const [brightData, setBrightData] = useState(null);
   const [openData, setOpenData] = useState(null);
@@ -59,7 +59,7 @@ const TopicDetailScreen = ({ route }) => {
         const bright = await res1.json();
         setBrightData(bright);
 
-        const openalexID = bright.openalexID;
+        openalexID = bright.openalexID;
         const res2 = await fetch(`https://api.openalex.org/topics/${openalexID}`);
         if (!res2.ok) {
           throw new Error('Failed to fetch OpenAlex topic details');
@@ -94,7 +94,7 @@ const TopicDetailScreen = ({ route }) => {
     );
   }
 
-  const { name: brightName, departmentName, articleCount, castCount, activity, impact } = brightData || {};
+  const { name: brightName, departmentName, castCount, activity, impact } = brightData || {};
   const { display_name, description, keywords, works_count, cited_by_count } = openData || {};
   const topicTitle = display_name || brightName || 'Topic Detail';
   const activityFill = brightData ? (activity / 9000) * 100 : 0;
@@ -196,9 +196,20 @@ const TopicDetailScreen = ({ route }) => {
               </View>
             </View>
 
-            {/* Buttons Row for Works, Casts, and Articles */}
+            {/* Buttons Row for Works, Casts*/}
             <View style={styles.buttonsRow}>
-              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
+            <TouchableOpacity 
+                style={styles.statButton} 
+                onPress={() => {
+                  if (castCount === 0) {
+                    setSnackbarVisible(true);
+                  } else {
+                    navigation.navigate('WorksListScreen', {
+                      topicId: openalexID 
+                    });
+                  }
+                }}
+              >
                 <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Works</Text>
               </TouchableOpacity>
@@ -217,10 +228,6 @@ const TopicDetailScreen = ({ route }) => {
               >
                 <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Casts</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Articles onPress handler */ }}>
-                <Image source={articleIcon} style={styles.statButtonIcon} resizeMode="contain" />
-                <Text style={styles.statButtonLabel}>Articles</Text>
               </TouchableOpacity>
             </View>
 
@@ -381,6 +388,7 @@ const styles = StyleSheet.create({
     padding: spacing.m,
     borderRadius: sizes.radius,
     elevation: 3,
+    width: width * 0.35,
   },
   statButtonIcon: {
     width: RFValue(36),

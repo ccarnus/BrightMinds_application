@@ -5,14 +5,16 @@ import {
   StyleSheet, 
   ActivityIndicator, 
   ScrollView, 
-  Image 
+  Image,
+  TouchableOpacity,
 } from 'react-native';
 import { Button, Searchbar } from 'react-native-paper';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { colors, sizes, spacing } from '../theme';
 
 const CastListScreen = () => {
   const route = useRoute();
+  const navigation = useNavigation();
   const { department, topic } = route.params;
   const [casts, setCasts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,11 @@ const CastListScreen = () => {
       />
       {filteredCasts.length > 0 ? (
         filteredCasts.map(cast => (
-          <View key={cast._id} style={styles.castCard}>
+          <TouchableOpacity 
+            key={cast._id} 
+            style={styles.castCard}
+            onPress={() => navigation.navigate('VirtualLabVideoScreen', { selectedCastId: cast._id })}
+          >
             <Image 
               source={{ uri: cast.castimageurl }} 
               style={styles.castImage} 
@@ -120,7 +126,7 @@ const CastListScreen = () => {
                 )}
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         ))
       ) : (
         <Text style={styles.noDataText}>No casts found.</Text>
@@ -213,4 +219,3 @@ const styles = StyleSheet.create({
 });
 
 export default CastListScreen;
-
