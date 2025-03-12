@@ -201,13 +201,9 @@ const TopicDetailScreen = ({ route }) => {
             <TouchableOpacity 
                 style={styles.statButton} 
                 onPress={() => {
-                  if (castCount === 0) {
-                    setSnackbarVisible(true);
-                  } else {
-                    navigation.navigate('WorksListScreen', {
-                      topicId: openalexID 
-                    });
-                  }
+                  navigation.navigate('WorksListScreen', {
+                    topicId: openalexID 
+                  });
                 }}
               >
                 <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />

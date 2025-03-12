@@ -7,24 +7,52 @@ import {
   ScrollView, 
   Linking 
 } from 'react-native';
-import { Button } from 'react-native-paper';
-import { useRoute } from '@react-navigation/native';
+import { Button, IconButton, Dialog, Portal } from 'react-native-paper';
+import Slider from '@react-native-community/slider';
 import { colors, sizes, spacing } from '../theme';
 
 const WorksListScreen = () => {
-  const route = useRoute();
-  const { topicId } = route.params; // topicId passed from previous screen
   const [works, setWorks] = useState([]);
   const [meta, setMeta] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const perPage = 10;
 
-  const fetchWorks = async (page = 1) => {
+  // Filter dialog visibility
+  const [filterVisible, setFilterVisible] = useState(false);
+  
+  // Filter states (no date filtering)
+  const [filterIsOa, setFilterIsOa] = useState(false);
+  const [filterCitedCount, setFilterCitedCount] = useState(0);
+  const [sliderValue, setSliderValue] = useState(0);
+  const [filterHasAbstract, setFilterHasAbstract] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const perPage = 50;
+  const primaryTopic = "T11881";
+
+  // Build filter string based on active filters
+  const buildFilterString = () => {
+    let filters = [`primary_topic.id:${primaryTopic}`];
+    if (filterIsOa) {
+      filters.push('is_oa:true');
+    }
+    if (filterCitedCount > 0) {
+      filters.push(`cited_by_count:>${filterCitedCount}`);
+    }
+    if (filterHasAbstract) {
+      filters.push('has_abstract:true');
+    }
+    return filters.join(',');
+  };
+
+  // Fetch works using current filters and page
+  const fetchWorks = async () => {
     setLoading(true);
     try {
-      const url = `https://api.openalex.org/works?filter=primary_topic.id:${topicId}&per_page=${perPage}&page=${page}`;
+      const filterString = buildFilterString();
+      const url = `https://api.openalex.org/works?filter=${filterString}&per_page=${perPage}&page=${currentPage}`;
       const res = await fetch(url);
       if (!res.ok) {
         throw new Error('Failed to fetch works');
@@ -40,141 +68,244 @@ const WorksListScreen = () => {
     }
   };
 
+  // Fetch works when component mounts and whenever currentPage changes
   useEffect(() => {
-    fetchWorks(currentPage);
-  }, [topicId, currentPage]);
+    fetchWorks();
+  }, [currentPage]);
 
   const handleOpenLink = (url) => {
     Linking.openURL(url).catch(err => console.error('Failed opening URL:', err));
   };
 
-  // Calculate total pages from meta.count
-  const totalPages = meta.count ? Math.ceil(meta.count / perPage) : 1;
+  // Apply filters: reset to page 1 and fetch works
+  const handleApplyFilters = () => {
+    // Ensure filter state reflects the latest slider value.
+    setFilterCitedCount(sliderValue);
+    setFilterVisible(false);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      fetchWorks();
+    }
+  };
 
-  // A small component for pagination controls used at both top and bottom
-  const PaginationControls = () => (
-    <View style={styles.paginationContainer}>
-      <Button 
-        mode="outlined"
-        disabled={currentPage === 1}
-        onPress={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-      >
-        Previous
-      </Button>
-      <Text style={styles.pageText}>
-        Page {currentPage} of {totalPages}
-      </Text>
-      <Button 
-        mode="outlined"
-        disabled={currentPage === totalPages}
-        onPress={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-      >
-        Next
-      </Button>
-    </View>
-  );
+  // Clear all filters
+  const clearFilters = () => {
+    setFilterIsOa(false);
+    setFilterCitedCount(0);
+    setSliderValue(0);
+    setFilterHasAbstract(false);
+  };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-         <ActivityIndicator size="large" color="#00aaff" />
-      </View>
-    );
-  }
+  // Pagination handlers
+  const goToPreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
 
-  if (error) {
-    return (
-      <View style={styles.errorContainer}>
-         <Text style={styles.errorText}>Error: {error}</Text>
-         <Button onPress={() => fetchWorks(currentPage)}>
-           Retry
-         </Button>
-      </View>
-    );
-  }
+  const goToNextPage = () => {
+    // Calculate total pages if meta.count and meta.per_page are available
+    if (meta.count && meta.per_page) {
+      const totalPages = Math.ceil(meta.count / meta.per_page);
+      if (currentPage < totalPages) {
+        setCurrentPage(prev => prev + 1);
+      }
+    }
+  };
+
+  // Compute a string to display active filters
+  const appliedFilters = [];
+  if (filterIsOa) appliedFilters.push("Open Access");
+  if (filterCitedCount > 0) appliedFilters.push(`Min Cited: ${filterCitedCount}`);
+  if (filterHasAbstract) appliedFilters.push("Has Abstract");
+  const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join(" | ") : "No filters applied";
+
+  // Calculate total pages (if available)
+  const totalPages = meta.count && meta.per_page ? Math.ceil(meta.count / meta.per_page) : 0;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* Top Pagination */}
-      <PaginationControls />
+    <View style={styles.container}>
+      {/* Header with title and filter button */}
+      <View style={styles.header}>
+        <Text style={styles.headerText}>Works List</Text>
+        <IconButton
+          icon="filter"
+          size={24}
+          onPress={() => setFilterVisible(true)}
+          color={colors.darkGreen}
+        />
+      </View>
 
-      {/* Total works count */}
-      <Text style={styles.totalCountText}>Total Works: {meta.count}</Text>
+      {/* Banner displaying active filters */}
+      <View style={styles.filterBanner}>
+        <Text style={styles.filterBannerText}>
+          {appliedFiltersText}
+        </Text>
+      </View>
 
-      {/* List of work cards */}
-      {works.length > 0 ? (
-        works.map(work => (
-          <View key={work.id} style={styles.workCard}>
-            <View style={styles.workDetails}>
-              <Text style={styles.workTitle}>{work.display_name}</Text>
-              <Text style={styles.workInfo}>Year: {work.publication_year}</Text>
-              <Text style={styles.workInfo}>Cited: {work.cited_by_count}</Text>
-              <Text style={styles.workInfo}>
-                Status: {work.open_access ? work.open_access.oa_status : 'closed'}
-              </Text>
+      {/* Filter Dialog */}
+      <Portal>
+        <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)}>
+          <Dialog.Title>Filter Works</Dialog.Title>
+          <Dialog.Content>
+            {/* Open Access Toggle */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Only Open Access</Text>
+              <Button 
+                mode={filterIsOa ? "contained" : "outlined"}
+                onPress={() => setFilterIsOa(!filterIsOa)}
+                style={styles.toggleButton}
+              >
+                {filterIsOa ? "Yes" : "No"}
+              </Button>
             </View>
-            <Button
-              mode="contained"
-              onPress={() => handleOpenLink(work.id)}
-              buttonColor={colors.darkGreen}
-              contentStyle={{ flexDirection: 'row-reverse' }}
-              icon={require('../../assets/Discover_icons/next.png')}
-              labelStyle={{
-                fontSize: sizes.h3,
-                fontFamily: 'Montserrat',
-                textAlign: 'center'
-              }}
-              style={{
-                marginTop: spacing.m,
-                marginHorizontal: spacing.xs,
-                borderRadius: sizes.buttonRadius,
-              }}
-            >
-              Explore
-            </Button>
-          </View>
-        ))
-      ) : (
-        <Text style={styles.noDataText}>No works found.</Text>
-      )}
+            {/* Cited By Count Slider */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Minimum Cited Count: {sliderValue}</Text>
+            </View>
+            <Slider
+              style={styles.slider}
+              minimumValue={0}
+              maximumValue={50}
+              step={1}
+              value={sliderValue}
+              onValueChange={(val) => setSliderValue(val)}
+              onSlidingComplete={(val) => setFilterCitedCount(val)}
+            />
+            {/* Has Abstract Toggle */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Must Have Abstract</Text>
+              <Button 
+                mode={filterHasAbstract ? "contained" : "outlined"}
+                onPress={() => setFilterHasAbstract(!filterHasAbstract)}
+                style={styles.toggleButton}
+              >
+                {filterHasAbstract ? "Yes" : "No"}
+              </Button>
+            </View>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={clearFilters}>Clear</Button>
+            <Button onPress={() => setFilterVisible(false)}>Cancel</Button>
+            <Button onPress={handleApplyFilters}>Apply</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
 
-      {/* Bottom Pagination */}
-      <PaginationControls />
-    </ScrollView>
+      {/* Works List */}
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#00aaff" style={styles.loading} />
+        ) : error ? (
+          <Text style={styles.errorText}>{error}</Text>
+        ) : (
+          works.length > 0 ? (
+            works.map(work => (
+              <View key={work.id} style={styles.workCard}>
+                <View style={styles.workDetails}>
+                  <Text style={styles.workTitle}>{work.display_name}</Text>
+                  <Text style={styles.workInfo}>Year: {work.publication_year}</Text>
+                  <Text style={styles.workInfo}>Cited: {work.cited_by_count}</Text>
+                  <Text style={styles.workInfo}>
+                    Status: {work.open_access ? work.open_access.oa_status : 'closed'}
+                  </Text>
+                </View>
+                <Button
+                  mode="contained"
+                  onPress={() => handleOpenLink(work.id)}
+                  buttonColor={colors.darkGreen}
+                  contentStyle={{ flexDirection: 'row-reverse' }}
+                  icon={require('../../assets/Discover_icons/next.png')}
+                  labelStyle={{
+                    fontSize: sizes.h3,
+                    fontFamily: 'Montserrat',
+                    textAlign: 'center'
+                  }}
+                  style={{
+                    marginTop: spacing.m,
+                    marginHorizontal: spacing.xs,
+                    borderRadius: sizes.buttonRadius,
+                  }}
+                >
+                  Explore
+                </Button>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.noDataText}>No works found.</Text>
+          )
+        )}
+      </ScrollView>
+
+      {/* Pagination Controls */}
+      <View style={styles.paginationContainer}>
+        <Text style={styles.paginationText}>
+          {meta.count ? `Total Works: ${meta.count}` : ''}
+        </Text>
+        <View style={styles.paginationButtons}>
+          <Button 
+            mode="outlined" 
+            onPress={goToPreviousPage} 
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <Text style={styles.paginationText}>
+            Page {currentPage}{totalPages ? ` of ${totalPages}` : ''}
+          </Text>
+          <Button 
+            mode="outlined" 
+            onPress={goToNextPage} 
+            disabled={totalPages && currentPage >= totalPages}
+          >
+            Next
+          </Button>
+        </View>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    padding: spacing.m,
-    marginTop: spacing.l,
-    marginBottom: spacing.xl,
+    flex: 1,
     backgroundColor: colors.primaryBis,
   },
-  totalCountText: {
-    fontSize: sizes.h4,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.m,
+    backgroundColor: colors.primary,
+  },
+  headerText: {
+    fontSize: sizes.h2,
     fontFamily: 'MontserratBold',
     color: colors.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.m,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
+  filterBanner: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  filterBannerText: {
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    textAlign: 'center'
+  },
+  scrollContainer: {
     padding: spacing.m,
-    backgroundColor: colors.primaryBis,
+    paddingBottom: spacing.xl,
+  },
+  loading: {
+    marginTop: spacing.l,
   },
   errorText: {
-    fontSize: sizes.h4,
     color: 'red',
-    marginBottom: spacing.m,
+    textAlign: 'center',
+    marginTop: spacing.m,
   },
   workCard: {
     backgroundColor: colors.primary,
@@ -201,25 +332,47 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     color: colors.secondary,
   },
-  openButton: {
-    alignSelf: 'center',
-  },
   noDataText: {
     textAlign: 'center',
     fontSize: sizes.h4,
     color: colors.secondary,
     marginTop: spacing.m,
   },
-  paginationContainer: {
+  filterLabel: {
+    fontSize: sizes.h4,
+    fontFamily: 'Montserrat',
+    marginBottom: spacing.s,
+  },
+  filterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginVertical: spacing.m,
+    marginVertical: spacing.s,
   },
-  pageText: {
+  toggleButton: {
+    width: 80,
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  paginationContainer: {
+    padding: spacing.m,
+    backgroundColor: colors.primaryBis,
+    borderTopWidth: 1,
+    borderColor: colors.secondary,
+  },
+  paginationButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.s,
+  },
+  paginationText: {
     fontSize: sizes.h4,
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     color: colors.secondary,
+    textAlign: 'center'
   },
 });
 
