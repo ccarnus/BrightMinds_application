@@ -293,7 +293,7 @@ const CastScreen = () => {
 
   const handleSearchResultPress = (id) => {
     if (selectedCategory === 'Article') {
-      navigation.navigate('SearchArticleResults', { articleId: id });
+      navigation.navigate('OpenAlexDetailsScreen', { articleId: id });
     } else if (selectedCategory === 'Topic') {
       navigation.navigate('SearchTopicResult', { topicId: id });
     } else {

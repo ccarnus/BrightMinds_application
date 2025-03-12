@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,7 @@ import {
   Linking 
 } from 'react-native';
 import { Button, IconButton, Dialog, Portal, Card } from 'react-native-paper';
-import Slider from '@react-native-community/slider';
+import { Slider } from '@miblanchard/react-native-slider';
 import { colors, sizes, spacing } from '../theme';
 
 const WorksListScreen = ({ route }) => {
@@ -25,7 +25,7 @@ const WorksListScreen = ({ route }) => {
   
   // Filter states (no date filtering)
   const [filterIsOa, setFilterIsOa] = useState(false);
-  const [sliderValue, setSliderValue] = useState(0); // minimum cited count
+  const [sliderValue, setSliderValue] = useState(0); // Minimum cited count
   const [filterHasAbstract, setFilterHasAbstract] = useState(false);
 
   // Pagination state
@@ -87,7 +87,7 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Fetch works when the component mounts and when currentPage changes
+  // Fetch works when component mounts and when currentPage changes
   useEffect(() => {
     fetchWorks();
   }, [currentPage]);
@@ -129,10 +129,10 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Compute a string to display active filters
+  // Compute a string to display active filters (with comma-formatted numbers)
   const appliedFilters = [];
   if (filterIsOa) appliedFilters.push("Open Access");
-  if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue}`);
+  if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue.toLocaleString()}`);
   if (filterHasAbstract) appliedFilters.push("Has Abstract");
   const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join(" | ") : "No filters applied";
 
@@ -142,23 +142,23 @@ const WorksListScreen = ({ route }) => {
   return (
     <View style={styles.container}>
       {/* Header displays the topic name */}
-      <View style={styles.header}>
-        <Text style={styles.headerText}>{topicName || 'Works'}</Text>
-        <IconButton
-          icon="filter"
-          size={24}
-          onPress={() => setFilterVisible(true)}
-          color={colors.darkGreen}
-        />
+      <View style={styles.TopBanner}>
+        <View style={styles.header}>
+          <Text style={styles.headerText}>{topicName || 'Works'}</Text>
+          <IconButton
+            icon="filter"
+            size={24}
+            onPress={() => setFilterVisible(true)}
+            color={colors.darkGreen}
+          />
+        </View>
+        {/* Banner displaying active filters */}
+        <View style={styles.filterBanner}>
+          <Text style={styles.filterBannerText}>
+            {appliedFiltersText}
+          </Text>
+        </View>
       </View>
-
-      {/* Banner displaying active filters */}
-      <View style={styles.filterBanner}>
-        <Text style={styles.filterBannerText}>
-          {appliedFiltersText}
-        </Text>
-      </View>
-
       {/* Filter Dialog */}
       <Portal>
         <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)}>
@@ -175,17 +175,18 @@ const WorksListScreen = ({ route }) => {
                 {filterIsOa ? "Yes" : "No"}
               </Button>
             </View>
-            {/* Cited By Count Slider */}
+            {/* Minimum Cited Count Slider */}
             <View style={styles.filterRow}>
-              <Text style={styles.filterLabel}>Minimum Cited Count: {sliderValue}</Text>
+              <Text style={styles.filterLabel}>Minimum Cited Count: {sliderValue.toLocaleString()}</Text>
             </View>
             <Slider
-              style={styles.slider}
+              value={[sliderValue]}
+              onValueChange={(value) => setSliderValue(value[0])}
               minimumValue={0}
               maximumValue={50}
               step={1}
-              value={sliderValue}
-              onValueChange={setSliderValue}
+              trackStyle={{ height: 4, backgroundColor: colors.secondary }}
+              thumbStyle={{ height: 20, width: 20, backgroundColor: colors.darkGreen, borderRadius: 10 }}
             />
             {/* Has Abstract Toggle */}
             <View style={styles.filterRow}>
@@ -210,23 +211,57 @@ const WorksListScreen = ({ route }) => {
       {/* Works List */}
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         {loading ? (
-          <ActivityIndicator size="large" color="#00aaff" style={styles.loading} />
+          <ActivityIndicator size="large" color={colors.secondary} style={styles.loading} />
         ) : error ? (
           <Text style={styles.errorText}>{error}</Text>
         ) : (
           works.length > 0 ? (
-            works.map(work => (
-              <Card key={work.id} style={styles.workCard}>
-                <Card.Title title={work.display_name} subtitle={`Year: ${work.publication_year}`} />
-                <Card.Content>
-                  <Text style={styles.workInfo}>Cited: {work.cited_by_count}</Text>
-                  <Text style={styles.workInfo}>Status: {work.open_access ? work.open_access.oa_status : 'closed'}</Text>
-                </Card.Content>
-                <Card.Actions>
-                  <Button onPress={() => handleOpenLink(work.id)}>Explore</Button>
-                </Card.Actions>
-              </Card>
-            ))
+            works.map(work => {
+              // Retrieve the first author if available.
+              const firstAuthor = work.authorships && work.authorships.length > 0 
+                ? work.authorships[0].author.display_name 
+                : null;
+              return (
+                <Card key={work.id} style={styles.workCard}>
+                  <Card.Title 
+                    title={work.display_name} 
+                    subtitle={firstAuthor ? firstAuthor : undefined}
+                    titleStyle={styles.cardTitle}
+                    subtitleStyle={styles.cardSubtitle}
+                  />
+                  <Card.Content>
+                    <Text style={styles.workInfo}>
+                      Year: {Number(work.publication_year).toLocaleString()}
+                    </Text>
+                    <Text style={styles.workInfo}>
+                      Cited: {Number(work.cited_by_count).toLocaleString()}
+                    </Text>
+                    <Text style={styles.workInfo}>
+                      Status: {work.open_access ? work.open_access.oa_status : 'closed'}
+                    </Text>
+                  </Card.Content>
+                  <Card.Actions>
+                    <Button
+                      mode="contained"
+                      onPress={() => handleOpenLink(work.id)}
+                      buttonColor={colors.darkGreen}
+                      icon={require('../../assets/Discover_icons/next.png')}
+                      contentStyle={{ flexDirection: 'row-reverse' }}
+                      labelStyle={{
+                        fontSize: sizes.h3,
+                        fontFamily: 'Montserrat',
+                        textAlign: 'center',
+                      }}
+                      style={{
+                        borderRadius: sizes.buttonRadius,
+                      }}
+                    >
+                      Explore
+                    </Button>
+                  </Card.Actions>
+                </Card>
+              );
+            })
           ) : (
             <Text style={styles.noDataText}>No works found.</Text>
           )
@@ -236,7 +271,7 @@ const WorksListScreen = ({ route }) => {
       {/* Pagination Controls */}
       <View style={styles.paginationContainer}>
         <Text style={styles.paginationText}>
-          {meta.count ? `Total Works: ${meta.count}` : ''}
+          {meta.count ? `Total Works: ${Number(meta.count).toLocaleString()}` : ''}
         </Text>
         <View style={styles.paginationButtons}>
           <Button 
@@ -247,7 +282,7 @@ const WorksListScreen = ({ route }) => {
             Previous
           </Button>
           <Text style={styles.paginationText}>
-            Page {currentPage}{totalPages ? ` of ${totalPages}` : ''}
+            Page {currentPage.toLocaleString()}{totalPages ? ` of ${totalPages.toLocaleString()}` : ''}
           </Text>
           <Button 
             mode="outlined" 
@@ -278,11 +313,16 @@ const styles = StyleSheet.create({
     fontSize: sizes.h2,
     fontFamily: 'MontserratBold',
     color: colors.secondary,
+    marginTop: spacing.l,
+    textAlign: 'center',
   },
   filterBanner: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.s,
     paddingHorizontal: spacing.m,
+  },
+  TopBanner: {
+    elevation: 5,
   },
   filterBannerText: {
     fontSize: sizes.h4,
@@ -295,7 +335,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl,
   },
   loading: {
-    marginTop: spacing.l,
+    marginTop: spacing.xl,
   },
   errorText: {
     color: 'red',
@@ -306,11 +346,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
     elevation: 3,
     borderRadius: sizes.radius,
+    backgroundColor: colors.lightTeal,
+  },
+  cardTitle: {
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
+  },
+  cardSubtitle: {
+    fontFamily: 'MontserratBold',
+    color: colors.primary,
   },
   workInfo: {
-    fontSize: sizes.h4,
     fontFamily: 'Montserrat',
-    color: colors.secondary,
+    color: colors.primary,
     marginTop: spacing.xs,
   },
   noDataText: {
