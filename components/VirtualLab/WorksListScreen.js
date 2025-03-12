@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -7,13 +7,16 @@ import {
   ScrollView, 
   Linking 
 } from 'react-native';
-import { Button, IconButton, Dialog, Portal } from 'react-native-paper';
+import { Button, IconButton, Dialog, Portal, Card } from 'react-native-paper';
 import Slider from '@react-native-community/slider';
 import { colors, sizes, spacing } from '../theme';
 
-const WorksListScreen = () => {
+const WorksListScreen = ({ route }) => {
+  // Expecting route.params.topicId to be a topic id string (e.g., "T11881")
+  const { topicId } = route.params;
   const [works, setWorks] = useState([]);
   const [meta, setMeta] = useState({});
+  const [topicName, setTopicName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -22,15 +25,31 @@ const WorksListScreen = () => {
   
   // Filter states (no date filtering)
   const [filterIsOa, setFilterIsOa] = useState(false);
-  const [filterCitedCount, setFilterCitedCount] = useState(0);
-  const [sliderValue, setSliderValue] = useState(0);
+  const [sliderValue, setSliderValue] = useState(0); // minimum cited count
   const [filterHasAbstract, setFilterHasAbstract] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
 
   const perPage = 50;
-  const primaryTopic = "T11881";
+  const primaryTopic = topicId; // since topicId already contains the id (e.g., "T11881")
+
+  // Fetch topic details to get the display name.
+  useEffect(() => {
+    const fetchTopicDetails = async () => {
+      try {
+        const res = await fetch(`https://api.openalex.org/topics/${topicId}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch topic details');
+        }
+        const data = await res.json();
+        setTopicName(data.display_name);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchTopicDetails();
+  }, [topicId]);
 
   // Build filter string based on active filters
   const buildFilterString = () => {
@@ -38,8 +57,8 @@ const WorksListScreen = () => {
     if (filterIsOa) {
       filters.push('is_oa:true');
     }
-    if (filterCitedCount > 0) {
-      filters.push(`cited_by_count:>${filterCitedCount}`);
+    if (sliderValue > 0) {
+      filters.push(`cited_by_count:>${sliderValue}`);
     }
     if (filterHasAbstract) {
       filters.push('has_abstract:true');
@@ -68,7 +87,7 @@ const WorksListScreen = () => {
     }
   };
 
-  // Fetch works when component mounts and whenever currentPage changes
+  // Fetch works when the component mounts and when currentPage changes
   useEffect(() => {
     fetchWorks();
   }, [currentPage]);
@@ -79,8 +98,6 @@ const WorksListScreen = () => {
 
   // Apply filters: reset to page 1 and fetch works
   const handleApplyFilters = () => {
-    // Ensure filter state reflects the latest slider value.
-    setFilterCitedCount(sliderValue);
     setFilterVisible(false);
     if (currentPage !== 1) {
       setCurrentPage(1);
@@ -92,7 +109,6 @@ const WorksListScreen = () => {
   // Clear all filters
   const clearFilters = () => {
     setFilterIsOa(false);
-    setFilterCitedCount(0);
     setSliderValue(0);
     setFilterHasAbstract(false);
   };
@@ -105,7 +121,6 @@ const WorksListScreen = () => {
   };
 
   const goToNextPage = () => {
-    // Calculate total pages if meta.count and meta.per_page are available
     if (meta.count && meta.per_page) {
       const totalPages = Math.ceil(meta.count / meta.per_page);
       if (currentPage < totalPages) {
@@ -117,7 +132,7 @@ const WorksListScreen = () => {
   // Compute a string to display active filters
   const appliedFilters = [];
   if (filterIsOa) appliedFilters.push("Open Access");
-  if (filterCitedCount > 0) appliedFilters.push(`Min Cited: ${filterCitedCount}`);
+  if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue}`);
   if (filterHasAbstract) appliedFilters.push("Has Abstract");
   const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join(" | ") : "No filters applied";
 
@@ -126,9 +141,9 @@ const WorksListScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header with title and filter button */}
+      {/* Header displays the topic name */}
       <View style={styles.header}>
-        <Text style={styles.headerText}>Works List</Text>
+        <Text style={styles.headerText}>{topicName || 'Works'}</Text>
         <IconButton
           icon="filter"
           size={24}
@@ -170,8 +185,7 @@ const WorksListScreen = () => {
               maximumValue={50}
               step={1}
               value={sliderValue}
-              onValueChange={(val) => setSliderValue(val)}
-              onSlidingComplete={(val) => setFilterCitedCount(val)}
+              onValueChange={setSliderValue}
             />
             {/* Has Abstract Toggle */}
             <View style={styles.filterRow}>
@@ -202,35 +216,16 @@ const WorksListScreen = () => {
         ) : (
           works.length > 0 ? (
             works.map(work => (
-              <View key={work.id} style={styles.workCard}>
-                <View style={styles.workDetails}>
-                  <Text style={styles.workTitle}>{work.display_name}</Text>
-                  <Text style={styles.workInfo}>Year: {work.publication_year}</Text>
+              <Card key={work.id} style={styles.workCard}>
+                <Card.Title title={work.display_name} subtitle={`Year: ${work.publication_year}`} />
+                <Card.Content>
                   <Text style={styles.workInfo}>Cited: {work.cited_by_count}</Text>
-                  <Text style={styles.workInfo}>
-                    Status: {work.open_access ? work.open_access.oa_status : 'closed'}
-                  </Text>
-                </View>
-                <Button
-                  mode="contained"
-                  onPress={() => handleOpenLink(work.id)}
-                  buttonColor={colors.darkGreen}
-                  contentStyle={{ flexDirection: 'row-reverse' }}
-                  icon={require('../../assets/Discover_icons/next.png')}
-                  labelStyle={{
-                    fontSize: sizes.h3,
-                    fontFamily: 'Montserrat',
-                    textAlign: 'center'
-                  }}
-                  style={{
-                    marginTop: spacing.m,
-                    marginHorizontal: spacing.xs,
-                    borderRadius: sizes.buttonRadius,
-                  }}
-                >
-                  Explore
-                </Button>
-              </View>
+                  <Text style={styles.workInfo}>Status: {work.open_access ? work.open_access.oa_status : 'closed'}</Text>
+                </Card.Content>
+                <Card.Actions>
+                  <Button onPress={() => handleOpenLink(work.id)}>Explore</Button>
+                </Card.Actions>
+              </Card>
             ))
           ) : (
             <Text style={styles.noDataText}>No works found.</Text>
@@ -308,29 +303,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.m,
   },
   workCard: {
-    backgroundColor: colors.primary,
-    borderRadius: sizes.radius,
     marginBottom: spacing.l,
-    padding: spacing.m,
     elevation: 3,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  workDetails: {
-    flex: 1,
-    marginRight: spacing.m,
-  },
-  workTitle: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
-    marginBottom: spacing.s,
+    borderRadius: sizes.radius,
   },
   workInfo: {
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     color: colors.secondary,
+    marginTop: spacing.xs,
   },
   noDataText: {
     textAlign: 'center',

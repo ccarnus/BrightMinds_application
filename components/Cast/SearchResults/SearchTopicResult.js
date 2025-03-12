@@ -39,6 +39,7 @@ const SearchTopicResult = ({ route }) => {
     return id;
   };
 
+  // Use the extracted id for navigation
   const openAlexId = extractTopicId(topicId);
 
   // Animated header variables.
@@ -166,7 +167,10 @@ const SearchTopicResult = ({ route }) => {
             </View>
             {/* Works Statistic Button */}
             <View style={styles.buttonsRow}>
-              <TouchableOpacity style={styles.statButton} onPress={() => { /* add Works onPress handler */ }}>
+              <TouchableOpacity 
+                style={styles.statButton} 
+                onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexId })}
+              >
                 <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
                 <Text style={styles.statButtonLabel}>Works</Text>
               </TouchableOpacity>
@@ -262,11 +266,6 @@ const styles = StyleSheet.create({
     fontFamily: 'MontserratBold',
     color: colors.primary,
   },
-  statButtonCount: {
-    fontSize: RFValue(16),
-    fontFamily: 'Montserrat',
-    color: colors.darkblue,
-  },
   citationGaugeWrapper: {
     marginVertical: spacing.m,
     alignItems: 'center',
@@ -332,7 +331,7 @@ const styles = StyleSheet.create({
   },
   keywordsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap', // Allows wrapping into 2-3 lines.
+    flexWrap: 'wrap',
     alignItems: 'center',
   },
   keywordChip: {
@@ -341,7 +340,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s / 2,
     marginRight: spacing.xs,
-    marginBottom: spacing.xs, // Space between rows.
+    marginBottom: spacing.xs,
   },
   keywordText: {
     fontSize: RFValue(12),
