@@ -149,7 +149,7 @@ const WorksListScreen = ({ route }) => {
             icon="filter"
             size={24}
             onPress={() => setFilterVisible(true)}
-            color={colors.darkGreen}
+            color={colors.lightOrange}
           />
         </View>
         {/* Banner displaying active filters */}
@@ -223,15 +223,17 @@ const WorksListScreen = ({ route }) => {
                 : null;
               return (
                 <Card key={work.id} style={styles.workCard}>
-                  <Card.Title 
-                    title={work.display_name} 
-                    subtitle={firstAuthor ? firstAuthor : undefined}
-                    titleStyle={styles.cardTitle}
-                    subtitleStyle={styles.cardSubtitle}
-                  />
                   <Card.Content>
+                    <Text style={styles.cardTitle}>
+                      {work.display_name}
+                    </Text>
+                    {firstAuthor && (
+                      <Text style={styles.cardSubtitle}>
+                        {firstAuthor}
+                      </Text>
+                    )}
                     <Text style={styles.workInfo}>
-                      Year: {Number(work.publication_year).toLocaleString()}
+                      Year: {work.publication_year}
                     </Text>
                     <Text style={styles.workInfo}>
                       Cited: {Number(work.cited_by_count).toLocaleString()}
@@ -271,7 +273,7 @@ const WorksListScreen = ({ route }) => {
       {/* Pagination Controls */}
       <View style={styles.paginationContainer}>
         <Text style={styles.paginationText}>
-          {meta.count ? `Total Works: ${Number(meta.count).toLocaleString()}` : ''}
+          {meta.count ? `Total: ${Number(meta.count).toLocaleString()}` : ''}
         </Text>
         <View style={styles.paginationButtons}>
           <Button 
@@ -321,9 +323,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.s,
     paddingHorizontal: spacing.m,
   },
-  TopBanner: {
-    elevation: 5,
-  },
   filterBannerText: {
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
@@ -351,10 +350,15 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontFamily: 'MontserratBold',
     color: colors.primary,
+    fontSize: sizes.h3,
+    flexWrap: 'wrap',
   },
   cardSubtitle: {
-    fontFamily: 'MontserratBold',
+    fontFamily: 'Montserrat',
     color: colors.primary,
+    flexWrap: 'wrap',
+    fontStyle: 'italic',
+    marginBottom: spacing.m,
   },
   workInfo: {
     fontFamily: 'Montserrat',
@@ -388,8 +392,7 @@ const styles = StyleSheet.create({
   paginationContainer: {
     padding: spacing.m,
     backgroundColor: colors.primaryBis,
-    borderTopWidth: 1,
-    borderColor: colors.secondary,
+    elevation: 5,
   },
   paginationButtons: {
     flexDirection: 'row',
@@ -399,7 +402,7 @@ const styles = StyleSheet.create({
   },
   paginationText: {
     fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
     color: colors.secondary,
     textAlign: 'center'
   },
