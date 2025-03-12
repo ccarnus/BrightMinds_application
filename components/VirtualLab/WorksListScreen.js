@@ -24,9 +24,10 @@ const WorksListScreen = ({ route }) => {
   const [filterVisible, setFilterVisible] = useState(false);
   
   // Filter states (no date filtering)
-  const [filterIsOa, setFilterIsOa] = useState(false);
+  // Defaults: open access and has abstract = true
+  const [filterIsOa, setFilterIsOa] = useState(true);
   const [sliderValue, setSliderValue] = useState(0); // Minimum cited count
-  const [filterHasAbstract, setFilterHasAbstract] = useState(false);
+  const [filterHasAbstract, setFilterHasAbstract] = useState(true);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -106,11 +107,11 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Clear all filters
+  // Clear all filters (reset to default: open access & has abstract true)
   const clearFilters = () => {
-    setFilterIsOa(false);
+    setFilterIsOa(true);
     setSliderValue(0);
-    setFilterHasAbstract(false);
+    setFilterHasAbstract(true);
   };
 
   // Pagination handlers
@@ -147,7 +148,7 @@ const WorksListScreen = ({ route }) => {
           <Text style={styles.headerText}>{topicName || 'Works'}</Text>
           <IconButton
             icon="filter"
-            size={24}
+            size={32}
             onPress={() => setFilterVisible(true)}
             color={colors.lightOrange}
           />
@@ -171,6 +172,8 @@ const WorksListScreen = ({ route }) => {
                 mode={filterIsOa ? "contained" : "outlined"}
                 onPress={() => setFilterIsOa(!filterIsOa)}
                 style={styles.toggleButton}
+                buttonColor={filterIsOa ? colors.secondary : undefined}
+                color={colors.secondary}
               >
                 {filterIsOa ? "Yes" : "No"}
               </Button>
@@ -185,8 +188,8 @@ const WorksListScreen = ({ route }) => {
               minimumValue={0}
               maximumValue={50}
               step={1}
-              trackStyle={{ height: 4, backgroundColor: colors.secondary }}
-              thumbStyle={{ height: 20, width: 20, backgroundColor: colors.darkGreen, borderRadius: 10 }}
+              trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
+              thumbStyle={{ height: 20, width: 20, backgroundColor: colors.secondary, borderRadius: 10 }}
             />
             {/* Has Abstract Toggle */}
             <View style={styles.filterRow}>
@@ -195,6 +198,8 @@ const WorksListScreen = ({ route }) => {
                 mode={filterHasAbstract ? "contained" : "outlined"}
                 onPress={() => setFilterHasAbstract(!filterHasAbstract)}
                 style={styles.toggleButton}
+                buttonColor={filterHasAbstract ? colors.secondary : undefined}
+                color={colors.secondary}
               >
                 {filterHasAbstract ? "Yes" : "No"}
               </Button>
@@ -233,7 +238,7 @@ const WorksListScreen = ({ route }) => {
                       </Text>
                     )}
                     <Text style={styles.workInfo}>
-                      Year: {work.publication_year}
+                      Year: {Number(work.publication_year).toLocaleString()}
                     </Text>
                     <Text style={styles.workInfo}>
                       Cited: {Number(work.cited_by_count).toLocaleString()}
@@ -246,7 +251,7 @@ const WorksListScreen = ({ route }) => {
                     <Button
                       mode="contained"
                       onPress={() => handleOpenLink(work.id)}
-                      buttonColor={colors.darkGreen}
+                      buttonColor={colors.lightOrange}
                       icon={require('../../assets/Discover_icons/next.png')}
                       contentStyle={{ flexDirection: 'row-reverse' }}
                       labelStyle={{
@@ -276,23 +281,21 @@ const WorksListScreen = ({ route }) => {
           {meta.count ? `Total: ${Number(meta.count).toLocaleString()}` : ''}
         </Text>
         <View style={styles.paginationButtons}>
-          <Button 
-            mode="outlined" 
+          <IconButton 
             onPress={goToPreviousPage} 
+            icon="page-previous-outline"
             disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
+            size={32}
+          />
           <Text style={styles.paginationText}>
-            Page {currentPage.toLocaleString()}{totalPages ? ` of ${totalPages.toLocaleString()}` : ''}
+            Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
           </Text>
-          <Button 
-            mode="outlined" 
+          <IconButton 
             onPress={goToNextPage} 
             disabled={totalPages && currentPage >= totalPages}
-          >
-            Next
-          </Button>
+            icon="page-next-outline"
+            size={32}
+          />
         </View>
       </View>
     </View>
@@ -310,6 +313,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.m,
     backgroundColor: colors.primary,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   headerText: {
     fontSize: sizes.h2,
@@ -322,6 +330,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     paddingVertical: spacing.s,
     paddingHorizontal: spacing.m,
+  },
+  TopBanner: {
+    elevation: 5,
   },
   filterBannerText: {
     fontSize: sizes.h4,
@@ -345,7 +356,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
     elevation: 3,
     borderRadius: sizes.radius,
-    backgroundColor: colors.lightTeal,
+    backgroundColor: colors.lightGreen,
   },
   cardTitle: {
     fontFamily: 'MontserratBold',
@@ -354,7 +365,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   cardSubtitle: {
-    fontFamily: 'Montserrat',
+    fontFamily: 'MontserratBold',
     color: colors.primary,
     flexWrap: 'wrap',
     fontStyle: 'italic',
@@ -390,15 +401,19 @@ const styles = StyleSheet.create({
     height: 40,
   },
   paginationContainer: {
-    padding: spacing.m,
-    backgroundColor: colors.primaryBis,
+    padding: spacing.s,
+    backgroundColor: colors.primary,
     elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   paginationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.s,
+    marginTop: spacing.xs,
   },
   paginationText: {
     fontSize: sizes.h4,
