@@ -24,10 +24,11 @@ const WorksListScreen = ({ route }) => {
   const [filterVisible, setFilterVisible] = useState(false);
   
   // Filter states (no date filtering)
-  // Defaults: open access and has abstract = true
+  // Defaults: open access, has abstract, and language = English are true by default.
   const [filterIsOa, setFilterIsOa] = useState(true);
   const [sliderValue, setSliderValue] = useState(0); // Minimum cited count
   const [filterHasAbstract, setFilterHasAbstract] = useState(true);
+  const [filterLanguage, setFilterLanguage] = useState(true); // Only English if true
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -63,6 +64,9 @@ const WorksListScreen = ({ route }) => {
     }
     if (filterHasAbstract) {
       filters.push('has_abstract:true');
+    }
+    if (filterLanguage) {
+      filters.push('language:en');
     }
     return filters.join(',');
   };
@@ -107,11 +111,12 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Clear all filters (reset to default: open access & has abstract true)
+  // Clear all filters (reset to default: open access, has abstract and language = English)
   const clearFilters = () => {
     setFilterIsOa(true);
     setSliderValue(0);
     setFilterHasAbstract(true);
+    setFilterLanguage(true);
   };
 
   // Pagination handlers
@@ -135,6 +140,7 @@ const WorksListScreen = ({ route }) => {
   if (filterIsOa) appliedFilters.push("Open Access");
   if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue.toLocaleString()}`);
   if (filterHasAbstract) appliedFilters.push("Has Abstract");
+  if (filterLanguage) appliedFilters.push("English Only");
   const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join(" | ") : "No filters applied";
 
   // Calculate total pages (if available)
@@ -163,7 +169,7 @@ const WorksListScreen = ({ route }) => {
       {/* Filter Dialog */}
       <Portal>
         <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)}>
-          <Dialog.Title>Filter Works</Dialog.Title>
+          <Dialog.Title style={styles.dialogTitle}>Filter Works</Dialog.Title>
           <Dialog.Content>
             {/* Open Access Toggle */}
             <View style={styles.filterRow}>
@@ -204,11 +210,24 @@ const WorksListScreen = ({ route }) => {
                 {filterHasAbstract ? "Yes" : "No"}
               </Button>
             </View>
+            {/* Language Toggle */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Only English</Text>
+              <Button 
+                mode={filterLanguage ? "contained" : "outlined"}
+                onPress={() => setFilterLanguage(!filterLanguage)}
+                style={styles.toggleButton}
+                buttonColor={filterLanguage ? colors.secondary : undefined}
+                color={colors.secondary}
+              >
+                {filterLanguage ? "Yes" : "No"}
+              </Button>
+            </View>
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={clearFilters}>Clear</Button>
-            <Button onPress={() => setFilterVisible(false)}>Cancel</Button>
-            <Button onPress={handleApplyFilters}>Apply</Button>
+            <Button onPress={clearFilters} textColor={colors.red}>Clear</Button>
+            <Button onPress={() => setFilterVisible(false)} textColor={colors.secondary}>Cancel</Button>
+            <Button onPress={handleApplyFilters} textColor={colors.darkGreen}>Apply</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>
@@ -286,6 +305,7 @@ const WorksListScreen = ({ route }) => {
             icon="page-previous-outline"
             disabled={currentPage === 1}
             size={32}
+            color={colors.secondary}
           />
           <Text style={styles.paginationText}>
             Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
@@ -295,6 +315,7 @@ const WorksListScreen = ({ route }) => {
             disabled={totalPages && currentPage >= totalPages}
             icon="page-next-outline"
             size={32}
+            color={colors.secondary}
           />
         </View>
       </View>
@@ -313,11 +334,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.m,
     backgroundColor: colors.primary,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
   },
   headerText: {
     fontSize: sizes.h2,
@@ -333,6 +349,7 @@ const styles = StyleSheet.create({
   },
   TopBanner: {
     elevation: 5,
+    backgroundColor: colors.primary,
   },
   filterBannerText: {
     fontSize: sizes.h4,
@@ -386,6 +403,7 @@ const styles = StyleSheet.create({
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     marginBottom: spacing.s,
+    color: colors.secondary,
   },
   filterRow: {
     flexDirection: 'row',
@@ -402,18 +420,13 @@ const styles = StyleSheet.create({
   },
   paginationContainer: {
     padding: spacing.s,
-    backgroundColor: colors.primary,
     elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    backgroundColor: colors.primary,
   },
   paginationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.xs,
   },
   paginationText: {
     fontSize: sizes.h4,
