@@ -31,7 +31,7 @@ import VirtualLabVideoScreen from './VirtualLab/VirtualLabVideoScreen';
 import DiscoverVideoScreen from './Cast/DiscoverVideoScreen';
 import WelcomeScreen from './Onboarding/WelcomeScreen';
 import TopicDetailScreen from './VirtualLab/TopicDetailScreen';
-import SearchArticleResults from './Cast/SearchResults/SearchArticleResults';
+import OpenAlexDetailsScreen from './Cast/SearchResults/OpenAlexDetailsScreen';
 import SearchTopicResult from './Cast/SearchResults/SearchTopicResult';
 import CastListScreen from './VirtualLab/CastListScreen';
 import WorksListScreen from './VirtualLab/WorksListScreen';
@@ -142,7 +142,7 @@ const MainNavigator = () => {
             },
           })}/>
         <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />
-        <Stack.Screen name="SearchArticleResults" component={SearchArticleResults} options={{ headerShown: false, tabBarVisible: false }} />
+        <Stack.Screen name="OpenAlexDetailsScreen" component={OpenAlexDetailsScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="TopicDetailScreen" component={TopicDetailScreen} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="SearchTopicResult" component={SearchTopicResult} options={{ headerShown: false, tabBarVisible: false }} />
         <Stack.Screen name="PreferencesScreen" component={PreferencesScreen} options={{ headerShown: false, tabBarVisible: false }} />

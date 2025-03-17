@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  ScrollView, 
-  StyleSheet, 
-  Dimensions, 
-  Linking, 
+import {
+  View,
+  Text,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  Linking,
   Alert,
   TouchableOpacity
 } from 'react-native';
@@ -19,6 +19,7 @@ import departments from '../../../lists/departments';
 
 const { width, height } = Dimensions.get('window');
 
+// Mapping for department lookup (unchanged from your previous code)
 const fieldMapping = {
   "Computer Science": "ComputerScience",
   "Medicine": "Medicine",
@@ -45,13 +46,15 @@ const fieldMapping = {
   "Linguistics": "ArtsandHumanities",
 };
 
-const SearchArticleResults = ({ route }) => {
+const OpenAlexDetailsScreen = ({ route }) => {
+  // The parameter "articleId" (i.e. the work's short ID) is passed from the previous screen.
   const { articleId } = route.params;
   const navigation = useNavigation();
-  const [article, setArticle] = useState(null);
+  const [work, setWork] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState(null);
 
+  // Retrieve user id if needed (kept for consistency with your previous screen)
   useEffect(() => {
     const getUserId = async () => {
       const storedUserId = await AsyncStorage.getItem('userId');
@@ -60,16 +63,17 @@ const SearchArticleResults = ({ route }) => {
     getUserId();
   }, []);
 
+  // Fetch the work details when the articleId is available.
   useEffect(() => {
     if (articleId) {
-      fetchArticle();
+      fetchWork();
     }
   }, [articleId]);
 
-  // 20-second timeout for excessive loading time
+  // Set a timeout to alert the user if loading takes too long.
   useEffect(() => {
     const timeoutTimer = setTimeout(() => {
-      if (!article) {
+      if (!work) {
         Alert.alert("Error", "Loading took too long, please try again later.", [
           { text: "OK", onPress: () => navigation.navigate('BottomNav') }
         ]);
@@ -77,29 +81,41 @@ const SearchArticleResults = ({ route }) => {
     }, 20000);
 
     return () => clearTimeout(timeoutTimer);
-  }, [article, navigation]);
+  }, [work, navigation]);
 
-  const fetchArticle = async () => {
+  const fetchWork = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `https://api.semanticscholar.org/graph/v1/paper/${articleId}?fields=title,abstract,url,publicationDate,fieldsOfStudy`
-      );
+      // Use the OpenAlex API endpoint with the passed work id.
+      const response = await fetch(`https://api.openalex.org/works/${articleId}`);
       const data = await response.json();
-      // Accept the response if all required fields are present
-      if (data && data.title && data.abstract && data.url && data.publicationDate) {
-        setArticle(data);
-        setIsLoading(false);
+      // If data is valid, set it to state; otherwise, try again after a delay.
+      if (data && data.title) {
+        setWork(data);
       } else {
-        setTimeout(fetchArticle, 2000);
+        setTimeout(fetchWork, 2000);
       }
+      setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching article details:', error);
+      console.error('Error fetching work details:', error);
       setIsLoading(false);
     }
   };
 
-  // Helper: convert publication date to "days ago" or "years ago"
+  // Helper to reconstruct an abstract from an inverted index.
+  // It collects each word and its positions, sorts them, and then joins them.
+  const reconstructAbstract = (abstractIndex) => {
+    if (!abstractIndex) return '';
+    const positions = [];
+    Object.entries(abstractIndex).forEach(([word, posArray]) => {
+      posArray.forEach(pos => positions.push({ pos, word }));
+    });
+    positions.sort((a, b) => a.pos - b.pos);
+    const words = positions.map(entry => entry.word);
+    return words.join(' ');
+  };
+
+  // Helper to convert the publication date into a "days ago" or "years ago" format.
   const getTimeSincePublication = (dateString) => {
     const publicationDate = new Date(dateString);
     const now = new Date();
@@ -113,20 +129,21 @@ const SearchArticleResults = ({ route }) => {
     }
   };
 
-  // Modified helper: use the mapping to return the department from the imported list.
+  // Helper to determine department details based on a field name.
   const getDepartmentDetails = (field) => {
     if (!field) return null;
     const mappedField = fieldMapping[field] || null;
     if (!mappedField) return null;
-    return departments.find(dept => 
+    return departments.find(dept =>
       dept.name.toLowerCase() === mappedField.toLowerCase()
     );
   };
 
-  // Determine department from the first fieldOfStudy
-  const department = article && article.fieldsOfStudy && article.fieldsOfStudy.length > 0
-    ? getDepartmentDetails(article.fieldsOfStudy[0])
-    : null;
+  // Determine department details using the primary_topic's display_name.
+  const department =
+    work && work.primary_topic
+      ? getDepartmentDetails(work.primary_topic.display_name)
+      : null;
 
   if (isLoading) {
     return (
@@ -141,36 +158,47 @@ const SearchArticleResults = ({ route }) => {
     );
   }
 
-  if (!article) {
+  if (!work) {
     return (
       <View style={styles.centered}>
-        <Text>Article not found</Text>
+        <Text>Work not found</Text>
       </View>
     );
   }
+
+  // Choose which abstract to display: try the v3 version first.
+  const abstractText = work.abstract_inverted_index_v3
+    ? reconstructAbstract(work.abstract_inverted_index_v3)
+    : work.abstract_inverted_index
+      ? reconstructAbstract(work.abstract_inverted_index)
+      : "No abstract available.";
 
   return (
     <View style={styles.container}>
       <ScrollView style={styles.containerScroll}>
         <View style={styles.content}>
-          <Text style={styles.title}>{article.title}</Text>
-          {/* Render department info if available and make it clickable */}
+          <Text style={styles.title}>{work.title}</Text>
+          {/* If a department is determined, display its icon and name as a clickable item */}
           {department && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.topIconContainer}
-              onPress={() => navigation.navigate('VirtualLab', { labId: department.name, labDisplayName: department.display })}
+              onPress={() =>
+                navigation.navigate('VirtualLab', {
+                  labId: department.name,
+                  labDisplayName: department.display
+                })
+              }
             >
               <Image source={department.image} style={styles.icon} />
               <Text style={styles.iconTextDepartment}>{department.display}</Text>
             </TouchableOpacity>
           )}
-
           <View style={styles.dateContainer}>
             <Text style={styles.dateText}>
-              {getTimeSincePublication(article.publicationDate)}
+              {getTimeSincePublication(work.publication_date)}
             </Text>
           </View>
-          <Text style={styles.description}>{article.abstract}</Text>
+          <Text style={styles.description}>{abstractText}</Text>
         </View>
         <View style={styles.buttonContainer}>
           <Button
@@ -184,7 +212,7 @@ const SearchArticleResults = ({ route }) => {
               textAlign: 'center',
               paddingTop: spacing.s,
             }}
-            style={{ 
+            style={{
               marginLeft: spacing.m,
               marginRight: spacing.m,
               marginBottom: height * 0.08,
@@ -201,21 +229,23 @@ const SearchArticleResults = ({ route }) => {
         <Button
           mode="contained"
           onPress={() => {
-            if (article && article.url) {
-              Linking.openURL(article.url).catch(err => console.error('Failed to open URL:', err));
+            if (work && work.primary_location && work.primary_location.landing_page_url) {
+              Linking.openURL(work.primary_location.landing_page_url).catch(err =>
+                console.error('Failed to open URL:', err)
+              );
             } else {
-              alert('No link available for this article.');
+              alert('No link available for this work.');
             }
           }}
           buttonColor={colors.darkblue}
           icon={require('../../../assets/Cast_screen_icons/link.png')}
           labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-          style={{ 
+          style={{
             marginLeft: spacing.m,
             marginRight: spacing.m,
             marginBottom: spacing.s,
             marginTop: spacing.l,
-            paddingHorizontal: spacing.s
+            paddingHorizontal: spacing.s,
           }}
         >
           Access Full Research
@@ -289,4 +319,4 @@ const styles = StyleSheet.create({
   lottie: { width: width * 0.6, height: width * 0.6 },
 });
 
-export default SearchArticleResults;
+export default OpenAlexDetailsScreen;

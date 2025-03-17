@@ -256,34 +256,23 @@ const CastScreen = () => {
         setSearchLoading(false);
       }
     } else if (selectedCategory === 'Article') {
-      let data = null;
-      let retries = 0;
-      const maxRetries = 10; // set a sensible upper limit to avoid an infinite loop
-      while (retries < maxRetries) {
-        try {
-          const response = await fetch(
-            `https://api.semanticscholar.org/graph/v1/paper/search?query=${encodeURIComponent(text)}&fields=paperId,title,abstract,url,publicationDate&sort=year&order=desc`
-          );
-          data = await response.json();
-          // Check if the API returned a rate-limit error message.
-          if (data.message && data.message.includes("Too Many Requests")) {
-            console.warn("Rate limited. Retrying...");
-            retries++;
-            await new Promise(resolve => setTimeout(resolve, 2000)); // wait 2 seconds before retrying
-            continue;
-          }
-          // If we get here, we assume a valid JSON was returned.
-          break;
-        } catch (error) {
-          console.error('Error fetching article data:', error);
-          break;
-        }
+      try {
+        const response = await fetch(`https://api.openalex.org/works?filter=title.search:${encodeURIComponent(text)},has_abstract:true,language:en&per_page=50`);
+        const data = await response.json();
+        const results = data.results || [];
+        // For each result, extract the last part of the id.
+        const formattedResults = results.map(item => {
+          const parts = item.id.split('/');
+          const lastPart = parts[parts.length - 1];
+          return { ...item, shortId: lastPart };
+        });
+        setSearchResults(formattedResults);
+      } catch (error) {
+        console.error('Error fetching article data from OpenAlex:', error);
+      } finally {
+        setSearchLoading(false);
       }
-      // Process the data once a valid response is received.
-      const results = data && data.data ? data.data : [];
-      setSearchResults(results);
-      setSearchLoading(false);
-    }    
+    }
   };
 
   const clearSearch = () => {
@@ -293,6 +282,7 @@ const CastScreen = () => {
 
   const handleSearchResultPress = (id) => {
     if (selectedCategory === 'Article') {
+      // For articles, navigate with the short id (e.g. "W2935714482")
       navigation.navigate('OpenAlexDetailsScreen', { articleId: id });
     } else if (selectedCategory === 'Topic') {
       navigation.navigate('SearchTopicResult', { topicId: id });
@@ -411,7 +401,7 @@ const CastScreen = () => {
               <ScrollView>
                 {searchResults.map((item) => {
                   const itemId = selectedCategory === 'Article'
-                    ? item.paperId
+                    ? item.shortId
                     : (item._id ? item._id : item.id);
                   return (
                     <TouchableOpacity
