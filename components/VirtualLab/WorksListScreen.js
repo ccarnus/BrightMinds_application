@@ -23,8 +23,7 @@ const WorksListScreen = ({ route }) => {
   // Filter dialog visibility
   const [filterVisible, setFilterVisible] = useState(false);
   
-  // Filter states (no date filtering)
-  // Defaults: open access, has abstract, and language = English are true by default.
+  // Filter states (defaults: open access, has abstract, English)
   const [filterIsOa, setFilterIsOa] = useState(true);
   const [sliderValue, setSliderValue] = useState(0); // Minimum cited count
   const [filterHasAbstract, setFilterHasAbstract] = useState(true);
@@ -32,9 +31,8 @@ const WorksListScreen = ({ route }) => {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-
   const perPage = 50;
-  const primaryTopic = topicId; // since topicId already contains the id (e.g., "T11881")
+  const primaryTopic = topicId; // since topicId already contains the id
 
   // Fetch topic details to get the display name.
   useEffect(() => {
@@ -111,7 +109,7 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Clear all filters (reset to default: open access, has abstract and language = English)
+  // Clear all filters (reset to default: open access, has abstract, and English)
   const clearFilters = () => {
     setFilterIsOa(true);
     setSliderValue(0);
@@ -135,41 +133,53 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Compute a string to display active filters (with comma-formatted numbers)
+  // Compute a string to display active filters with each on a separate line.
   const appliedFilters = [];
   if (filterIsOa) appliedFilters.push("Open Access");
   if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue.toLocaleString()}`);
   if (filterHasAbstract) appliedFilters.push("Has Abstract");
   if (filterLanguage) appliedFilters.push("English Only");
-  const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join(" | ") : "No filters applied";
+  const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join("\n") : "No filters applied";
 
   // Calculate total pages (if available)
   const totalPages = meta.count && meta.per_page ? Math.ceil(meta.count / meta.per_page) : 0;
 
   return (
     <View style={styles.container}>
-      {/* Header displays the topic name */}
+      {/* Top Banner: Header and Filter Section */}
       <View style={styles.TopBanner}>
-        <View style={styles.header}>
-          <Text style={styles.headerText}>{topicName || 'Works'}</Text>
-          <IconButton
-            icon="filter"
-            size={32}
-            onPress={() => setFilterVisible(true)}
-            color={colors.lightOrange}
-          />
+        <View style={styles.headerContainer}>
+          <Text 
+            style={styles.headerText} 
+            numberOfLines={2} 
+            ellipsizeMode="tail"
+          >
+            {topicName || 'Works'}
+          </Text>
         </View>
-        {/* Banner displaying active filters */}
-        <View style={styles.filterBanner}>
-          <Text style={styles.filterBannerText}>
-            {appliedFiltersText}
+        <View style={styles.filterSection}>
+          <View style={styles.filterLeft}>
+            <IconButton
+              icon="filter"
+              size={24}
+              onPress={() => setFilterVisible(true)}
+              color={colors.lightOrange}
+              style={styles.filterIcon}
+            />
+            <Text style={styles.filterText}>
+              {appliedFiltersText}
+            </Text>
+          </View>
+          <Text style={styles.totalCountText}>
+            Total: {meta.count ? Number(meta.count).toLocaleString() : '0'}
           </Text>
         </View>
       </View>
+
       {/* Filter Dialog */}
       <Portal>
         <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)}>
-          <Dialog.Title style={styles.dialogTitle}>Filter Works</Dialog.Title>
+          <Dialog.Title style={styles.dialogTitle}>Filter</Dialog.Title>
           <Dialog.Content>
             {/* Open Access Toggle */}
             <View style={styles.filterRow}>
@@ -241,7 +251,6 @@ const WorksListScreen = ({ route }) => {
         ) : (
           works.length > 0 ? (
             works.map(work => {
-              // Retrieve the first author if available.
               const firstAuthor = work.authorships && work.authorships.length > 0 
                 ? work.authorships[0].author.display_name 
                 : null;
@@ -294,30 +303,25 @@ const WorksListScreen = ({ route }) => {
         )}
       </ScrollView>
 
-      {/* Pagination Controls */}
+      {/* Pagination Controls (without total count) */}
       <View style={styles.paginationContainer}>
+        <IconButton 
+          onPress={goToPreviousPage} 
+          icon="page-previous-outline"
+          disabled={currentPage === 1}
+          size={32}
+          color={colors.secondary}
+        />
         <Text style={styles.paginationText}>
-          {meta.count ? `Total: ${Number(meta.count).toLocaleString()}` : ''}
+          Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
         </Text>
-        <View style={styles.paginationButtons}>
-          <IconButton 
-            onPress={goToPreviousPage} 
-            icon="page-previous-outline"
-            disabled={currentPage === 1}
-            size={32}
-            color={colors.secondary}
-          />
-          <Text style={styles.paginationText}>
-            Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
-          </Text>
-          <IconButton 
-            onPress={goToNextPage} 
-            disabled={totalPages && currentPage >= totalPages}
-            icon="page-next-outline"
-            size={32}
-            color={colors.secondary}
-          />
-        </View>
+        <IconButton 
+          onPress={goToNextPage} 
+          disabled={totalPages && currentPage >= totalPages}
+          icon="page-next-outline"
+          size={32}
+          color={colors.secondary}
+        />
       </View>
     </View>
   );
@@ -328,34 +332,50 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.primaryBis,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.m,
+  TopBanner: {
+    elevation: 5,
     backgroundColor: colors.primary,
+  },
+  headerContainer: {
+    padding: spacing.m,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerText: {
     fontSize: sizes.h2,
     fontFamily: 'MontserratBold',
     color: colors.secondary,
-    marginTop: spacing.l,
     textAlign: 'center',
+    marginTop: spacing.m,
   },
-  filterBanner: {
+  filterSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: colors.primary,
-    paddingVertical: spacing.s,
     paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    borderTopWidth: 1,
+    borderTopColor: colors.secondary,
   },
-  TopBanner: {
-    elevation: 5,
-    backgroundColor: colors.primary,
+  filterLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  filterBannerText: {
+  filterIcon: {
+    marginRight: spacing.s,
+  },
+  filterText: {
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     color: colors.secondary,
-    textAlign: 'center'
+  },
+  totalCountText: {
+    fontSize: sizes.h4,
+    fontFamily: 'MontserratBold',
+    color: colors.secondary,
+    textAlign: 'right',
   },
   scrollContainer: {
     padding: spacing.m,
@@ -414,25 +434,26 @@ const styles = StyleSheet.create({
   toggleButton: {
     width: 80,
   },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
   paginationContainer: {
-    padding: spacing.s,
-    elevation: 5,
-    backgroundColor: colors.primary,
-  },
-  paginationButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: spacing.s,
+    elevation: 5,
+    backgroundColor: colors.primary,
   },
   paginationText: {
     fontSize: sizes.h4,
     fontFamily: 'MontserratBold',
     color: colors.secondary,
-    textAlign: 'center'
+    textAlign: 'center',
+  },
+  dialogTitle: {
+    fontSize: sizes.h2,
+    fontFamily: 'MontserratBold',
+    color: colors.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.m,
   },
 });
 
