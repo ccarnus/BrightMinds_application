@@ -10,6 +10,7 @@ import {
 import { Button, IconButton, Dialog, Portal, Card } from 'react-native-paper';
 import { Slider } from '@miblanchard/react-native-slider';
 import { colors, sizes, spacing } from '../theme';
+import { useNavigation } from '@react-navigation/native';
 
 const WorksListScreen = ({ route }) => {
   // Expecting route.params.topicId to be a topic id string (e.g., "T11881")
@@ -33,6 +34,8 @@ const WorksListScreen = ({ route }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 50;
   const primaryTopic = topicId; // since topicId already contains the id
+
+  const navigation = useNavigation();
 
   // Fetch topic details to get the display name.
   useEffect(() => {
@@ -278,7 +281,11 @@ const WorksListScreen = ({ route }) => {
                   <Card.Actions>
                     <Button
                       mode="contained"
-                      onPress={() => handleOpenLink(work.id)}
+                      onPress={() => {
+                        const parts = work.id.split('/');
+                        const shortId = parts[parts.length - 1];
+                        navigation.navigate('OpenAlexDetailsScreen', { articleId: shortId });
+                      }}
                       buttonColor={colors.lightOrange}
                       icon={require('../../assets/Discover_icons/next.png')}
                       contentStyle={{ flexDirection: 'row-reverse' }}
