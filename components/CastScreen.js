@@ -19,6 +19,7 @@ import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
 import { Searchbar } from 'react-native-paper';
 import { RFValue } from "react-native-responsive-fontsize";
+import { useFocusEffect } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -104,29 +105,30 @@ const CastScreen = () => {
     }
   }, [route.params?.finishedVideoId, route.params?.finishedArticleId]);
 
-  // Retrieve user data from AsyncStorage.
-  useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        const storedUserRole = await AsyncStorage.getItem('userRole');
-        setUserId(storedUserId);
-        setUserRole(storedUserRole);
-      } catch (error) {
-        console.error('Error fetching user data from storage:', error);
-      }
-    };
-    getUserData();
-  }, []);
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchUserData = async () => {
+        try {
+          const storedUserId = await AsyncStorage.getItem('userId');
+          setUserId(storedUserId);
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      };
+      fetchUserData();
+    }, [])
+  );
 
-  // Fetch watched content when userId is available.
+  // If a userId exists, fetch watched content; otherwise, fetch content for guest.
   useEffect(() => {
     if (userId) {
       awaitFetchWatchedContent();
+    } else {
+      fetchAllContentGuest();
     }
   }, [userId]);
 
-  // Combined function to fetch watched content then all casts/articles.
+  // Combined function to fetch watched content then all casts/articles for logged-in users.
   const awaitFetchWatchedContent = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${userId}`);
@@ -145,7 +147,7 @@ const CastScreen = () => {
       setWatchedCastIds(fetchedWatchedCastIds);
       setWatchedArticleIds(fetchedWatchedArticleIds);
 
-      // Now fetch all content.
+      // Now fetch all content with watched IDs.
       await fetchAllContent(fetchedWatchedCastIds, fetchedWatchedArticleIds);
     } catch (error) {
       console.error('Error fetching watched content:', error);
@@ -153,6 +155,7 @@ const CastScreen = () => {
     }
   };
 
+  // Function to fetch content for logged-in users.
   const fetchAllContent = async (watchedCasts, watchedArticles) => {
     setIsLoading(true);
     try {
@@ -219,6 +222,43 @@ const CastScreen = () => {
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching content:', error);
+      setApiError(true);
+    }
+  };
+
+  // New function to fetch content in guest mode.
+  const fetchAllContentGuest = async () => {
+    setIsLoading(true);
+    try {
+      // Do not fetch suggested content since guest mode does not have it.
+      const [ trendingResponse, articleResponse, allCastsResponse ] = await Promise.all([
+          fetch(`${API_BASE_URL}/cast/trending/right/now`),
+          fetch(`${API_BASE_URL}/article`),
+          fetch(`${API_BASE_URL}/cast`)
+      ]);
+
+      const trendingData = await trendingResponse.json();
+      const articlesData = await articleResponse.json();
+      const allCastsData = await allCastsResponse.json();
+
+      setSuggestedCastData([]); // No suggestions for guest mode.
+      const filteredTrending = Array.isArray(trendingData)
+        ? trendingData.map((cast) => ({
+              id: cast._id,
+              image: cast.castimageurl,
+              title: cast.title,
+              duration: cast.duration,
+          }))
+        : [];
+      const filteredArticles = Array.isArray(articlesData)
+        ? articlesData
+        : [];
+      setTrendingCastData(filteredTrending);
+      setArticleData(filteredArticles);
+      setAllCasts(allCastsData);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error fetching content for guest:', error);
       setApiError(true);
     }
   };
@@ -297,7 +337,11 @@ const CastScreen = () => {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setApiError(false);
-    await awaitFetchWatchedContent();
+    if (userId) {
+      await awaitFetchWatchedContent();
+    } else {
+      await fetchAllContentGuest();
+    }
     setRefreshing(false);
   }, [userId]);
 
@@ -312,7 +356,11 @@ const CastScreen = () => {
           onPress={async () => {
             setApiError(false);
             setIsLoading(true);
-            await awaitFetchWatchedContent();
+            if (userId) {
+              await awaitFetchWatchedContent();
+            } else {
+              await fetchAllContentGuest();
+            }
           }}
         >
           <Text style={styles.refreshButtonText}>Try Again</Text>
@@ -465,23 +513,27 @@ const CastScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Suggested For You */}
-          <View style={styles.sectionHeader}>
-            <Image source={forYouIcon} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>For You</Text>
-          </View>
-          {suggestedCastData.length > 0 ? (
-            <Carousel
-              list={suggestedCastData}
-              carouselType="suggested"
-              finishedVideos={finishedVideos}
-              onAnimationFinish={(id) => {
-                setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
-                setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-              }}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No suggestions available.</Text>
+          {/* Render "Suggested For You" only if a user is logged in */}
+          {userId && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Image source={forYouIcon} style={styles.sectionIcon} />
+                <Text style={styles.sectionTitle}>For You</Text>
+              </View>
+              {suggestedCastData.length > 0 ? (
+                <Carousel
+                  list={suggestedCastData}
+                  carouselType="suggested"
+                  finishedVideos={finishedVideos}
+                  onAnimationFinish={(id) => {
+                    setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+                    setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+                  }}
+                />
+              ) : (
+                <Text style={styles.noDataText}>No suggestions available.</Text>
+              )}
+            </>
           )}
 
           {/* Trending Now */}
@@ -686,7 +738,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  lottie: { width: 200, height: 200 },
+  lottie: { width: 150, height: 150 },
   searchLoaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.m },
   searchLoader: { width: 150, height: 150 }
 });

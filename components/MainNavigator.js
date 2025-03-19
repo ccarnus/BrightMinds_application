@@ -46,9 +46,11 @@ const MainNavigator = () => {
   useEffect(() => {
     const checkStatus = async () => {
       try {
+        // Consider the user "logged in" if a userId exists or if the guest flag is set.
         const userId = await AsyncStorage.getItem('userId');
+        const isGuest = await AsyncStorage.getItem('isGuest');
         const onboarded = await AsyncStorage.getItem('hasOnboarded');
-        setIsLoggedIn(!!userId);
+        setIsLoggedIn(!!(userId || isGuest));
         setHasOnboarded(!!onboarded);
       } catch (error) {
         console.log('Error checking auth status:', error);
@@ -77,31 +79,11 @@ const MainNavigator = () => {
           header: () => <Banner />,
         }}
       >
-        <Stack.Screen
-          name="Onboarding"
-          component={OnboardingScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="AuthChoice"
-          component={AuthChoiceScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="LoginScreen"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="SignupScreen"
-          component={SignupScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="BottomNav"
-          component={BottomNavigation}
-          options={{ headerShown: true, tabBarVisible: true }}
-        />
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="AuthChoice" component={AuthChoiceScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="SignupScreen" component={SignupScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="BottomNav" component={BottomNavigation} options={{ headerShown: true, tabBarVisible: true }} />
         <Stack.Screen name="Evaluation" component={Evaluation} options={{ headerShown: true, tabBarVisible: true }}
           listeners={({ navigation }) => ({
             beforeRemove: (e) => {
