@@ -10,6 +10,7 @@ import { colors, sizes, spacing } from '../theme';
 import LottieView from 'lottie-react-native';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { setGuestUser } from '../Utils/UserStorage'
 
 const AuthChoiceScreen = () => {
 
@@ -17,11 +18,10 @@ const AuthChoiceScreen = () => {
 
   const handleContinueAsGuest = async () => {
     try {
-      // Set a flag so that subsequent app launches consider the user as guest.
-      await AsyncStorage.setItem('isGuest', 'true');
+      await setGuestUser();
       navigation.navigate('BottomNav');
     } catch (error) {
-      console.error('Error setting guest flag:', error);
+      console.error('Error setting guest user:', error);
     }
   };
 

@@ -16,6 +16,7 @@ import departments from '../lists/departments';
 import PieChart from 'react-native-pie-chart';
 import { Modal, Portal, Button, Provider } from 'react-native-paper';
 import { API_BASE_URL } from './APIConfig';
+import { clearUser } from './Utils/UserStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -64,9 +65,7 @@ const ProfileScreen = () => {
 
   const handleLogout = async () => {
     hideModal();
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userRole');
-    await AsyncStorage.removeItem('userUniversity');
+    await clearUser();
     setUserData(null);
     setUserPreferences([]);
     setTrackingData({ objective: '', progress: 0 });

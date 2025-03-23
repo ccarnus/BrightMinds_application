@@ -20,6 +20,7 @@ import { API_BASE_URL } from './APIConfig';
 import { Searchbar } from 'react-native-paper';
 import { RFValue } from "react-native-responsive-fontsize";
 import { useFocusEffect } from '@react-navigation/native';
+import { getUser } from './Utils/UserStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -45,19 +46,14 @@ const CastScreen = () => {
   const [finishedVideos, setFinishedVideos] = useState([]);
   const [finishedArticles, setFinishedArticles] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('Article');
-
-  // New state to track if the search bar is active (pressed)
   const [isSearching, setIsSearching] = useState(false);
-  // Ref for the pinned search bar
   const searchBarRef = useRef(null);
 
-  // Icon definitions…
   const forYouIcon = require('../assets/Cast_screen_icons/foryou_icon.png');
   const trendingIcon = require('../assets/Cast_screen_icons/trending_icon.png');
   const articleIcon = require('../assets/Cast_screen_icons/article_icon.png');
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
-  // Helper to return an icon based on category.
   const getCategoryIcon = (category) => {
     switch (category) {
       case 'Article':
@@ -106,14 +102,16 @@ const CastScreen = () => {
   }, [route.params?.finishedVideoId, route.params?.finishedArticleId]);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       const fetchUserData = async () => {
-        try {
-          const storedUserId = await AsyncStorage.getItem('userId');
-          setUserId(storedUserId);
-        } catch (error) {
-          console.error('Error fetching user data:', error);
+        const { userId, userRole } = await getUser();
+        if (!userId) {
+          // If no user is found, redirect to the AuthChoice screen
+          navigation.navigate('AuthChoice');
+          return;
         }
+        setUserId(userId);
+        setUserRole(userRole);
       };
       fetchUserData();
     }, [])

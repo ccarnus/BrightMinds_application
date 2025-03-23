@@ -4,12 +4,14 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import { API_BASE_URL } from './APIConfig';
+import { GUEST_USER_ID } from './Utils/UserStorage';
 
 const Banner = () => {
   const navigation = useNavigation();
   const defaultProfileIcon = require('../assets/Banner_icons/profile.png');
   const [profileImageSource, setProfileImageSource] = useState({ source: defaultProfileIcon });
   const [userId, setUserId] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
 
   const handleProfilePress = () => {
     navigation.navigate('ProfileScreen');
@@ -22,13 +24,19 @@ const Banner = () => {
           const storedUserId = await AsyncStorage.getItem('userId');
           if (storedUserId) {
             setUserId(storedUserId);
-            const response = await fetch(`${API_BASE_URL}/user/${storedUserId}`);
-            const data = await response.json();
-    
-            if (data && data.profilePictureUrl) {
-              setProfileImageSource({ source: { uri: data.profilePictureUrl } });
+            // Check if the user is a guest by comparing to the fixed guest ID
+            if (storedUserId === GUEST_USER_ID) {
+              setIsGuest(true);
             } else {
-              console.error('No profile picture URL found in data:', data);
+              setIsGuest(false);
+              // For non-guest users, fetch the profile picture URL from your API.
+              const response = await fetch(`${API_BASE_URL}/user/${storedUserId}`);
+              const data = await response.json();
+              if (data && data.profilePictureUrl) {
+                setProfileImageSource({ source: { uri: data.profilePictureUrl } });
+              } else {
+                console.error('No profile picture URL found in data:', data);
+              }
             }
           }
         } catch (error) {
@@ -44,16 +52,19 @@ const Banner = () => {
     <View style={styles.bannerContainer}>
       <TouchableOpacity onPress={handleProfilePress} style={styles.logoContainer}>
         <Image
-          source={require('../assets/BrightMinds/black_bear.png')}
+          source={require('../assets/Banner_icons/profile.png')}
           style={styles.logoImage}
         />
       </TouchableOpacity>
-      <TouchableOpacity onPress={handleProfilePress}>
-        <Image
-          source={profileImageSource.source}
-          style={styles.profileImage}
-        />
-      </TouchableOpacity>
+      {/* Render profile button only if the user is NOT a guest */}
+      {!isGuest && (
+        <TouchableOpacity onPress={handleProfilePress}>
+          <Image
+            source={profileImageSource.source}
+            style={styles.profileImage}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -77,7 +88,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     resizeMode: 'contain',
-    
   },
   profileImage: {
     width: 46,

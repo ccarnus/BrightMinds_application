@@ -18,23 +18,23 @@ import departments from '../lists/departments';
 import { Button } from 'react-native-paper';
 import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from './APIConfig';
+import { BlurView } from 'expo-blur';
+import { getUser, isGuestUser, GUEST_USER_ID } from './Utils/UserStorage';
 
 const { width } = Dimensions.get('window');
 
 const TrackScreen = () => {
-  // STATES
   const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
   const [history, setHistory] = useState([]);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [userRole, setUserRole] = useState('');
   const [userId, setUserId] = useState(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
   const Learning = require('../assets/Track_icons/learning.png');
   const Progress = require('../assets/Track_icons/progress_illustration.png');
-  // Use the same serverError image as in CastScreen
   const serverError = require('../assets/Cast_screen_icons/server_error.png');
 
   // NAVIGATIONS
@@ -44,37 +44,26 @@ const TrackScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      const getUserRole = async () => {
-        try {
-          const storedUserId = await AsyncStorage.getItem('userId');
-          const storedUserRole = await AsyncStorage.getItem('userRole');
-          setUserId(storedUserId);
-          setUserRole(storedUserRole);
-        } catch (error) {
-          console.error('Error fetching user data from storage:', error);
-        }
+      const fetchUserData = async () => {
+        const { userId } = await getUser();
+        setUserId(userId);
+        setIsGuest(isGuestUser(userId));
       };
-      getUserRole();
+      fetchUserData();
     }, [])
   );
 
-  // FETCHING FUNCTIONS
   const fetchTrackingData = async (id) => {
-    // Use setApiError(false) here to reset error state before fetch
     setApiError(false);
-
     try {
       const response = await fetch(`${API_BASE_URL}/user/${id}/tracking`);
       const data = await response.json();
-
-      // Optional: check response.ok or do your own error handling
       if (data.tracking) {
         setTrackingData({
           objective: data.tracking.objective,
           progress: data.tracking.progress / data.tracking.target,
         });
         if (data.tracking.history) {
-          console.log("Tracking 'history' before mapping:", data.tracking.history);
           setHistory(
             data.tracking.history.map((hist) => ({
               category: hist.category,
@@ -93,7 +82,6 @@ const TrackScreen = () => {
     try {
       const response = await fetch(`${API_BASE_URL}/user/${id}`);
       const data = await response.json();
-
       if (data.evaluation_list) {
         const answeredEvaluations = data.evaluation_list.filter(
           (evaluation) => evaluation.answered
@@ -106,25 +94,20 @@ const TrackScreen = () => {
     }
   };
 
-  // Combined fetch for both tracking + user data
   const fetchAllData = async () => {
     if (!userId) return;
     setIsLoading(true);
     setApiError(false);
-
     await Promise.all([fetchTrackingData(userId), fetchUserData(userId)]);
-
     setIsLoading(false);
   };
 
-  // MOUNT/UPDATE
   useEffect(() => {
     if (userId) {
       fetchAllData();
     }
   }, [userId]);
 
-  // PULL TO REFRESH
   const onRefresh = useCallback(() => {
     if (userId) {
       setRefreshing(true);
@@ -132,7 +115,6 @@ const TrackScreen = () => {
     }
   }, [userId]);
 
-  // ERROR LAYOUT
   if (apiError) {
     return (
       <View style={styles.errorContainer}>
@@ -155,7 +137,6 @@ const TrackScreen = () => {
     );
   }
 
-  // LOADING LAYOUT
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -169,7 +150,6 @@ const TrackScreen = () => {
     );
   }
 
-  // MAIN LAYOUT
   return (
     <View style={styles.container}>
       <ScrollView
@@ -200,7 +180,7 @@ const TrackScreen = () => {
           </View>
         </LinearGradient>
 
-        {/* Progress Container (Teal Gradient) */}
+        {/* Progress Container */}
         <LinearGradient
           colors={[colors.lightTeal, colors.darkTeal]}
           start={{ x: 0, y: 0 }}
@@ -230,7 +210,7 @@ const TrackScreen = () => {
           </View>
         </LinearGradient>
 
-        {/* Chart Container (Orange Gradient) */}
+        {/* Chart Container */}
         <LinearGradient
           colors={[colors.lightOrange, colors.darkOrange]}
           start={{ x: 0, y: 0 }}
@@ -266,7 +246,7 @@ const TrackScreen = () => {
                       <AnimatedCircularProgress
                         size={width * 0.25} 
                         width={10}
-                        fill={(item.progress /10 ) *100}
+                        fill={(item.progress / 10) * 100}
                         tintColor={colors.darkGreen}
                         backgroundColor={colors.primaryBis}
                         lineCap="round"
@@ -274,9 +254,7 @@ const TrackScreen = () => {
                       >
                         {(fill) => (
                           <Text style={styles.gaugeText}>
-                            {`${Math.round(
-                              (item.progress /10) * 100 
-                            )}%`}
+                            {`${Math.round((item.progress / 10) * 100)}%`}
                           </Text>
                         )}
                       </AnimatedCircularProgress>
@@ -294,7 +272,7 @@ const TrackScreen = () => {
         </LinearGradient>
       </ScrollView>
 
-      {/* FLOATING BUTTON */}
+      {/* Floating Button */}
       <View style={styles.fixedButtonContainer}>
         <Button
           mode="contained"
@@ -315,6 +293,33 @@ const TrackScreen = () => {
           Test Yourself
         </Button>
       </View>
+
+      {/* Guest Overlay */}
+      {isGuest && (
+        <BlurView intensity={80} style={StyleSheet.absoluteFill}>
+          <View style={styles.overlayContainer}>
+            <Text style={styles.overlayText}>Create an account to access all features.</Text>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('AuthChoice')}
+              buttonColor={colors.darkGreen}
+              icon={require('../assets/Track_icons/user.png')}
+              labelStyle={{
+                fontSize: sizes.h2,
+                fontFamily: 'Montserrat',
+                textAlign: 'center',
+                paddingTop: spacing.s,
+              }}
+              style={{
+                borderRadius: sizes.buttonRadius,
+                marginBottom: spacing.s,
+              }}
+            >
+              Log in 
+            </Button>
+          </View>
+        </BlurView>
+      )}
     </View>
   );
 };
@@ -493,8 +498,6 @@ const styles = StyleSheet.create({
     marginInlineStart: 2,
     marginRight: 2,
   },
-
-  /* LOADING & ERROR STYLES */
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -542,5 +545,22 @@ const styles = StyleSheet.create({
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
     textAlign: 'center',
+  },
+  overlayContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    padding: spacing.l,
+  },
+  overlayText: {
+    fontSize: sizes.h1,
+    fontFamily: 'MontserratBold',
+    color: colors.secondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  overlayButton: {
+    borderRadius: sizes.buttonRadius,
   },
 });
