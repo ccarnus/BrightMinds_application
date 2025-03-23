@@ -20,7 +20,7 @@ import { API_BASE_URL } from './APIConfig';
 import { Searchbar } from 'react-native-paper';
 import { RFValue } from "react-native-responsive-fontsize";
 import { useFocusEffect } from '@react-navigation/native';
-import { getUser } from './Utils/UserStorage';
+import { getUser, isGuestUser } from './Utils/UserStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -117,12 +117,13 @@ const CastScreen = () => {
     }, [])
   );
 
-  // If a userId exists, fetch watched content; otherwise, fetch content for guest.
   useEffect(() => {
     if (userId) {
-      awaitFetchWatchedContent();
-    } else {
-      fetchAllContentGuest();
+      if (isGuestUser(userId)) {
+        fetchAllContentGuest();
+      } else {
+        awaitFetchWatchedContent();
+      }
     }
   }, [userId]);
 
@@ -512,7 +513,7 @@ const CastScreen = () => {
           </View>
 
           {/* Render "Suggested For You" only if a user is logged in */}
-          {userId && (
+          {!isGuestUser(userId) && (
             <>
               <View style={styles.sectionHeader}>
                 <Image source={forYouIcon} style={styles.sectionIcon} />
