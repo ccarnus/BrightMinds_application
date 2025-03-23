@@ -35,6 +35,7 @@ import OpenAlexDetailsScreen from './Cast/SearchResults/OpenAlexDetailsScreen';
 import SearchTopicResult from './Cast/SearchResults/SearchTopicResult';
 import CastListScreen from './VirtualLab/CastListScreen';
 import WorksListScreen from './VirtualLab/WorksListScreen';
+import { getUser } from './Utils/UserStorage';
 
 const Stack = createStackNavigator();
 
@@ -46,11 +47,9 @@ const MainNavigator = () => {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        // Consider the user "logged in" if a userId exists or if the guest flag is set.
-        const userId = await AsyncStorage.getItem('userId');
-        const isGuest = await AsyncStorage.getItem('isGuest');
+        const { userId } = await getUser();
         const onboarded = await AsyncStorage.getItem('hasOnboarded');
-        setIsLoggedIn(!!(userId || isGuest));
+        setIsLoggedIn(!!userId);
         setHasOnboarded(!!onboarded);
       } catch (error) {
         console.log('Error checking auth status:', error);

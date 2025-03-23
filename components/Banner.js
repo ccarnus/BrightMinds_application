@@ -1,62 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, sizes, spacing } from './theme';
 import { API_BASE_URL } from './APIConfig';
-import { GUEST_USER_ID } from './Utils/UserStorage';
+import { getUser, isGuestUser } from './Utils/UserStorage';
 
 const Banner = () => {
   const navigation = useNavigation();
   const defaultProfileIcon = require('../assets/Banner_icons/profile.png');
   const [profileImageSource, setProfileImageSource] = useState({ source: defaultProfileIcon });
-  const [userId, setUserId] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
 
+  // Only call navigation when user is not guest.
   const handleProfilePress = () => {
-    navigation.navigate('ProfileScreen');
+    if (!isGuest) {
+      navigation.navigate('ProfileScreen');
+    }
   };
 
+  // Every time the banner comes into focus, get the user and update state.
   useFocusEffect(
     React.useCallback(() => {
-      const fetchUserIdAndData = async () => {
+      const fetchUserData = async () => {
         try {
-          const storedUserId = await AsyncStorage.getItem('userId');
-          if (storedUserId) {
-            setUserId(storedUserId);
-            // Check if the user is a guest by comparing to the fixed guest ID
-            if (storedUserId === GUEST_USER_ID) {
-              setIsGuest(true);
-            } else {
-              setIsGuest(false);
-              // For non-guest users, fetch the profile picture URL from your API.
-              const response = await fetch(`${API_BASE_URL}/user/${storedUserId}`);
+          const { userId } = await getUser();
+          if (userId) {
+            const guestStatus = isGuestUser(userId);
+            setIsGuest(guestStatus);
+            // Only fetch profile details if the user is not a guest.
+            if (!guestStatus) {
+              const response = await fetch(`${API_BASE_URL}/user/${userId}`);
               const data = await response.json();
               if (data && data.profilePictureUrl) {
                 setProfileImageSource({ source: { uri: data.profilePictureUrl } });
               } else {
-                console.error('No profile picture URL found in data:', data);
+                setProfileImageSource({ source: defaultProfileIcon });
               }
+            } else {
+              setProfileImageSource({ source: defaultProfileIcon });
             }
           }
         } catch (error) {
-          console.error('Failed to retrieve user ID from storage or fetch user data:', error);
+          console.error('Error fetching user data in Banner:', error);
         }
       };
-  
-      fetchUserIdAndData(); 
+      fetchUserData();
     }, [])
   );
 
   return (
     <View style={styles.bannerContainer}>
-      <TouchableOpacity onPress={handleProfilePress} style={styles.logoContainer}>
+      {/* Left side: always show the logo */}
+      <TouchableOpacity style={styles.logoContainer}>
         <Image
-          source={require('../assets/Banner_icons/profile.png')}
+          source={require('../assets/BrightMinds/black_bear.png')}
           style={styles.logoImage}
         />
       </TouchableOpacity>
-      {/* Render profile button only if the user is NOT a guest */}
+      {/* Right side: show profile button only if user is NOT a guest */}
       {!isGuest && (
         <TouchableOpacity onPress={handleProfilePress}>
           <Image
