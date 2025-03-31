@@ -2,7 +2,7 @@
   "expo": {
     "name": "BrightMinds",
     "slug": "BrightMindsBeta",
-    "version": "0.5.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/BrightMinds/android_icon.png",
     "userInterfaceStyle": "light",
@@ -23,7 +23,11 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "icon": "./assets/BrightMinds/ios_icon.png"
+      "icon": "./assets/BrightMinds/ios_icon.png",
+      "bundleIdentifier": "com.brightmindsresearch",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
