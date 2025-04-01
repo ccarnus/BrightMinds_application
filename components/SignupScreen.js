@@ -11,8 +11,7 @@ import {
   Alert,
   Modal,
   FlatList,
-  Keyboard, // Import Keyboard
-  Dimensions, // For responsive design if needed
+  Keyboard,
 } from 'react-native';
 import { Button, TextInput, Portal, Provider, HelperText } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
@@ -37,7 +36,8 @@ const SignupScreen = ({ navigation }) => {
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false); // State to track keyboard visibility
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+  const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
 
   useEffect(() => {
     // Fetch universities from your API
@@ -53,17 +53,13 @@ const SignupScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    // Check if passwords match
+    // Check if passwords match and all fields are filled
     if (confirmPassword.length > 0 && password !== confirmPassword) {
       setPasswordsMatch(false);
     } else {
       setPasswordsMatch(true);
     }
 
-    // "Enable" the Sign Up button only if:
-    // 1) all required fields are filled,
-    // 2) passwords match,
-    // 3) if the role needs a university, ensure one is selected
     const needsUniversity =
       role === 'Professor' || role === 'PhD Student' || role === 'Researcher';
 
@@ -90,15 +86,13 @@ const SignupScreen = ({ navigation }) => {
   ]);
 
   useEffect(() => {
-    // Add keyboard event listeners
+    // Track keyboard visibility
     const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setKeyboardVisible(true);
     });
     const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false);
     });
-
-    // Cleanup listeners on unmount
     return () => {
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
@@ -110,6 +104,7 @@ const SignupScreen = ({ navigation }) => {
     setCustomAlertVisible(true);
   };
 
+  // Opens the device's image library
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -123,6 +118,19 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+  // Sets the profile picture to the default image
+  const useDefaultImage = () => {
+    const defaultImageUri = Image.resolveAssetSource(
+      require('../assets/Profile_icons/user_image_default.png')
+    ).uri;
+    setProfilePicture({ uri: defaultImageUri });
+  };
+
+  // Instead of an alert, open a custom modal with two icon buttons
+  const selectProfilePicture = () => {
+    setImagePickerModalVisible(true);
+  };
+
   const handleSignup = async () => {
     if (!passwordsMatch) {
       showCustomAlert('Passwords do not match. Please try again.');
@@ -131,7 +139,7 @@ const SignupScreen = ({ navigation }) => {
 
     setLoading(true);
 
-    // Build user object
+    // Build the user object
     const user = {
       email,
       password,
@@ -139,18 +147,24 @@ const SignupScreen = ({ navigation }) => {
       role,
     };
 
-    // If role requires a university, set user.university
     if (role === 'Professor' || role === 'PhD Student' || role === 'Researcher') {
       user.university = selectedUniversity ? selectedUniversity.name : '';
     }
 
-    // Prepare form data
     const formData = new FormData();
     formData.append('user', JSON.stringify(user));
+
+    let imageType = 'image/jpeg';
+    let imageName = 'profile.jpg';
+    if (profilePicture.uri.includes('user_profile_default.png')) {
+      imageType = 'image/png';
+      imageName = 'user_profile_default.png';
+    }
+
     formData.append('image', {
       uri: profilePicture.uri,
-      type: 'image/jpeg',
-      name: 'profile.jpg',
+      type: imageType,
+      name: imageName,
     });
 
     try {
@@ -166,7 +180,6 @@ const SignupScreen = ({ navigation }) => {
       if (error.response && error.response.data && error.response.data.message) {
         errorMessage = error.response.data.message;
       }
-      console.log(formData);
       Alert.alert('Signup failed', errorMessage);
     } finally {
       setLoading(false);
@@ -174,22 +187,20 @@ const SignupScreen = ({ navigation }) => {
   };
 
   // Render each university item in the modal
-  const renderUniversityItem = ({ item }) => {
-    return (
-      <TouchableOpacity
-        style={styles.universityItemWrapper}
-        onPress={() => {
-          setSelectedUniversity(item);
-          setUniversityModalVisible(false);
-        }}
-      >
-        <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
-        <Text style={styles.universityText}>
-          {item.displayedName || item.name}
-        </Text>
-      </TouchableOpacity>
-    );
-  };
+  const renderUniversityItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.universityItemWrapper}
+      onPress={() => {
+        setSelectedUniversity(item);
+        setUniversityModalVisible(false);
+      }}
+    >
+      <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
+      <Text style={styles.universityText}>
+        {item.displayedName || item.name}
+      </Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Provider>
@@ -199,10 +210,7 @@ const SignupScreen = ({ navigation }) => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
       >
         <View style={{ flex: 1 }}>
-          <ScrollView
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
             <Text style={styles.title}>Sign Up</Text>
 
             {/* Email */}
@@ -262,7 +270,7 @@ const SignupScreen = ({ navigation }) => {
               </HelperText>
             )}
 
-            {/* ROLE */}
+            {/* ROLE Picker */}
             <Text style={styles.pickerTitle}>Category:</Text>
             <View style={styles.pickerContainer}>
               <Picker
@@ -270,7 +278,6 @@ const SignupScreen = ({ navigation }) => {
                 style={styles.picker}
                 onValueChange={(itemValue) => setRole(itemValue)}
                 labelStyle={{ fontFamily: 'Montserrat' }}
-                label
               >
                 <Picker.Item label="Choose category.." value="" />
                 <Picker.Item label="College Student" value="College Student" />
@@ -281,7 +288,7 @@ const SignupScreen = ({ navigation }) => {
               </Picker>
             </View>
 
-            {/* UNIVERSITY (Custom Modal Approach) */}
+            {/* University Selector for certain roles */}
             {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
               <TouchableOpacity
                 style={styles.universitySelector}
@@ -289,10 +296,7 @@ const SignupScreen = ({ navigation }) => {
               >
                 {selectedUniversity ? (
                   <View style={styles.universitySelectedWrapper}>
-                    <Image
-                      source={{ uri: selectedUniversity.iconurl }}
-                      style={styles.universityIcon}
-                    />
+                    <Image source={{ uri: selectedUniversity.iconurl }} style={styles.universityIcon} />
                     <Text style={styles.universityText}>
                       {selectedUniversity.displayedName || selectedUniversity.name}
                     </Text>
@@ -303,8 +307,8 @@ const SignupScreen = ({ navigation }) => {
               </TouchableOpacity>
             )}
 
-            {/* Profile Picture */}
-            <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
+            {/* Profile Picture Picker */}
+            <TouchableOpacity onPress={selectProfilePicture} style={styles.imagePicker}>
               {profilePicture ? (
                 <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
               ) : (
@@ -313,10 +317,9 @@ const SignupScreen = ({ navigation }) => {
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Footer Container */}
+          {/* Footer with Sign Up Button */}
           {!isKeyboardVisible && (
             <View style={styles.footerContainer}>
-              {/* Sign Up Button */}
               <Button
                 mode="contained"
                 onPress={handleSignup}
@@ -341,8 +344,6 @@ const SignupScreen = ({ navigation }) => {
               >
                 Sign Up
               </Button>
-
-              {/* Go to Login */}
               <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
                 <Text style={styles.signupText}>Already have an account? Login</Text>
               </TouchableOpacity>
@@ -359,11 +360,7 @@ const SignupScreen = ({ navigation }) => {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select a University</Text>
               <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
-                <MaterialCommunityIcons
-                  name="close"
-                  size={24}
-                  color={colors.secondary}
-                />
+                <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
               </TouchableOpacity>
             </View>
             <FlatList
@@ -374,18 +371,54 @@ const SignupScreen = ({ navigation }) => {
             />
           </Modal>
 
+          {/* Custom Image Picker Modal */}
+          <Modal
+            transparent={true}
+            visible={imagePickerModalVisible}
+            animationType="fade"
+            onRequestClose={() => setImagePickerModalVisible(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPressOut={() => setImagePickerModalVisible(false)}
+            >
+              <View style={styles.modalContent}>
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setImagePickerModalVisible(false);
+                    pickImage();
+                  }}
+                >
+                  <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkGreen} />
+                  <Text style={styles.optionText}>Gallery</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.optionButton}
+                  onPress={() => {
+                    setImagePickerModalVisible(false);
+                    useDefaultImage();
+                  }}
+                >
+                  <MaterialCommunityIcons name="account" size={40} color={colors.darkGreen} />
+                  <Text style={styles.optionText}>Default</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
+
           {/* Custom Alert Modal */}
           <Portal>
             <Modal
               visible={customAlertVisible}
               onDismiss={() => setCustomAlertVisible(false)}
-              contentContainerStyle={styles.modalContainer}
+              contentContainerStyle={styles.alertModalContainer}
             >
               <Text>{customAlertMessage}</Text>
-              <Button 
-                onPress={() => setCustomAlertVisible(false)}
-                textColor={colors.darkGreen}  
-              >OK</Button>
+              <Button onPress={() => setCustomAlertVisible(false)} textColor={colors.darkGreen}>
+                OK
+              </Button>
             </Modal>
           </Portal>
         </View>
@@ -499,7 +532,7 @@ const styles = StyleSheet.create({
   flatListContainer: {
     paddingVertical: spacing.m,
   },
-  modalContainer: {
+  alertModalContainer: {
     backgroundColor: 'white',
     padding: 20,
     margin: 20,
@@ -513,24 +546,28 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.l,
     backgroundColor: 'transparent',
   },
-  signupButton: {
-    marginBottom: 20,
-    borderRadius: sizes.buttonRadius,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  signupButtonLabel: {
-    fontSize: sizes.h2,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-  },
-  pickerTitle: {
-    fontSize: sizes.h3,
-    marginBottom: spacing.xs,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    marginTop: spacing.m,
-  },
-  inputOutline: {
+  modalContent: {
+    width: 250,
+    backgroundColor: 'white',
     borderRadius: sizes.radius,
+    paddingVertical: spacing.l,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  optionButton: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.m,
+  },
+  optionText: {
+    marginTop: spacing.xs,
+    fontFamily: 'Montserrat',
+    color: colors.darkGreen,
   },
 });
 

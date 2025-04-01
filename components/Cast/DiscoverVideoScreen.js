@@ -12,10 +12,10 @@ import {
 import { Video } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
 import { colors, sizes, spacing } from '../theme';
 import { useKeepAwake } from 'expo-keep-awake';
+import { getUser, isGuestUser } from '../Utils/UserStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -69,13 +69,13 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
   // Ref to store previous progress value.
   const prevProgress = useRef(0);
 
-  // Retrieve userId.
+  // Retrieve user using centralized function.
   useEffect(() => {
-    const getUserId = async () => {
-      const storedUserId = await AsyncStorage.getItem('userId');
-      setUserId(storedUserId);
+    const fetchUser = async () => {
+      const { userId } = await getUser();
+      setUserId(userId);
     };
-    getUserId();
+    fetchUser();
   }, []);
 
   // Fetch video when userId and videoId are available.
@@ -120,6 +120,11 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
   // Called when playback first crosses 85%.
   const handleCastWatched = () => {
     if (!video || hasTriggeredWatched.current) return;
+    // If the user is a guest, skip marking as watched.
+    if (isGuestUser(userId)) {
+      console.log("Guest user detected, skipping watched marking.");
+      return;
+    }
     const castId = video._id;
     axios
       .post(`${API_BASE_URL}/user/add/content/${userId}`, { contentId: castId, type: "cast" })

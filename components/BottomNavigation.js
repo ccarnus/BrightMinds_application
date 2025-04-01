@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, Animated, Keyboard, BackHandler } from 'react-native';
+import { StyleSheet, Animated, Keyboard, BackHandler, useWindowDimensions, SafeAreaView } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -9,25 +9,21 @@ import TrackScreen from './TrackScreen';
 import LabScreen from './LabScreen';
 import LibraryScreen from './LibraryScreen';
 // Theme & Icons
-import { colors, sizes } from './theme';
+import { colors } from './theme';
 import Icon from '../assets/Bottom_icons/Icon';
 
 const Tab = createBottomTabNavigator();
 
-// This hook checks if the keyboard is visible, so we can hide the indicator
 const useKeyboardVisibility = () => {
   const [visible, setVisible] = useState(false);
-
   React.useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
-
     return () => {
       showSubscription.remove();
       hideSubscription.remove();
     };
   }, []);
-
   return visible;
 };
 
@@ -35,12 +31,9 @@ const BottomNavigation = () => {
   const [userRole, setUserRole] = useState('');
   const offsetAnimation = useRef(new Animated.Value(0)).current;
   const isKeyboardVisible = useKeyboardVisibility();
+  const { width } = useWindowDimensions();
+  const indicatorWidth = 32;
 
-  /**
-   * useFocusEffect re-runs every time this navigator/screen becomes focused.
-   * We fetch userRole from AsyncStorage here so it updates when the user logs out
-   * and logs back in with a different role.
-   */
   useFocusEffect(
     useCallback(() => {
       const fetchUserRole = async () => {
@@ -54,9 +47,7 @@ const BottomNavigation = () => {
 
       fetchUserRole();
 
-      // Prevent hardware Back button from exiting the app on Android
       const onBackPress = () => true;
-
       BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => {
         BackHandler.removeEventListener('hardwareBackPress', onBackPress);
@@ -64,25 +55,19 @@ const BottomNavigation = () => {
     }, [])
   );
 
-  // Base tabs (always visible)
   const baseTabs = [
     { name: 'Cast', screen: CastScreen },
     { name: 'Track', screen: TrackScreen },
     { name: 'Lab', screen: LabScreen },
   ];
 
-  // Conditionally add the Library tab
   const tabs = [...baseTabs];
-  if (
-    userRole === 'Professor' ||
-    userRole === 'Researcher' ||
-    userRole === 'PhD Student'
-  ) {
+  if (userRole === 'Professor' || userRole === 'Researcher' || userRole === 'PhD Student') {
     tabs.push({ name: 'Library', screen: LibraryScreen });
   }
 
   return (
-    <>
+    <SafeAreaView style={{ flex: 1 }}>
       <Tab.Navigator
         initialRouteName="Cast"
         screenOptions={{
@@ -113,17 +98,15 @@ const BottomNavigation = () => {
                 <Icon
                   icon={name}
                   size={28}
-                  style={{
-                    tintColor: focused ? colors.darkblue : colors.secondary,
-                  }}
+                  style={{ tintColor: focused ? colors.darkblue : colors.secondary }}
                 />
               ),
             }}
             listeners={{
               focus: () => {
-                // Move the animated indicator to the current tab index
+                // Calculate the new indicator position based on the current screen width and number of tabs
                 Animated.spring(offsetAnimation, {
-                  toValue: index * (sizes.width / tabs.length),
+                  toValue: index * (width / tabs.length),
                   useNativeDriver: true,
                 }).start();
               },
@@ -132,24 +115,20 @@ const BottomNavigation = () => {
         ))}
       </Tab.Navigator>
 
-      {/* Animated Indicator (hidden if keyboard is visible) */}
+      {/* Animated Indicator (hidden when keyboard is visible) */}
       {!isKeyboardVisible && (
         <Animated.View
           style={[
             styles.indicator,
             {
-              left: (sizes.width / tabs.length) / 2 - 15,
-              width: 32,
-              transform: [
-                {
-                  translateX: offsetAnimation,
-                },
-              ],
+              left: (width / tabs.length) / 2 - indicatorWidth / 2,
+              width: indicatorWidth,
+              transform: [{ translateX: offsetAnimation }],
             },
           ]}
         />
       )}
-    </>
+    </SafeAreaView>
   );
 };
 
