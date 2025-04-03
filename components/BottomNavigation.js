@@ -1,14 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { StyleSheet, Animated, Keyboard, BackHandler, useWindowDimensions, SafeAreaView } from 'react-native';
+import { StyleSheet, Animated, Keyboard, BackHandler, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// Screens
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import CastScreen from './CastScreen';
 import TrackScreen from './TrackScreen';
 import LabScreen from './LabScreen';
 import LibraryScreen from './LibraryScreen';
-// Theme & Icons
 import { colors } from './theme';
 import Icon from '../assets/Bottom_icons/Icon';
 
@@ -32,6 +31,7 @@ const BottomNavigation = () => {
   const offsetAnimation = useRef(new Animated.Value(0)).current;
   const isKeyboardVisible = useKeyboardVisibility();
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const indicatorWidth = 32;
 
   useFocusEffect(
@@ -77,6 +77,7 @@ const BottomNavigation = () => {
           tabBarStyle: {
             backgroundColor: colors.primary,
             height: 55,
+            paddingBottom: 5,
           },
           tabBarLabelStyle: {
             fontSize: 10,
@@ -103,8 +104,8 @@ const BottomNavigation = () => {
               ),
             }}
             listeners={{
+              // Animate the indicator when a tab is focused
               focus: () => {
-                // Calculate the new indicator position based on the current screen width and number of tabs
                 Animated.spring(offsetAnimation, {
                   toValue: index * (width / tabs.length),
                   useNativeDriver: true,
@@ -123,6 +124,7 @@ const BottomNavigation = () => {
             {
               left: (width / tabs.length) / 2 - indicatorWidth / 2,
               width: indicatorWidth,
+              bottom: insets.bottom + 2, // Adjust indicator to be closer to the icon
               transform: [{ translateX: offsetAnimation }],
             },
           ]}
@@ -138,8 +140,6 @@ const styles = StyleSheet.create({
   indicator: {
     position: 'absolute',
     height: 3,
-    bottom: 47,
     backgroundColor: colors.darkblue,
-    zIndex: 100,
   },
 });

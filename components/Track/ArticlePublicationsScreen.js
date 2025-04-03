@@ -147,7 +147,7 @@ const ArticlePublicationsScreen = ({ navigation }) => {
             style={styles.addButton}
             onPress={() => {
               // Navigate to a screen for adding an article, or whichever action you need.
-              navigation.navigate('ArticleTypeChoice'); 
+              navigation.navigate('CastTypeChoice'); 
             }}
           >
             <Image

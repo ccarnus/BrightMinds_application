@@ -18,7 +18,6 @@ import * as ImagePicker from 'expo-image-picker';
 import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { API_BASE_URL } from './APIConfig';
 
 const SignupScreen = ({ navigation }) => {
@@ -38,6 +37,14 @@ const SignupScreen = ({ navigation }) => {
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const categoryOptions = [
+    'College Student',
+    'Professor',
+    'Researcher',
+    'Learning Enthusiast',
+    'PhD Student',
+  ];
 
   useEffect(() => {
     // Fetch universities from your API
@@ -53,7 +60,6 @@ const SignupScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
-    // Check if passwords match and all fields are filled
     if (confirmPassword.length > 0 && password !== confirmPassword) {
       setPasswordsMatch(false);
     } else {
@@ -270,23 +276,37 @@ const SignupScreen = ({ navigation }) => {
               </HelperText>
             )}
 
-            {/* ROLE Picker */}
+            {/* Category Picker (Modal-based, same as in PostCast) */}
             <Text style={styles.pickerTitle}>Category:</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={role}
-                style={styles.picker}
-                onValueChange={(itemValue) => setRole(itemValue)}
-                labelStyle={{ fontFamily: 'Montserrat' }}
+            <TouchableOpacity
+              style={styles.selectorContainer}
+              onPress={() => setCategoryModalVisible(true)}
+            >
+              <Text style={styles.selectorText}>
+                {role || 'Select Category'}
+              </Text>
+            </TouchableOpacity>
+            <Portal>
+              <Modal
+                visible={categoryModalVisible}
+                onDismiss={() => setCategoryModalVisible(false)}
+                contentContainerStyle={styles.modalContainer}
               >
-                <Picker.Item label="Choose category.." value="" />
-                <Picker.Item label="College Student" value="College Student" />
-                <Picker.Item label="Professor" value="Professor" />
-                <Picker.Item label="Researcher" value="Researcher" />
-                <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
-                <Picker.Item label="PhD Student" value="PhD Student" />
-              </Picker>
-            </View>
+                {categoryOptions.map((item, index) => (
+                  <Button
+                    key={index}
+                    onPress={() => {
+                      setRole(item);
+                      setCategoryModalVisible(false);
+                    }}
+                    style={styles.modalItem}
+                    labelStyle={styles.modalItemLabel}
+                  >
+                    {item}
+                  </Button>
+                ))}
+              </Modal>
+            </Portal>
 
             {/* University Selector for certain roles */}
             {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
@@ -391,7 +411,7 @@ const SignupScreen = ({ navigation }) => {
                     pickImage();
                   }}
                 >
-                  <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkGreen} />
+                  <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkblue} />
                   <Text style={styles.optionText}>Gallery</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -401,7 +421,7 @@ const SignupScreen = ({ navigation }) => {
                     useDefaultImage();
                   }}
                 >
-                  <MaterialCommunityIcons name="account" size={40} color={colors.darkGreen} />
+                  <MaterialCommunityIcons name="account" size={40} color={colors.darkblue} />
                   <Text style={styles.optionText}>Default</Text>
                 </TouchableOpacity>
               </View>
@@ -448,17 +468,39 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     borderRadius: sizes.radius,
   },
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: sizes.radius,
-    marginBottom: spacing.l,
-    marginTop: spacing.m,
-    overflow: 'hidden',
+  pickerTitle: {
+    fontFamily: 'Montserrat',
+    fontSize: sizes.h4,
+    marginBottom: spacing.xs,
+    color: colors.secondary,
   },
-  picker: {
-    height: 60,
-    width: '100%',
+  // New styles for modal-based picker (similar to PostCast)
+  selectorContainer: {
+    marginBottom: spacing.m,
+    borderWidth: 1,
+    borderColor: 'gray',
+    borderRadius: sizes.radius,
+    backgroundColor: 'white',
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.m,
+    justifyContent: 'center',
+  },
+  selectorText: {
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+  },
+  modalContainer: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: sizes.radius,
+  },
+  modalItem: {
+    marginVertical: spacing.s,
+  },
+  modalItemLabel: {
+    color: colors.secondary,
+    fontFamily: 'Montserrat',
   },
   universitySelector: {
     marginBottom: spacing.m,
@@ -567,7 +609,7 @@ const styles = StyleSheet.create({
   optionText: {
     marginTop: spacing.xs,
     fontFamily: 'Montserrat',
-    color: colors.darkGreen,
+    color: colors.darkblue,
   },
 });
 
