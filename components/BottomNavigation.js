@@ -67,7 +67,7 @@ const BottomNavigation = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }}>
       <Tab.Navigator
         initialRouteName="Cast"
         screenOptions={{
