@@ -9,13 +9,13 @@ import {
   Share,
   BackHandler
 } from 'react-native';
-import { Video } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../APIConfig';
 import { colors, sizes, spacing } from '../theme';
 import { useKeepAwake } from 'expo-keep-awake';
+import { Video, Audio } from 'expo-av';
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,14 +62,16 @@ const VideoScreen = ({ route, navigation }) => {
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [parsedCaptions, setParsedCaptions] = useState([]);
   const [currentCaption, setCurrentCaption] = useState('');
-
   const videoRef = useRef(null);
-  // Use a ref to ensure we only trigger the watched event once.
   const hasTriggeredWatched = useRef(false);
-  // Use a ref to store previous progress so we detect the transition.
   const prevProgress = useRef(0);
 
-  // Retrieve userId from AsyncStorage.
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+    });
+  }, []);
+
   useEffect(() => {
     const getUserId = async () => {
       const storedUserId = await AsyncStorage.getItem('userId');

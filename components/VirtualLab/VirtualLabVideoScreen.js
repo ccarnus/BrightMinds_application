@@ -9,7 +9,7 @@ import {
   Share,
   BackHandler
 } from 'react-native';
-import { Video } from 'expo-av';
+import { Video, Audio } from 'expo-av';
 import Slider from '@react-native-community/slider';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,6 +63,12 @@ const VirtualLabVideoScreen = ({ route, navigation }) => {
   const [captionsEnabled, setCaptionsEnabled] = useState(true);
   const [parsedCaptions, setParsedCaptions] = useState([]);
   const [currentCaption, setCurrentCaption] = useState('');
+    
+      useEffect(() => {
+        Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+        });
+      }, []);
 
   const videoRef = useRef(null);
   // Ref to ensure the watched event is triggered only once.
