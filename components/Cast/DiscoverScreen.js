@@ -15,6 +15,7 @@ import LottieView from 'lottie-react-native';
 import { API_BASE_URL } from '../APIConfig';
 import { colors, sizes, spacing } from '../theme';
 import departments from '../../lists/departments';
+import { isGuestUser } from '../Utils/UserStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -81,7 +82,12 @@ const DiscoverScreen = ({ navigation, route }) => {
   // Once userId is available, fetch watched casts and then fetch videos.
   useEffect(() => {
     if (userId) {
-      fetchWatchedContent();
+      console.log(userId)
+      if (isGuestUser(userId)) {
+        fetchVideos([]);
+      } else {
+        fetchWatchedContent();
+      }
     }
   }, [userId]);
 
