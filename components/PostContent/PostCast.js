@@ -288,6 +288,7 @@ const PostCast = ({ navigation }) => {
             mode="outlined"
             autoCapitalize="none"
             activeOutlineColor={colors.darkGreen}
+            maxLength={85}
           />
 
           {/* Link (only if title is not empty) */}

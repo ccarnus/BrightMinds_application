@@ -67,7 +67,7 @@ const BottomNavigation = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.primary }} edges={['bottom', 'left', 'right']}>
       <Tab.Navigator
         initialRouteName="Cast"
         screenOptions={{
@@ -124,7 +124,7 @@ const BottomNavigation = () => {
             {
               left: (width / tabs.length) / 2 - indicatorWidth / 2,
               width: indicatorWidth,
-              bottom: insets.bottom + 2, // Adjust indicator to be closer to the icon
+              bottom: insets.bottom + 5, // Adjust indicator to be closer to the icon
               transform: [{ translateX: offsetAnimation }],
             },
           ]}

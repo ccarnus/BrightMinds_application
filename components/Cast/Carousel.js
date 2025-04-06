@@ -6,7 +6,7 @@ import LottieView from 'lottie-react-native';
 
 const CARD_HEIGHT = 140;
 const CARD_WIDTH = CARD_HEIGHT * 1.75;
-const CARD_HEIGHT_TOTAL = 175;
+const CARD_HEIGHT_TOTAL = 200;
 const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
 
 const Carousel = ({ list, carouselType, finishedVideos = [], onAnimationFinish }) => {
@@ -107,12 +107,12 @@ const styles = StyleSheet.create({
   },
   titleBox: {
     position: 'absolute',
-    top: CARD_HEIGHT_TOTAL - 30,
-    maxHeight: 50,
+    top: CARD_HEIGHT_TOTAL - 55,
+    maxHeight: 70,
     width: '100%',
   },
   title: {
-    fontSize: sizes.h45,
+    fontSize: sizes.h4,
     color: colors.white,
     textAlign: 'left',
     fontFamily: 'Montserrat',

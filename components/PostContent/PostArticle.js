@@ -254,6 +254,7 @@ const PostArticle = ({ navigation }) => {
           autoCapitalize="none"
           fontFamily="Montserrat"
           activeOutlineColor={colors.darkGreen}
+          maxLength={85}
         />
 
         {/* Description (only if Title is non-empty) */}
