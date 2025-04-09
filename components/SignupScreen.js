@@ -162,9 +162,9 @@ const SignupScreen = ({ navigation }) => {
 
     let imageType = 'image/jpeg';
     let imageName = 'profile.jpg';
-    if (profilePicture.uri.includes('user_profile_default.png')) {
+    if (profilePicture.uri.includes('user_image_default.png')) {
       imageType = 'image/png';
-      imageName = 'user_profile_default.png';
+      imageName = 'user_image_default.png';
     }
 
     formData.append('image', {
