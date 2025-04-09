@@ -21,6 +21,7 @@ import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import citationIcon from '../../assets/Virtual_lab_icons/citation.png';
 import worksIcon from '../../assets/Virtual_lab_icons/works.png';
 import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
+import { API_BASE_URL } from './APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
@@ -52,7 +53,7 @@ const TopicDetailScreen = ({ route }) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const res1 = await fetch(`https://api.brightmindsresearch.com/topic/${topicId}`);
+        const res1 = await fetch(`${API_BASE_URL}/topic/${topicId}`);
         if (!res1.ok) {
           throw new Error('Failed to fetch Brightminds topic details');
         }

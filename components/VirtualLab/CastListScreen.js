@@ -11,6 +11,7 @@ import {
 import { Button, Searchbar } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { colors, sizes, spacing } from '../theme';
+import { API_BASE_URL } from './APIConfig';
 
 const CastListScreen = () => {
   const route = useRoute();
@@ -26,7 +27,7 @@ const CastListScreen = () => {
   useEffect(() => {
     const fetchCasts = async () => {
       try {
-        const url = `http://3.17.219.54/cast/department/${department}?topic=${topic}`;
+        const url = `${API_BASE_URL}/cast/department/${department}?topic=${topic}`;
         const res = await fetch(url);
         if (!res.ok) {
           throw new Error('Failed to fetch casts');
