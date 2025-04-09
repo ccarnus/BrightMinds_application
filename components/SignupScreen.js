@@ -38,6 +38,7 @@ const SignupScreen = ({ navigation }) => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(''); // State for search input
   const categoryOptions = [
     'College Student',
     'Professor',
@@ -192,6 +193,12 @@ const SignupScreen = ({ navigation }) => {
     }
   };
 
+  // Filter universities based on the search query (ignoring case)
+  const filteredUniversities = universities.filter((item) => {
+    const universityName = item.displayedName || item.name;
+    return universityName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
   // Render each university item in the modal
   const renderUniversityItem = ({ item }) => (
     <TouchableOpacity
@@ -199,6 +206,7 @@ const SignupScreen = ({ navigation }) => {
       onPress={() => {
         setSelectedUniversity(item);
         setUniversityModalVisible(false);
+        setSearchQuery(''); // Reset search on selection
       }}
     >
       <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
@@ -383,8 +391,16 @@ const SignupScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
               </TouchableOpacity>
             </View>
+            {/* Search input for filtering universities */}
+            <TextInput
+              label="Search University"
+              mode="outlined"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
             <FlatList
-              data={universities}
+              data={filteredUniversities}
               keyExtractor={(item) => item._id}
               renderItem={renderUniversityItem}
               contentContainerStyle={styles.flatListContainer}
@@ -610,6 +626,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     fontFamily: 'Montserrat',
     color: colors.darkblue,
+  },
+  searchInput: {
+    marginHorizontal: spacing.m,
+    marginVertical: spacing.m,
+    backgroundColor: 'white',
   },
 });
 

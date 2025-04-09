@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, Image, ScrollView,
-  Platform, KeyboardAvoidingView, Alert, Modal, FlatList
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  Platform,
+  KeyboardAvoidingView,
+  Alert,
+  Modal,
+  FlatList
 } from 'react-native';
 import { Button, TextInput, Portal, Provider } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,10 +24,8 @@ import { API_BASE_URL } from '../APIConfig';
 const EditProfileScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
-  
   // Use a <Picker> for role, same as in SignupScreen
   const [role, setRole] = useState('College Student');
-  
   const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -27,6 +34,9 @@ const EditProfileScreen = ({ navigation }) => {
   const [universities, setUniversities] = useState([]);
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
+
+  // Search state for filtering universities by name
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Alert modal
   const [customAlertVisible, setCustomAlertVisible] = useState(false);
@@ -66,6 +76,12 @@ const EditProfileScreen = ({ navigation }) => {
     fetchUserData();
     fetchUniversities();
   }, []);
+
+  // Filter universities based on search query
+  const filteredUniversities = universities.filter((item) => {
+    const universityName = item.displayedName || item.name;
+    return universityName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
 
   const pickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -123,7 +139,7 @@ const EditProfileScreen = ({ navigation }) => {
     setCustomAlertVisible(true);
   };
 
-  // For the custom university list
+  // For the custom university list items
   const renderUniversityItem = ({ item }) => {
     return (
       <TouchableOpacity
@@ -131,9 +147,13 @@ const EditProfileScreen = ({ navigation }) => {
         onPress={() => {
           setSelectedUniversity(item);
           setUniversityModalVisible(false);
+          // Reset search when an item is selected
+          setSearchQuery('');
         }}
       >
-        <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
+        {item.iconurl && (
+          <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
+        )}
         <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
       </TouchableOpacity>
     );
@@ -172,7 +192,7 @@ const EditProfileScreen = ({ navigation }) => {
             autoCapitalize="none"
           />
 
-          {/* Role Picker (matching SignupScreen style) */}
+          {/* Role Picker */}
           <View style={styles.pickerContainer}>
             <Picker
               selectedValue={role}
@@ -195,10 +215,12 @@ const EditProfileScreen = ({ navigation }) => {
             >
               {selectedUniversity ? (
                 <View style={styles.universitySelectedWrapper}>
-                  <Image
-                    source={{ uri: selectedUniversity.iconurl }}
-                    style={styles.universityIcon}
-                  />
+                  {selectedUniversity.iconurl && (
+                    <Image
+                      source={{ uri: selectedUniversity.iconurl }}
+                      style={styles.universityIcon}
+                    />
+                  )}
                   <Text style={styles.universityText}>
                     {selectedUniversity.displayedName || selectedUniversity.name}
                   </Text>
@@ -225,10 +247,10 @@ const EditProfileScreen = ({ navigation }) => {
             buttonColor={colors.darkGreen}
             icon={require('../../assets/Profile_icons/save.png')}
             labelStyle={{
-            fontSize: sizes.h2,
-            fontFamily: 'Montserrat',
-            textAlign: 'center',
-            paddingTop: spacing.xs,
+              fontSize: sizes.h2,
+              fontFamily: 'Montserrat',
+              textAlign: 'center',
+              paddingTop: spacing.xs,
             }}
             style={{
               marginLeft: spacing.m,
@@ -254,8 +276,16 @@ const EditProfileScreen = ({ navigation }) => {
                 <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
               </TouchableOpacity>
             </View>
+            {/* Search input for universities */}
+            <TextInput
+              label="Search University"
+              mode="outlined"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
             <FlatList
-              data={universities}
+              data={filteredUniversities}
               keyExtractor={(item) => item._id}
               renderItem={renderUniversityItem}
               contentContainerStyle={styles.flatListContainer}
@@ -298,8 +328,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
   },
-
-  // This container + picker style matches your SignupScreen approach
+  // Picker styles
   pickerContainer: {
     borderWidth: 1,
     borderColor: colors.secondary,
@@ -312,7 +341,6 @@ const styles = StyleSheet.create({
     height: 60,
     width: '100%',
   },
-
   universitySelector: {
     marginBottom: spacing.m,
     paddingVertical: spacing.m,
@@ -380,6 +408,11 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: sizes.h1,
     fontFamily: 'Montserrat',
+  },
+  searchInput: {
+    marginHorizontal: spacing.m,
+    marginVertical: spacing.m,
+    backgroundColor: 'white'
   },
   flatListContainer: {
     paddingVertical: spacing.m,
