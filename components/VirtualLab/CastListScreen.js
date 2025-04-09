@@ -11,7 +11,7 @@ import {
 import { Button, Searchbar } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { colors, sizes, spacing } from '../theme';
-import { API_BASE_URL } from './APIConfig';
+import { API_BASE_URL } from '../APIConfig';
 
 const CastListScreen = () => {
   const route = useRoute();

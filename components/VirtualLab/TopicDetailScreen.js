@@ -21,7 +21,7 @@ import ImpactImage from '../../assets/Virtual_lab_icons/impact.png';
 import citationIcon from '../../assets/Virtual_lab_icons/citation.png';
 import worksIcon from '../../assets/Virtual_lab_icons/works.png';
 import castIcon from '../../assets/Cast_screen_icons/cast_icon.png';
-import { API_BASE_URL } from './APIConfig';
+import { API_BASE_URL } from '../APIConfig';
 
 const { width, height } = Dimensions.get('window');
 
