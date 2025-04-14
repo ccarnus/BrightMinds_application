@@ -19,6 +19,8 @@ import axios from 'axios';
 import { colors, sizes, spacing } from './theme';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { API_BASE_URL } from './APIConfig';
+import { Asset } from 'expo-asset';
+import * as FileSystem from 'expo-file-system';
 
 const SignupScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -124,14 +126,31 @@ const SignupScreen = ({ navigation }) => {
       setProfilePicture(result.assets[0]);
     }
   };
-
-  // Sets the profile picture to the default image
-  const useDefaultImage = () => {
-    const defaultImageUri = Image.resolveAssetSource(
-      require('../assets/Profile_icons/user_image_default.png')
-    ).uri;
-    setProfilePicture({ uri: defaultImageUri });
-  };
+  
+  const useDefaultImage = async () => {
+    const asset = Asset.fromModule(require('../assets/Profile_icons/user_image_default.png'));
+    await asset.downloadAsync(); // Ensure the asset is downloaded
+    const localUri = asset.localUri || asset.uri;
+    
+    // On Android, the URI might not start with 'file://'
+    if (Platform.OS === 'android' && !localUri.startsWith('file://')) {
+      // Create a new path in the cache directory
+      const newPath = FileSystem.cacheDirectory + 'user_image_default.png';
+      try {
+        await FileSystem.copyAsync({
+          from: localUri,
+          to: newPath,
+        });
+        setProfilePicture({ uri: newPath });
+      } catch (error) {
+        console.error('Error copying asset to cache:', error);
+        // Optionally, set profilePicture as the original one or notify the user.
+        setProfilePicture({ uri: localUri });
+      }
+    } else {
+      setProfilePicture({ uri: localUri });
+    }
+  };  
 
   // Instead of an alert, open a custom modal with two icon buttons
   const selectProfilePicture = () => {
