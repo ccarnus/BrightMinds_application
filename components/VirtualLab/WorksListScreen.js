@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -30,12 +30,34 @@ const WorksListScreen = ({ route }) => {
   const [filterHasAbstract, setFilterHasAbstract] = useState(true);
   const [filterLanguage, setFilterLanguage] = useState(true); // Only English if true
 
+  // Publication Year Filter - Pre-select year 2024
+  const [filterYear, setFilterYear] = useState(2024);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const perPage = 50;
   const primaryTopic = topicId; // since topicId already contains the id
 
   const navigation = useNavigation();
+
+  // Create a ref for the horizontal ScrollView for years
+  const yearScrollRef = useRef(null);
+
+  // When the filter dialog becomes visible, scroll the year selector to the end.
+  useEffect(() => {
+    if (filterVisible && yearScrollRef.current) {
+      // Scroll to the end (right side) of the horizontal ScrollView
+      yearScrollRef.current.scrollToEnd({ animated: false });
+    }
+  }, [filterVisible]);
+
+  // Compute an array of years (from 1990 to the current year)
+  const currentYear = new Date().getFullYear();
+  const startYear = 1990;
+  const years = [];
+  for (let y = startYear; y <= currentYear; y++) {
+    years.push(y);
+  }
 
   // Fetch topic details to get the display name.
   useEffect(() => {
@@ -68,6 +90,10 @@ const WorksListScreen = ({ route }) => {
     }
     if (filterLanguage) {
       filters.push('language:en');
+    }
+    // Append publication date filter if a year is selected.
+    if (filterYear) {
+      filters.push(`from_publication_date:${filterYear}-03-14`);
     }
     return filters.join(',');
   };
@@ -112,12 +138,13 @@ const WorksListScreen = ({ route }) => {
     }
   };
 
-  // Clear all filters (reset to default: open access, has abstract, and English)
+  // Clear all filters (reset to defaults)
   const clearFilters = () => {
     setFilterIsOa(true);
     setSliderValue(0);
     setFilterHasAbstract(true);
     setFilterLanguage(true);
+    setFilterYear(2024);
   };
 
   // Pagination handlers
@@ -142,6 +169,7 @@ const WorksListScreen = ({ route }) => {
   if (sliderValue > 0) appliedFilters.push(`Min Cited: ${sliderValue.toLocaleString()}`);
   if (filterHasAbstract) appliedFilters.push("Has Abstract");
   if (filterLanguage) appliedFilters.push("English Only");
+  if (filterYear) appliedFilters.push(`Publication Year: ${filterYear}`);
   const appliedFiltersText = appliedFilters.length > 0 ? appliedFilters.join("\n") : "No filters applied";
 
   // Calculate total pages (if available)
@@ -192,7 +220,7 @@ const WorksListScreen = ({ route }) => {
                 onPress={() => setFilterIsOa(!filterIsOa)}
                 style={styles.toggleButton}
                 buttonColor={filterIsOa ? colors.secondary : undefined}
-                color={colors.secondary}
+                textColor={colors.primary}
               >
                 {filterIsOa ? "Yes" : "No"}
               </Button>
@@ -218,7 +246,7 @@ const WorksListScreen = ({ route }) => {
                 onPress={() => setFilterHasAbstract(!filterHasAbstract)}
                 style={styles.toggleButton}
                 buttonColor={filterHasAbstract ? colors.secondary : undefined}
-                color={colors.secondary}
+                textColor={colors.primary}
               >
                 {filterHasAbstract ? "Yes" : "No"}
               </Button>
@@ -231,11 +259,34 @@ const WorksListScreen = ({ route }) => {
                 onPress={() => setFilterLanguage(!filterLanguage)}
                 style={styles.toggleButton}
                 buttonColor={filterLanguage ? colors.secondary : undefined}
-                color={colors.secondary}
+                textColor={colors.primary}
               >
                 {filterLanguage ? "Yes" : "No"}
               </Button>
             </View>
+            {/* Publication Year Filter */}
+            <View style={styles.filterRow}>
+              <Text style={styles.filterLabel}>Publication Year</Text>
+            </View>
+            <ScrollView 
+              ref={yearScrollRef}
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              style={styles.yearScroll}
+            >
+              {years.map(year => (
+                <Button
+                  key={year}
+                  mode={filterYear === year ? "contained" : "outlined"}
+                  onPress={() => setFilterYear(year)}
+                  style={[styles.yearButton, { marginRight: spacing.s }]}
+                  buttonColor={filterYear === year ? colors.secondary : colors.primary}
+                  textColor={filterYear === year ? colors.primary : colors.secondary}
+                >
+                  {year}
+                </Button>
+              ))}
+            </ScrollView>
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={clearFilters} textColor={colors.red}>Clear</Button>
@@ -310,7 +361,7 @@ const WorksListScreen = ({ route }) => {
         )}
       </ScrollView>
 
-      {/* Pagination Controls (without total count) */}
+      {/* Pagination Controls */}
       <View style={styles.paginationContainer}>
         <IconButton 
           onPress={goToPreviousPage} 
@@ -440,6 +491,14 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     width: 80,
+  },
+  yearButton: {
+    paddingHorizontal: spacing.s,
+    minWidth: 60,
+    borderRadius: sizes.buttonRadius,
+  },
+  yearScroll: {
+    marginVertical: spacing.s,
   },
   paginationContainer: {
     flexDirection: 'row',
