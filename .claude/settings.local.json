@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo start --no-dev --non-interactive)",
+      "Bash(npx expo export --dump-sourcemap)"
+    ]
+  }
+}
