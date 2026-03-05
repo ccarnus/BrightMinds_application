@@ -222,7 +222,7 @@ const TrackScreen = () => {
             <Text
               style={{
                 textAlign: 'left',
-                fontSize: sizes.h2,
+                fontSize: sizes.h3,
                 fontFamily: 'Montserrat',
                 flexShrink: 1,
                 flexWrap: 'wrap',
@@ -280,7 +280,7 @@ const TrackScreen = () => {
           buttonColor={colors.darkGreen}
           icon={require('@assets/Track_icons/test.png')}
           labelStyle={{
-            fontSize: sizes.h2,
+            fontSize: sizes.h3,
             fontFamily: 'Montserrat',
             textAlign: 'center',
             paddingTop: spacing.s,
@@ -305,7 +305,7 @@ const TrackScreen = () => {
               buttonColor={colors.darkGreen}
               icon={require('@assets/Track_icons/user.png')}
               labelStyle={{
-                fontSize: sizes.h2,
+                fontSize: sizes.h3,
                 fontFamily: 'Montserrat',
                 textAlign: 'center',
                 paddingTop: spacing.s,
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   infoText: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     textAlign: 'left',
     fontFamily: 'Montserrat',
     color: colors.primaryBis,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   greenSectionTitle: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     marginBottom: spacing.m,
     fontFamily: 'Montserrat',
     color: colors.primary,
@@ -425,7 +425,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
   },
   greenSectionText: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     color: colors.primaryBis,
     fontFamily: 'MontserratBold',
   },
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   sectionTitle: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     color: colors.primaryBis,
     marginBottom: spacing.m,
     fontFamily: 'MontserratBold',

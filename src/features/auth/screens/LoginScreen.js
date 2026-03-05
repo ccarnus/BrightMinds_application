@@ -118,7 +118,7 @@ const LoginScreen = ({ navigation }) => {
             icon={require('@assets/Login_icons/log-in.png')}
             contentStyle={{ flexDirection: 'row-reverse'}}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.s,

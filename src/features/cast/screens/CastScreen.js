@@ -372,7 +372,7 @@ const CastScreen = () => {
     return (
       <View style={styles.loadingContainer}>
         <LottieView
-          source={serverError}
+          source={require('@assets/Loader/loader.json')}
           autoPlay
           loop
           style={styles.lottie}
@@ -704,12 +704,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    padding: spacing.m,
+    backgroundColor: colors.primaryBis,
   },
   errorImage: {
     width: width * 0.5,
     height: width * 0.5,
-    marginBottom: 20,
+    marginBottom: spacing.m,
+    resizeMode: 'contain',
   },
   errorText: {
     fontSize: sizes.h3,
@@ -722,12 +724,12 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     textAlign: 'center',
     fontFamily: 'Montserrat',
-    marginTop: 10,
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
   },
   refreshButton: {
-    marginTop: 20,
     backgroundColor: colors.secondary,
-    padding: 10,
+    padding: spacing.m,
     borderRadius: sizes.radius,
   },
   refreshButtonText: {
@@ -736,8 +738,8 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  lottie: { width: 150, height: 150 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primaryBis },
+  lottie: { width: 200, height: 200 },
   searchLoaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.m },
   searchLoader: { width: 150, height: 150 }
 });

@@ -95,7 +95,7 @@ const ReadyScreen = ({ navigation }) => {
             contentStyle={{ flexDirection: 'row-reverse'}}
             icon={require('@assets/Track_icons/go.png')}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.s,

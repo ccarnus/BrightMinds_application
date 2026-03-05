@@ -83,7 +83,7 @@ const Finish = ({ route, navigation }) => {
           onPress={() => navigation.navigate('Track')}
           buttonColor={colors.darkGreen}
           labelStyle={{
-            fontSize: sizes.h2,
+            fontSize: sizes.h3,
             fontFamily: 'Montserrat',
             textAlign: 'center',
             paddingTop: spacing.s,

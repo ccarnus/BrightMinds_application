@@ -282,7 +282,7 @@ const DiscoverScreen = ({ navigation, route }) => {
             icon={require('@assets/Discover_icons/next.png')}
             contentStyle={{ flexDirection: 'row-reverse' }}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.s,

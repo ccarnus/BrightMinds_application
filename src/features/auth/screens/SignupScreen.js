@@ -376,7 +376,7 @@ const SignupScreen = ({ navigation }) => {
                 icon={require('@assets/Login_icons/sign-up.png')}
                 contentStyle={{ flexDirection: 'row-reverse' }}
                 labelStyle={{
-                  fontSize: sizes.h2,
+                  fontSize: sizes.h3,
                   fontFamily: 'Montserrat',
                   textAlign: 'center',
                   paddingTop: spacing.s,

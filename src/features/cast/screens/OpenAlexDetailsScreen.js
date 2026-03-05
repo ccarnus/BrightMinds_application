@@ -178,7 +178,7 @@ const OpenAlexDetailsScreen = ({ route }) => {
             buttonColor={colors.darkGreen}
             icon={require('@assets/Cast_screen_icons/like.png')}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.s,

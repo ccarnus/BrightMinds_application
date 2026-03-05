@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
     borderRadius: sizes.buttonRadius,
   },
   buttonLabel: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     fontFamily: 'Montserrat',
     textAlign: 'center',
     paddingTop: spacing.s,

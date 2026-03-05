@@ -68,7 +68,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
             buttonColor={colors.darkGreen}
             icon={require('@assets/Login_icons/reset-password.png')}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.xs,

@@ -247,7 +247,7 @@ const EditProfileScreen = ({ navigation }) => {
             buttonColor={colors.darkGreen}
             icon={require('@assets/Profile_icons/save.png')}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.xs,

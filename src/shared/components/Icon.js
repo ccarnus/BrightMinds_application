@@ -6,7 +6,7 @@ const Icon = ({onPress, icon, style, size = 12}) => {
   const image = (
     <Image
       source={icons[icon]}
-      style={[{width: size, height: size, resizeMode: 'cover'}, style]}
+      style={[{width: size, height: size, resizeMode: 'contain'}, style]}
     />
   );
 

@@ -222,7 +222,7 @@ const TakeTest = ({ route, navigation }) => {
             icon={require('@assets/Track_icons/go.png')}
             contentStyle={{ flexDirection: 'row-reverse' }}
             labelStyle={{
-              fontSize: sizes.h2,
+              fontSize: sizes.h3,
               fontFamily: 'Montserrat',
               textAlign: 'center',
               paddingTop: spacing.s,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     height: '30%',
   },
   questionText: {
-    fontSize: sizes.h2,
+    fontSize: sizes.h3,
     fontFamily: 'Montserrat',
     textAlign: 'center',
     color: colors.secondary,
