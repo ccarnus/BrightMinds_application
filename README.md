@@ -1,6 +1,6 @@
 # BrightMinds
 
-Cross-platform (iOS & Android) academic learning app built with **Expo SDK 54 / React Native 0.81**.
+Cross-platform (iOS & Android) academic learning app built with **Expo SDK 58 / React Native 0.88**.
 Users watch short research "casts", read articles, track their learning with quizzes, browse virtual labs
 by department and explore research papers through the [OpenAlex](https://openalex.org) API.
 
@@ -20,10 +20,10 @@ by department and explore research papers through the [OpenAlex](https://openale
 
 | Tool | Needed for | Notes |
 |------|-----------|-------|
-| [Node.js](https://nodejs.org) 20 LTS or newer + npm | everything | `node -v` |
+| [Node.js](https://nodejs.org) 22.13+ or 24.3+ (LTS) + npm | everything | `node -v` — odd versions (23, 25) are not supported |
 | Git | everything | |
-| [Android Studio](https://developer.android.com/studio) | Android | Install an Android SDK + an emulator (AVD). JDK 17 is bundled. Set `ANDROID_HOME`. |
-| Xcode 16+ & CocoaPods (macOS only) | iOS | `xcode-select --install`, `sudo gem install cocoapods` |
+| [Android Studio](https://developer.android.com/studio) | Android | Install an Android SDK + an emulator (AVD). Use the bundled JDK. Set `ANDROID_HOME`. |
+| Xcode 26.4+ (Xcode 27 recommended) & CocoaPods (macOS only) | iOS | `xcode-select --install`, `sudo gem install cocoapods`. Minimum iOS version is 16.4. |
 | [EAS CLI](https://docs.expo.dev/eas/) (optional) | cloud builds | `npm install -g eas-cli`, then `eas login` |
 
 ### 2. Install dependencies
@@ -77,11 +77,15 @@ and open the app. You only need to rebuild when native dependencies or `app.json
 #### Option C — Expo Go (quick look only)
 
 `npx expo start --go` and scan the QR code with [Expo Go](https://expo.dev/go). This only works if your Expo
-Go app supports **SDK 54** (the store version always targets the latest SDK). Prefer options A or B.
+Go app supports **SDK 58** (the store version always targets the latest SDK). Prefer options A or B.
+
+> **Upgraded from an older SDK?** Native folders and dev builds made for a previous SDK won't work. Run
+> `npx expo prebuild --clean` (or delete `android/` and `ios/`) before Option A, and create a new
+> development build for Option B.
 
 #### Testing on a physical device
 
-- The phone and your computer must be on the same network. If they aren't (corporate Wi-Fi, VPN?), use
+- The phone and your computer must be on the same network. If they aren't (corporate Wi-Fi, VPN…), use
   `npx expo start --dev-client --tunnel`.
 - Android over USB: `adb reverse tcp:8081 tcp:8081` lets the device reach Metro on `localhost`.
 - Shake the device (or `Ctrl+M` on Android emulator / `Cmd+D` on iOS Simulator) to open the dev menu

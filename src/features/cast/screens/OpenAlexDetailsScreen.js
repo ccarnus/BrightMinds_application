@@ -75,7 +75,7 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
     return index ? reconstructAbstract(index) : 'No abstract available.';
   }, [work]);
 
-  const goToCast = () => navigation.navigate('BottomNav', { screen: 'Cast' });
+  const goToCast = () => navigation.popTo('BottomNav', { screen: 'Cast' });
 
   const openFullResearch = () => {
     const url = work?.primary_location?.landing_page_url;

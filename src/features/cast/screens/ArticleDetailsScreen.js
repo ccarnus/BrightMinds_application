@@ -105,7 +105,7 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
     setIsSubmitting(true);
     try {
       await api.post(`/user/add/content/${userId}`, { contentId: selectedArticleId, type: 'article' });
-      navigation.navigate('BottomNav', {
+      navigation.popTo('BottomNav', {
         screen: 'Cast',
         params: { finishedArticleId: selectedArticleId },
       });

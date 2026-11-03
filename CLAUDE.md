@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) and other AI assista
 
 ## Project Overview
 
-BrightMinds is a cross-platform React Native mobile app (iOS & Android) built with Expo SDK 54 and JavaScript (no TypeScript).
+BrightMinds is a cross-platform React Native mobile app (iOS & Android) built with Expo SDK 58 and JavaScript (no TypeScript).
 It's an academic learning platform with video "casts", articles, learning tracking/quizzes, virtual labs and research paper
 discovery (OpenAlex API). It ships to the **App Store and Google Play**, so changes must be production-safe on both platforms.
 
@@ -86,8 +86,10 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
 - **Guest mode** — `GUEST_USER_ID`; check with `isGuestUser(userId)`. Guests must not call endpoints that write user data.
 - **Role-based access** — Library tab only for `Professor`, `Researcher`, `PhD Student` (`canAccessLibrary`).
 - **Navigation** — Screens receive `navigation` and `route` props. All stack screens have `headerShown: false` except
-  `BottomNav` and `Evaluation`, which use the shared `Banner` header. To reach a tab from a stack screen use
-  `navigation.navigate('BottomNav', { screen: 'Cast' })`. After login / guest entry use `resetToHome(navigation)`;
+  `BottomNav` and `Evaluation`, which use the shared `Banner` header. React Navigation 7: `navigate` never goes
+  back — it pushes a new screen if the target isn't focused. To return to a screen already in the stack (a tab,
+  `LoginScreen`, `DiscoverScreen`, …) use `popTo`, e.g. `navigation.popTo('BottomNav', { screen: 'Cast' })`.
+  After login / guest entry use `resetToHome(navigation)`;
   on logout use `clearUser()` then `resetToAuthChoice(navigation)` so users can't go "back" into a stale session.
   `Evaluation`, `Finish` and `VirtualLab` redirect back gestures to their tab (see `redirectBackToTab` in MainNavigator).
 - **Safe areas** — Screens without a header must respect insets (`useSafeAreaInsets` / `SafeAreaView` from
@@ -96,27 +98,40 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   (it resets the theme). `Portal`/`Modal` work directly.
 - **Responsive text** — `RFValue` from `react-native-responsive-fontsize`. Fonts: `Montserrat` / `MontserratBold`.
   Colors, sizes and spacing come from `@shared/config/theme`.
-- **Video playback** — Uses `expo-av` (`Video`, `Audio`), NOT `expo-video`. All cast playback goes through
+- **Video playback** — Uses `expo-video` (`useVideoPlayer` + `VideoView`; times are in **seconds**, listen with
+  `useEventListener` from `expo`). `expo-av` was removed from the SDK — don't reintroduce it. All cast playback goes through
   `@shared/components/CastVideoPlayer` (captions from SRT, 85% "watched" tracking, close button, share);
   `VideoScreen`, `DiscoverVideoScreen` and `VirtualLabVideoScreen` are thin wrappers defining the exit navigation.
-- **Media picking** — `expo-image-picker` with `mediaTypes: ['images']`/`['videos']` (SDK 54 API) and explicit
+  `expo-audio` is intentionally not installed (its config plugin enables background audio by default).
+- **Media picking** — `expo-image-picker` with `mediaTypes: ['images']`/`['videos']` and explicit
   permission requests. Permission strings are configured in the `expo-image-picker` plugin in `app.json`.
   `expo-file-system` legacy APIs must be imported from `expo-file-system/legacy`.
+- **Edge-to-edge / status bar** — Edge-to-edge is mandatory on Android. React Native 0.88 removed `StatusBar`
+  `backgroundColor`/`translucent`, `InteractionManager` (use `requestIdleCallback`) and the `Modal` `animated` prop;
+  `ImageBackground` is deprecated. Don't use them (also check new third-party libraries for them).
+- **Splash screen** — Configured only through the `expo-splash-screen` plugin options in `app.json` (the top-level
+  `splash` key is no longer read).
 - **Lists** — Prefer `FlatList` with `keyExtractor` over `ScrollView` + `.map` for unbounded lists.
 - **Logging** — `console.log/info/debug` are stripped from production bundles (`babel-plugin-transform-remove-console`);
   `console.error/warn` remain. Don't leave noisy debug logs.
 - **Animations** — Lottie files in `assets/Loader/` and `assets/lotties/`; React Native `Animated` / Reanimated 4
   (`babel-preset-expo` adds the worklets plugin automatically — don't add it to babel.config.js).
+  Hermes v1 is the default engine.
 - **Accessibility** — Icon-only buttons need `accessibilityRole="button"` and an `accessibilityLabel`.
 - **Tests** — Jest with the `jest-expo` preset; tests live in `__tests__/` next to the code. Mock AsyncStorage with
   `@react-native-async-storage/async-storage/jest/async-storage-mock`.
 
 ## Dependencies
 
-React Native 0.81, React 19.1, Expo 54 (New Architecture enabled), React Navigation 6 (Stack + Bottom Tabs),
-React Native Paper 5, Axios, AsyncStorage, expo-av, expo-image-picker, expo-dev-client, Lottie, Reanimated 4,
-react-native-svg (+ circular-progress, pie-chart). Add Expo/RN libraries with `npx expo install` and remove unused ones ?
-every native dependency increases the binary size of the store builds.
+React Native 0.88, React 19.3, Expo 58 (New Architecture only, Hermes v1), React Navigation 7 (Stack + Bottom Tabs),
+React Native Paper 5, Axios, AsyncStorage, expo-video, expo-image-picker, expo-dev-client, Lottie, Reanimated 4,
+react-native-gesture-handler 3, react-native-svg (+ circular-progress, pie-chart). `@expo/vector-icons` must stay an
+explicit dependency (`expo` no longer pulls it in). Add Expo/RN libraries with `npx expo install` and remove unused ones —
+every native dependency increases the binary size of the store builds. React Navigation is not managed by
+`npx expo install`; upgrade its packages together (`native`, `stack`, `bottom-tabs`, `elements`).
+
+Tooling minimums (SDK 58): Node.js 22.13+ or 24.3+ (no odd versions), Xcode 26.4+ (Xcode 27 for the iOS 27 SDK),
+iOS 16.4+ deployment target. Release Android builds use R8 minification by default.
 
 ## App Identity
 

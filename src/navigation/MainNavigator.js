@@ -47,7 +47,7 @@ const redirectBackToTab = (tab) => ({ navigation }) => ({
   beforeRemove: (e) => {
     if (!BACK_ACTIONS.includes(e.data.action.type)) return;
     e.preventDefault();
-    navigation.navigate('BottomNav', { screen: tab });
+    navigation.popTo('BottomNav', { screen: tab });
   },
 });
 

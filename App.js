@@ -38,7 +38,7 @@ const App = () => {
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" />
       <PaperProvider theme={theme}>
         <MainNavigator />
       </PaperProvider>

@@ -211,7 +211,7 @@ const SignupScreen = ({ navigation }) => {
         timeout: SIGNUP_TIMEOUT_MS,
       });
       Alert.alert('Signup successful', 'Please check your email to verify your account');
-      navigation.navigate('LoginScreen', { email: trimmedEmail });
+      navigation.popTo('LoginScreen', { email: trimmedEmail });
     } catch (error) {
       Alert.alert('Signup failed', getErrorMessage(error, 'Could not create account. Please try again.'));
     } finally {
@@ -400,7 +400,7 @@ const SignupScreen = ({ navigation }) => {
             Sign Up
           </Button>
           <TouchableOpacity
-            onPress={() => navigation.navigate('LoginScreen')}
+            onPress={() => navigation.popTo('LoginScreen')}
             accessibilityRole="button"
           >
             <Text style={styles.signupText}>Already have an account? Login</Text>

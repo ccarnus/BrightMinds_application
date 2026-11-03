@@ -10,10 +10,6 @@
       "ios",
       "android"
     ],
-    "splash": {
-      "image": "./assets/BrightMinds/splash.png",
-      "backgroundColor": "#f1f1f1"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -30,8 +26,7 @@
         "foregroundImage": "./assets/BrightMinds/android_icon.png",
         "backgroundColor": "#f1f1f1"
       },
-      "package": "com.ccarnus3.brightminds",
-      "newArchEnabled": true
+      "package": "com.ccarnus3.brightminds"
     },
     "extra": {
       "eas": {
@@ -49,9 +44,22 @@
           "microphonePermission": "BrightMinds needs access to your microphone to record audio for your research cast."
         }
       ],
-      "expo-splash-screen",
-      "expo-video",
-      "expo-audio"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/BrightMinds/splash.png",
+          "backgroundColor": "#f1f1f1",
+          "resizeMode": "contain",
+          "ios": {
+            "enableFullScreenImage_legacy": true
+          },
+          "android": {
+            "image": "./assets/BrightMinds/android_icon.png",
+            "imageWidth": 200
+          }
+        }
+      ],
+      "expo-video"
     ]
   }
 }

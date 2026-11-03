@@ -91,7 +91,7 @@ const SearchTopicResult = ({ route, navigation }) => {
           title={error ? 'Something went wrong' : 'Topic not found'}
           message={error || 'This topic is not available right now.'}
           actionLabel={error ? 'Try again' : 'Back to Cast'}
-          onAction={error ? fetchTopicData : () => navigation.navigate('BottomNav', { screen: 'Cast' })}
+          onAction={error ? fetchTopicData : () => navigation.popTo('BottomNav', { screen: 'Cast' })}
         />
         {renderBackButton(colors.secondary)}
       </View>

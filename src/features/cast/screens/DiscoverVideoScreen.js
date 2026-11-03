@@ -7,7 +7,7 @@ const DiscoverVideoScreen = ({ route, navigation }) => {
   const handleExit = useCallback(
     ({ watched, castId }) => {
       if (watched) {
-        navigation.navigate('DiscoverScreen', { finishedVideoId: castId });
+        navigation.popTo('DiscoverScreen', { finishedVideoId: castId });
       } else {
         navigation.goBack();
       }

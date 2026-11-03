@@ -7,7 +7,7 @@ const VideoScreen = ({ route, navigation }) => {
   const handleExit = useCallback(
     ({ watched, castId }) => {
       if (watched) {
-        navigation.navigate('BottomNav', { screen: 'Cast', params: { finishedVideoId: castId } });
+        navigation.popTo('BottomNav', { screen: 'Cast', params: { finishedVideoId: castId } });
       } else {
         navigation.goBack();
       }

@@ -15,7 +15,8 @@ import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
-import { Video, Audio, ResizeMode } from 'expo-av';
+import { useEventListener } from 'expo';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { api, getUniversityLogo } from '@shared/api/client';
 import { colors, sizes, spacing } from '@shared/config/theme';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
@@ -35,7 +36,6 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   useKeepAwake();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const videoRef = useRef(null);
   const userIdRef = useRef(null);
   const watchedRef = useRef(false);
   const prevProgress = useRef(0);
@@ -51,8 +51,12 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   const [captions, setCaptions] = useState([]);
   const [currentCaption, setCurrentCaption] = useState('');
 
+  // expo-video uses the iOS "playback" audio session, so casts are audible in silent mode.
+  const player = useVideoPlayer(video?.casturl ?? null, (instance) => {
+    instance.timeUpdateEventInterval = 0.25;
+  });
+
   useEffect(() => {
-    Audio.setAudioModeAsync({ playsInSilentModeIOS: true }).catch(() => {});
     getUser().then(({ userId }) => {
       userIdRef.current = userId;
     });
@@ -115,32 +119,45 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
       });
   };
 
-  const onPlaybackStatusUpdate = (status) => {
-    if (!status.isLoaded) return;
-    setIsBuffering(status.isBuffering && !status.isPlaying);
-    if (!isSeeking.current) setPosition(status.positionMillis);
-    setDuration(status.durationMillis || 0);
+  useEffect(() => {
+    if (!video) return;
+    if (isPlaying) player.play();
+    else player.pause();
+  }, [player, video, isPlaying]);
 
-    if (status.durationMillis) {
-      const progress = status.positionMillis / status.durationMillis;
+  useEventListener(player, 'statusChange', ({ status }) => {
+    setIsBuffering(status === 'loading');
+  });
+
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+    const positionMillis = currentTime * 1000;
+    const durationMillis = (player.duration || 0) * 1000;
+    if (!isSeeking.current) setPosition(positionMillis);
+    setDuration(durationMillis);
+
+    if (durationMillis) {
+      const progress = positionMillis / durationMillis;
       if (progress >= WATCHED_THRESHOLD && prevProgress.current < WATCHED_THRESHOLD) {
         markAsWatched();
       }
       prevProgress.current = progress;
     }
 
-    const nextCaption = captionsEnabled ? findCaptionAt(captions, status.positionMillis) : '';
+    const nextCaption = captionsEnabled ? findCaptionAt(captions, positionMillis) : '';
     setCurrentCaption((prev) => (prev === nextCaption ? prev : nextCaption));
+  });
 
-    if (status.didJustFinish) exit();
-  };
+  useEventListener(player, 'playToEnd', () => {
+    markAsWatched();
+    exit();
+  });
 
-  const handleSeek = async (value) => {
+  const handleSeek = (value) => {
     isSeeking.current = false;
-    if (videoRef.current && duration) {
+    if (duration) {
       const target = value * duration;
       setPosition(target);
-      await videoRef.current.setPositionAsync(target);
+      player.currentTime = target / 1000;
     }
   };
 
@@ -193,14 +210,12 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
         accessibilityRole="button"
         accessibilityLabel={isPlaying ? 'Pause video' : 'Play video'}
       >
-        <Video
-          ref={videoRef}
-          source={{ uri: video.casturl }}
-          shouldPlay={isPlaying}
-          resizeMode={ResizeMode.CONTAIN}
+        <VideoView
+          player={player}
+          contentFit="contain"
+          nativeControls={false}
           style={StyleSheet.absoluteFill}
-          progressUpdateIntervalMillis={250}
-          onPlaybackStatusUpdate={onPlaybackStatusUpdate}
+          pointerEvents="none"
         />
       </Pressable>
 

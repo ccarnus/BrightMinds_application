@@ -97,7 +97,7 @@ const PostArticle = ({ navigation }) => {
     try {
       await api.post('/article', articleData, { timeout: POST_TIMEOUT_MS });
       Alert.alert('Success', 'Article posted successfully!');
-      navigation.navigate('BottomNav', { screen: 'Cast' });
+      navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
       console.error('Error posting article:', error);
       Alert.alert('Error', getErrorMessage(error, 'Failed to post the article. Please try again.'));

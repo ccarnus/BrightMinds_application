@@ -57,7 +57,7 @@ const Finish = ({ route, navigation }) => {
       <View style={[styles.buttonContainer, { paddingBottom: spacing.m + insets.bottom }]}>
         <Button
           mode="contained"
-          onPress={() => navigation.navigate('BottomNav', { screen: 'Track' })}
+          onPress={() => navigation.popTo('BottomNav', { screen: 'Track' })}
           buttonColor={colors.darkGreen}
           labelStyle={styles.finishButtonLabel}
           style={styles.finishButton}

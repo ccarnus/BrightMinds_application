@@ -96,7 +96,7 @@ const TakeTest = ({ route, navigation }) => {
     }).start();
   }, [currentQuestionIndex, items, fadeAnim]);
 
-  const goToTrack = () => navigation.navigate('BottomNav', { screen: 'Track' });
+  const goToTrack = () => navigation.popTo('BottomNav', { screen: 'Track' });
 
   const markAsAnswered = async (evaluation) => {
     const userId = userIdRef.current;

@@ -39,7 +39,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     const succeeded = alert?.success;
     setAlert(null);
     if (succeeded) {
-      navigation.navigate('LoginScreen', { email: email.trim() });
+      navigation.popTo('LoginScreen', { email: email.trim() });
     }
   };
 

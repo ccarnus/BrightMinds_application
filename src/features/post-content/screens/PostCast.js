@@ -14,7 +14,7 @@ import {
 import { Button, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import categories from '@shared/data/categories';
 import departments from '@shared/data/departments';
 import { colors, sizes, spacing } from '@shared/config/theme';
@@ -70,6 +70,7 @@ const PostCast = ({ navigation }) => {
   const [topic, setTopic] = useState('');
   const [video, setVideo] = useState(null);
   const [visibility, setVisibility] = useState(1);
+  const previewPlayer = useVideoPlayer(video?.uri ?? null);
 
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
@@ -167,7 +168,7 @@ const PostCast = ({ navigation }) => {
         timeout: UPLOAD_TIMEOUT_MS,
       });
       Alert.alert('Success', 'Cast posted successfully!');
-      navigation.navigate('BottomNav', { screen: 'Cast' });
+      navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
       console.error('Error sending cast:', error);
       Alert.alert('Error', getErrorMessage(error, 'An error occurred while sending the cast.'));
@@ -253,13 +254,11 @@ const PostCast = ({ navigation }) => {
 
                 {video && (
                   <View style={styles.previewContainer}>
-                    <Video
-                      key={video.uri}
-                      source={{ uri: video.uri }}
+                    <VideoView
+                      player={previewPlayer}
                       style={styles.preview}
-                      resizeMode={ResizeMode.CONTAIN}
-                      useNativeControls
-                      isLooping={false}
+                      contentFit="contain"
+                      nativeControls
                     />
                   </View>
                 )}
