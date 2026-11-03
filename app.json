@@ -46,14 +46,7 @@
       }
     },
     "plugins": [
-      "expo-font",
-      [
-        "expo-video",
-        {
-          "supportsBackgroundPlayback": true,
-          "supportsPictureInPicture": true
-        }
-      ]
+      "expo-font"
     ]
   }
 }
