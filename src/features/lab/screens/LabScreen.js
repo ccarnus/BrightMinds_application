@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -17,13 +17,13 @@ import Animated, {
   withTiming,
   withDelay,
   withSpring,
-  runOnJS,
 } from 'react-native-reanimated';
-import axios from 'axios';
-import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '@shared/config/theme';
 import departmentsList from '@shared/data/departments';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+import departmentImages from '@features/lab/data/departmentImages';
 
 const { width, height } = Dimensions.get('window');
 const serverError = require('@assets/Cast_screen_icons/server_error.png');
@@ -32,35 +32,6 @@ const CANVAS_WIDTH = width * 2.4;
 const CANVAS_HEIGHT = height * 2.2;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 1.6;
-
-const departmentImages = {
-  Medicine: require('@assets/Virtual_labs/Medicine.png'),
-  SocialSciences: require('@assets/Virtual_labs/SocialSciences.png'),
-  Engineering: require('@assets/Virtual_labs/Engineering.png'),
-  ArtsandHumanities: require('@assets/Virtual_labs/ArtsandHumanities.png'),
-  ComputerScience: require('@assets/Virtual_labs/ComputerScience.png'),
-  BiochemistryGeneticsandMolecularBiology: require('@assets/Virtual_labs/BiochemistryGeneticsandMolecularBiology.png'),
-  AgriculturalandBiologicalSciences: require('@assets/Virtual_labs/AgriculturalandBiologicalSciences.png'),
-  EnvironmentalScience: require('@assets/Virtual_labs/EnvironmentalScience.png'),
-  MaterialsScience: require('@assets/Virtual_labs/MaterialsScience.png'),
-  PhysicsandAstronomy: require('@assets/Virtual_labs/PhysicsandAstronomy.png'),
-  BusinessManagementandAccounting: require('@assets/Virtual_labs/BusinessManagementandAccounting.png'),
-  HealthProfessions: require('@assets/Virtual_labs/HealthProfessions.png'),
-  EconomicsEconometricsandFinance: require('@assets/Virtual_labs/EconomicsEconometricsandFinance.png'),
-  Psychology: require('@assets/Virtual_labs/Psychology.png'),
-  Chemistry: require('@assets/Virtual_labs/Chemistry.png'),
-  EarthandPlanetarySciences: require('@assets/Virtual_labs/EarthandPlanetarySciences.png'),
-  Neuroscience: require('@assets/Virtual_labs/Neuroscience.png'),
-  Mathematics: require('@assets/Virtual_labs/Mathematics.png'),
-  ImmunologyandMicrobiology: require('@assets/Virtual_labs/ImmunologyandMicrobiology.png'),
-  DecisionSciences: require('@assets/Virtual_labs/DecisionSciences.png'),
-  Energy: require('@assets/Virtual_labs/Energy.png'),
-  Nursing: require('@assets/Virtual_labs/Nursing.png'),
-  PharmacologyToxicologyandPharmaceutics: require('@assets/Virtual_labs/PharmacologyToxicologyandPharmaceutics.png'),
-  Dentistry: require('@assets/Virtual_labs/Dentistry.png'),
-  ChemicalEngineering: require('@assets/Virtual_labs/ChemicalEngineering.png'),
-  Veterinary: require('@assets/Virtual_labs/Veterinary.png'),
-};
 
 const BUBBLE_COLORS = [
   colors.lightTeal,
@@ -195,8 +166,10 @@ const LabBubble = React.memo(({ lab, position, dimmed, onPress }) => {
         activeOpacity={0.9}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
-        onPress={onPress}
+        onPress={() => onPress(lab)}
         style={styles.bubbleTouchable}
+        accessibilityRole="button"
+        accessibilityLabel={`Open ${lab.display} lab`}
       >
         {/* Shadow layer (iOS only — Android elevation handled on clipped view) */}
         <View
@@ -222,11 +195,13 @@ const LabBubble = React.memo(({ lab, position, dimmed, onPress }) => {
               },
             ]}
           >
-            <Image
-              source={departmentImages[lab.name]}
-              style={{ width: lab.iconSize, height: lab.iconSize }}
-              resizeMode="contain"
-            />
+            {departmentImages[lab.name] && (
+              <Image
+                source={departmentImages[lab.name]}
+                style={{ width: lab.iconSize, height: lab.iconSize }}
+                resizeMode="contain"
+              />
+            )}
           </View>
         </View>
 
@@ -256,31 +231,34 @@ const LabScreen = () => {
   const savedTranslateY = useSharedValue(0);
   const savedScale = useSharedValue(1);
 
-  const getDisplayName = (name) => {
-    const dept = departmentsList.find(d => d.name === name);
-    return dept ? dept.display : name;
-  };
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
 
-  const fetchDepartments = async () => {
+  const fetchDepartments = useCallback(async () => {
+    setApiError(false);
+    setIsLoading(true);
     try {
-      const response = await axios.get(`${API_BASE_URL}/cast/popular/department`);
-      const departments = response.data.map(dept => ({
-        name: dept._id,
-        display: getDisplayName(dept._id),
-        count: dept.count,
-      }));
+      const { data } = await api.get('/cast/popular/department');
+      if (!isMounted.current) return;
+      const departments = (Array.isArray(data) ? data : [])
+        .filter(dept => dept?._id)
+        .map(dept => ({
+          name: dept._id,
+          display: departmentsList.find(d => d.name === dept._id)?.display || dept._id,
+          count: dept.count,
+        }));
       setLabs(departments);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
-      setApiError(true);
+      if (isMounted.current) setApiError(true);
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchDepartments();
-  }, []);
+  }, [fetchDepartments]);
 
   useEffect(() => {
     if (labs.length > 0) {
@@ -363,11 +341,8 @@ const LabScreen = () => {
         </Text>
         <TouchableOpacity
           style={styles.refreshButton}
-          onPress={() => {
-            setApiError(false);
-            setIsLoading(true);
-            fetchDepartments();
-          }}
+          onPress={fetchDepartments}
+          accessibilityRole="button"
         >
           <Text style={styles.refreshButtonText}>Try Again</Text>
         </TouchableOpacity>
@@ -376,13 +351,18 @@ const LabScreen = () => {
   }
 
   if (isLoading) {
+    return <Loader size={200} backgroundColor={colors.primaryBis} />;
+  }
+
+  if (labs.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
+      <View style={styles.container}>
+        <StateMessage
+          icon="flask-outline"
+          title="No labs yet"
+          message="Virtual labs will appear here as soon as casts are published."
+          actionLabel="Refresh"
+          onAction={fetchDepartments}
         />
       </View>
     );
@@ -416,7 +396,7 @@ const LabScreen = () => {
                   lab={lab}
                   position={positions[index]}
                   dimmed={dimmed}
-                  onPress={() => handleBubblePress(lab)}
+                  onPress={handleBubblePress}
                 />
               );
             })}
@@ -500,17 +480,6 @@ const styles = StyleSheet.create({
     color: colors.secondary,
     marginTop: 3,
     width: '120%',
-  },
-  // Loading / Error
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
   },
   errorContainer: {
     flex: 1,

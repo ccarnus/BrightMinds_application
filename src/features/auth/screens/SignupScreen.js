@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,20 +9,36 @@ import {
   Platform,
   KeyboardAvoidingView,
   Alert,
+  Linking,
   Modal,
   FlatList,
   Keyboard,
 } from 'react-native';
-import { Button, TextInput, Portal, Provider, HelperText } from 'react-native-paper';
+import { Button, TextInput, Portal, HelperText, Modal as PaperModal } from 'react-native-paper';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { API_BASE_URL } from '@shared/config/APIConfig';
 import { Asset } from 'expo-asset';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, sizes, spacing } from '@shared/config/theme';
+import { api, getErrorMessage } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+import { isValidEmail } from '@features/auth/utils/validation';
+
+const SIGNUP_TIMEOUT_MS = 60000;
+const CATEGORY_OPTIONS = [
+  'College Student',
+  'Professor',
+  'Researcher',
+  'Learning Enthusiast',
+  'PhD Student',
+];
+const ROLES_WITH_UNIVERSITY = ['Professor', 'Researcher', 'PhD Student'];
+const DEFAULT_IMAGE_NAME = 'user_image_default.png';
 
 const SignupScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -30,459 +46,462 @@ const SignupScreen = ({ navigation }) => {
   const [role, setRole] = useState('');
   const [profilePicture, setProfilePicture] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
   const [universities, setUniversities] = useState([]);
+  const [universitiesLoading, setUniversitiesLoading] = useState(true);
+  const [universitiesError, setUniversitiesError] = useState(null);
   const [selectedUniversity, setSelectedUniversity] = useState(null);
-  const [passwordsMatch, setPasswordsMatch] = useState(true);
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const [imagePickerModalVisible, setImagePickerModalVisible] = useState(false);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(''); // State for search input
-  const categoryOptions = [
-    'College Student',
-    'Professor',
-    'Researcher',
-    'Learning Enthusiast',
-    'PhD Student',
-  ];
+  const [searchQuery, setSearchQuery] = useState('');
+  const submittingRef = useRef(false);
+  const pendingImageSourceRef = useRef(null);
 
-  useEffect(() => {
-    // Fetch universities from your API
-    const fetchUniversities = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/university`);
-        setUniversities(response.data);
-      } catch (error) {
-        console.error('Error fetching universities:', error);
-      }
-    };
-    fetchUniversities();
+  const needsUniversity = ROLES_WITH_UNIVERSITY.includes(role);
+  const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
+  const isFormComplete =
+    !!email &&
+    !!password &&
+    !!confirmPassword &&
+    passwordsMatch &&
+    !!username &&
+    !!profilePicture &&
+    (!needsUniversity || !!selectedUniversity) &&
+    role !== '';
+
+  const fetchUniversities = useCallback(async (isActive = () => true) => {
+    setUniversitiesLoading(true);
+    setUniversitiesError(null);
+    try {
+      const { data } = await api.get('/university');
+      if (isActive()) setUniversities(Array.isArray(data) ? data : []);
+    } catch (error) {
+      if (isActive()) setUniversitiesError(getErrorMessage(error, 'Could not load universities.'));
+    } finally {
+      if (isActive()) setUniversitiesLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (confirmPassword.length > 0 && password !== confirmPassword) {
-      setPasswordsMatch(false);
-    } else {
-      setPasswordsMatch(true);
-    }
-
-    const needsUniversity =
-      role === 'Professor' || role === 'PhD Student' || role === 'Researcher';
-
-    const allFieldsOk =
-      email &&
-      password &&
-      confirmPassword &&
-      passwordsMatch &&
-      username &&
-      profilePicture &&
-      (!needsUniversity || selectedUniversity) &&
-      role !== '';
-
-    setIsButtonDisabled(!allFieldsOk);
-  }, [
-    email,
-    password,
-    confirmPassword,
-    username,
-    role,
-    profilePicture,
-    selectedUniversity,
-    passwordsMatch,
-  ]);
-
-  useEffect(() => {
-    // Track keyboard visibility
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardVisible(true);
-    });
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false);
-    });
+    let active = true;
+    fetchUniversities(() => active);
     return () => {
-      keyboardDidShowListener.remove();
-      keyboardDidHideListener.remove();
+      active = false;
+    };
+  }, [fetchUniversities]);
+
+  useEffect(() => {
+    // The floating footer is hidden while typing so it doesn't cover the inputs.
+    const showListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => {
+      showListener.remove();
+      hideListener.remove();
     };
   }, []);
 
-  const showCustomAlert = (message) => {
-    setCustomAlertMessage(message);
-    setCustomAlertVisible(true);
-  };
-
-  // Opens the device's image library
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProfilePicture(result.assets[0]);
+    try {
+      const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!granted) {
+        Alert.alert(
+          'Permission required',
+          'Please allow photo library access in your device settings to choose a profile picture.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        setProfilePicture(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking profile picture:', error);
+      Alert.alert('Error', 'Could not open your photo library. Please try again.');
     }
   };
-  
-  const useDefaultImage = async () => {
-    const asset = Asset.fromModule(require('@assets/Profile_icons/user_image_default.png'));
-    await asset.downloadAsync(); // Ensure the asset is downloaded
-    const localUri = asset.localUri || asset.uri;
-    
-    // On Android, the URI might not start with 'file://'
-    if (Platform.OS === 'android' && !localUri.startsWith('file://')) {
-      // Create a new path in the cache directory
-      const newPath = FileSystem.cacheDirectory + 'user_image_default.png';
-      try {
-        await FileSystem.copyAsync({
-          from: localUri,
-          to: newPath,
-        });
-        setProfilePicture({ uri: newPath });
-      } catch (error) {
-        console.error('Error copying asset to cache:', error);
-        // Optionally, set profilePicture as the original one or notify the user.
+
+  const applyDefaultImage = async () => {
+    try {
+      const asset = Asset.fromModule(require('@assets/Profile_icons/user_image_default.png'));
+      await asset.downloadAsync();
+      const localUri = asset.localUri || asset.uri;
+
+      // Android release builds can return a non-file URI that cannot be uploaded; copy it to the cache.
+      if (Platform.OS === 'android' && !localUri.startsWith('file://')) {
+        const cachedPath = FileSystem.cacheDirectory + DEFAULT_IMAGE_NAME;
+        try {
+          await FileSystem.copyAsync({ from: localUri, to: cachedPath });
+          setProfilePicture({ uri: cachedPath });
+        } catch (error) {
+          console.error('Error copying asset to cache:', error);
+          setProfilePicture({ uri: localUri });
+        }
+      } else {
         setProfilePicture({ uri: localUri });
       }
-    } else {
-      setProfilePicture({ uri: localUri });
+    } catch (error) {
+      console.error('Error loading default profile picture:', error);
+      Alert.alert('Error', 'Could not load the default picture. Please choose one from your gallery.');
     }
-  };  
+  };
 
-  // Instead of an alert, open a custom modal with two icon buttons
-  const selectProfilePicture = () => {
-    setImagePickerModalVisible(true);
+  // iOS cannot present the picker while the modal is still animating out,
+  // so the action is deferred to the modal's onDismiss there.
+  const runPendingImageSource = () => {
+    const source = pendingImageSourceRef.current;
+    pendingImageSourceRef.current = null;
+    if (source === 'gallery') pickImage();
+    if (source === 'default') applyDefaultImage();
+  };
+
+  const chooseImageSource = (source) => {
+    pendingImageSourceRef.current = source;
+    setImagePickerModalVisible(false);
+    if (Platform.OS !== 'ios') runPendingImageSource();
   };
 
   const handleSignup = async () => {
+    if (submittingRef.current || !isFormComplete) return;
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      Alert.alert('Invalid email', 'Please enter a valid email address.');
+      return;
+    }
     if (!passwordsMatch) {
-      showCustomAlert('Passwords do not match. Please try again.');
+      Alert.alert('Signup failed', 'Passwords do not match. Please try again.');
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
 
-    // Build the user object
     const user = {
-      email,
+      email: trimmedEmail,
       password,
       username,
       role,
     };
-
-    if (role === 'Professor' || role === 'PhD Student' || role === 'Researcher') {
+    if (needsUniversity) {
       user.university = selectedUniversity ? selectedUniversity.name : '';
     }
 
     const formData = new FormData();
     formData.append('user', JSON.stringify(user));
 
-    let imageType = 'image/jpeg';
-    let imageName = 'profile.jpg';
-    if (profilePicture.uri.includes('user_image_default.png')) {
-      imageType = 'image/png';
-      imageName = 'user_image_default.png';
-    }
-
+    const isDefaultImage = profilePicture.uri.includes(DEFAULT_IMAGE_NAME);
     formData.append('image', {
       uri: profilePicture.uri,
-      type: imageType,
-      name: imageName,
+      type: isDefaultImage ? 'image/png' : 'image/jpeg',
+      name: isDefaultImage ? DEFAULT_IMAGE_NAME : 'profile.jpg',
     });
 
     try {
-      await axios.post(`${API_BASE_URL}/user/signup`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await api.post('/user/signup', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: SIGNUP_TIMEOUT_MS,
       });
       Alert.alert('Signup successful', 'Please check your email to verify your account');
-      navigation.navigate('LoginScreen');
+      navigation.popTo('LoginScreen', { email: trimmedEmail });
     } catch (error) {
-      let errorMessage = 'Could not create account. Please try again.';
-      if (error.response && error.response.data && error.response.data.message) {
-        errorMessage = error.response.data.message;
-      }
-      Alert.alert('Signup failed', errorMessage);
+      Alert.alert('Signup failed', getErrorMessage(error, 'Could not create account. Please try again.'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
-  // Filter universities based on the search query (ignoring case)
-  const filteredUniversities = universities.filter((item) => {
-    const universityName = item.displayedName || item.name;
-    return universityName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const filteredUniversities = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return universities;
+    return universities.filter((item) =>
+      (item.displayedName || item.name || '').toLowerCase().includes(query)
+    );
+  }, [universities, searchQuery]);
 
-  // Render each university item in the modal
+  const closeUniversityModal = () => {
+    setUniversityModalVisible(false);
+    setSearchQuery('');
+  };
+
   const renderUniversityItem = ({ item }) => (
     <TouchableOpacity
       style={styles.universityItemWrapper}
       onPress={() => {
         setSelectedUniversity(item);
-        setUniversityModalVisible(false);
-        setSearchQuery(''); // Reset search on selection
+        closeUniversityModal();
       }}
+      accessibilityRole="button"
     >
       <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
-      <Text style={styles.universityText}>
-        {item.displayedName || item.name}
-      </Text>
+      <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
     </TouchableOpacity>
   );
 
+  const renderUniversityList = () => {
+    if (universitiesLoading) {
+      return <Loader backgroundColor={colors.primary} />;
+    }
+    if (universitiesError) {
+      return (
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Couldn't load universities"
+          message={universitiesError}
+          actionLabel="Try again"
+          onAction={() => fetchUniversities()}
+        />
+      );
+    }
+    return (
+      <FlatList
+        data={filteredUniversities}
+        keyExtractor={(item) => item._id}
+        renderItem={renderUniversityItem}
+        contentContainerStyle={styles.flatListContainer}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <StateMessage icon="school-outline" title="No university found" message="Try another search." />
+        }
+      />
+    );
+  };
+
   return (
-    <Provider>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}
+        keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-            <Text style={styles.title}>Sign Up</Text>
+        <Text style={styles.title}>Sign Up</Text>
 
-            {/* Email */}
-            <TextInput
-              label="Email"
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              mode="outlined"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              activeOutlineColor={colors.darkGreen}
-              outlineStyle={styles.inputOutline}
-            />
+        <TextInput
+          label="Email"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          mode="outlined"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          activeOutlineColor={colors.darkGreen}
+        />
 
-            {/* Username */}
-            <TextInput
-              label="Username"
-              style={styles.input}
-              value={username}
-              onChangeText={setUsername}
-              mode="outlined"
-              autoCapitalize="none"
-              activeOutlineColor={colors.darkGreen}
-              outlineStyle={styles.inputOutline}
-            />
+        <TextInput
+          label="Username"
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+          mode="outlined"
+          autoCapitalize="none"
+          autoCorrect={false}
+          activeOutlineColor={colors.darkGreen}
+        />
 
-            {/* Password */}
-            <TextInput
-              label="Password"
-              style={styles.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              mode="outlined"
-              autoCapitalize="none"
-              activeOutlineColor={colors.darkGreen}
-              outlineStyle={styles.inputOutline}
-            />
+        <TextInput
+          label="Password"
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          mode="outlined"
+          autoCapitalize="none"
+          textContentType="newPassword"
+          activeOutlineColor={colors.darkGreen}
+        />
 
-            {/* Confirm Password */}
-            <TextInput
-              label="Confirm Password"
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              mode="outlined"
-              autoCapitalize="none"
-              error={!passwordsMatch}
-              activeOutlineColor={colors.darkGreen}
-              outlineStyle={styles.inputOutline}
-            />
-            {!passwordsMatch && (
-              <HelperText type="error" visible={!passwordsMatch}>
-                Passwords do not match
-              </HelperText>
-            )}
+        <TextInput
+          label="Confirm Password"
+          style={styles.input}
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+          mode="outlined"
+          autoCapitalize="none"
+          textContentType="newPassword"
+          error={!passwordsMatch}
+          activeOutlineColor={colors.darkGreen}
+        />
+        {!passwordsMatch && (
+          <HelperText type="error" visible>
+            Passwords do not match
+          </HelperText>
+        )}
 
-            {/* Category Picker (Modal-based, same as in PostCast) */}
-            <Text style={styles.pickerTitle}>Category:</Text>
-            <TouchableOpacity
-              style={styles.selectorContainer}
-              onPress={() => setCategoryModalVisible(true)}
-            >
-              <Text style={styles.selectorText}>
-                {role || 'Select Category'}
-              </Text>
-            </TouchableOpacity>
-            <Portal>
-              <Modal
-                visible={categoryModalVisible}
-                onDismiss={() => setCategoryModalVisible(false)}
-                contentContainerStyle={styles.modalContainer}
-              >
-                {categoryOptions.map((item, index) => (
-                  <Button
-                    key={index}
-                    onPress={() => {
-                      setRole(item);
-                      setCategoryModalVisible(false);
-                    }}
-                    style={styles.modalItem}
-                    labelStyle={styles.modalItemLabel}
-                  >
-                    {item}
-                  </Button>
-                ))}
-              </Modal>
-            </Portal>
+        <Text style={styles.pickerTitle}>Category:</Text>
+        <TouchableOpacity
+          style={styles.selectorContainer}
+          onPress={() => setCategoryModalVisible(true)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.selectorText}>{role || 'Select Category'}</Text>
+        </TouchableOpacity>
 
-            {/* University Selector for certain roles */}
-            {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
-              <TouchableOpacity
-                style={styles.universitySelector}
-                onPress={() => setUniversityModalVisible(true)}
-              >
-                {selectedUniversity ? (
-                  <View style={styles.universitySelectedWrapper}>
-                    <Image source={{ uri: selectedUniversity.iconurl }} style={styles.universityIcon} />
-                    <Text style={styles.universityText}>
-                      {selectedUniversity.displayedName || selectedUniversity.name}
-                    </Text>
-                  </View>
-                ) : (
-                  <Text style={styles.universityPlaceholder}>Select University</Text>
-                )}
-              </TouchableOpacity>
-            )}
-
-            {/* Profile Picture Picker */}
-            <TouchableOpacity onPress={selectProfilePicture} style={styles.imagePicker}>
-              {profilePicture ? (
-                <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
-              ) : (
-                <Text style={styles.imagePickerText}>Select Profile Picture</Text>
-              )}
-            </TouchableOpacity>
-          </ScrollView>
-
-          {/* Footer with Sign Up Button */}
-          {!isKeyboardVisible && (
-            <View style={styles.footerContainer}>
-              <Button
-                mode="contained"
-                onPress={handleSignup}
-                loading={loading}
-                disabled={isButtonDisabled}
-                buttonColor={colors.darkGreen}
-                icon={require('@assets/Login_icons/sign-up.png')}
-                contentStyle={{ flexDirection: 'row-reverse' }}
-                labelStyle={{
-                  fontSize: sizes.h3,
-                  fontFamily: 'Montserrat',
-                  textAlign: 'center',
-                  paddingTop: spacing.s,
-                }}
-                style={{
-                  marginLeft: spacing.m,
-                  marginRight: spacing.m,
-                  marginBottom: spacing.s,
-                  marginTop: spacing.l,
-                  borderRadius: sizes.buttonRadius,
-                }}
-              >
-                Sign Up
-              </Button>
-              <TouchableOpacity onPress={() => navigation.navigate('LoginScreen')}>
-                <Text style={styles.signupText}>Already have an account? Login</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* University Modal */}
-          <Modal
-            transparent={false}
-            animationType="slide"
-            visible={universityModalVisible}
-            onRequestClose={() => setUniversityModalVisible(false)}
+        {needsUniversity && (
+          <TouchableOpacity
+            style={styles.universitySelector}
+            onPress={() => setUniversityModalVisible(true)}
+            accessibilityRole="button"
           >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select a University</Text>
-              <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
-              </TouchableOpacity>
-            </View>
-            {/* Search input for filtering universities */}
-            <TextInput
-              label="Search University"
-              mode="outlined"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={styles.searchInput}
-            />
-            <FlatList
-              data={filteredUniversities}
-              keyExtractor={(item) => item._id}
-              renderItem={renderUniversityItem}
-              contentContainerStyle={styles.flatListContainer}
-            />
-          </Modal>
-
-          {/* Custom Image Picker Modal */}
-          <Modal
-            transparent={true}
-            visible={imagePickerModalVisible}
-            animationType="fade"
-            onRequestClose={() => setImagePickerModalVisible(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPressOut={() => setImagePickerModalVisible(false)}
-            >
-              <View style={styles.modalContent}>
-                <TouchableOpacity
-                  style={styles.optionButton}
-                  onPress={() => {
-                    setImagePickerModalVisible(false);
-                    pickImage();
-                  }}
-                >
-                  <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkblue} />
-                  <Text style={styles.optionText}>Gallery</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.optionButton}
-                  onPress={() => {
-                    setImagePickerModalVisible(false);
-                    useDefaultImage();
-                  }}
-                >
-                  <MaterialCommunityIcons name="account" size={40} color={colors.darkblue} />
-                  <Text style={styles.optionText}>Default</Text>
-                </TouchableOpacity>
+            {selectedUniversity ? (
+              <View style={styles.universitySelectedWrapper}>
+                <Image source={{ uri: selectedUniversity.iconurl }} style={styles.universityIcon} />
+                <Text style={styles.universityText}>
+                  {selectedUniversity.displayedName || selectedUniversity.name}
+                </Text>
               </View>
-            </TouchableOpacity>
-          </Modal>
+            ) : (
+              <Text style={styles.universityPlaceholder}>Select University</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
-          {/* Custom Alert Modal */}
-          <Portal>
-            <Modal
-              visible={customAlertVisible}
-              onDismiss={() => setCustomAlertVisible(false)}
-              contentContainerStyle={styles.alertModalContainer}
-            >
-              <Text>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)} textColor={colors.darkGreen}>
-                OK
-              </Button>
-            </Modal>
-          </Portal>
+        <TouchableOpacity
+          onPress={() => setImagePickerModalVisible(true)}
+          style={styles.imagePicker}
+          accessibilityRole="button"
+          accessibilityLabel="Select profile picture"
+        >
+          {profilePicture ? (
+            <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
+          ) : (
+            <Text style={styles.imagePickerText}>Select Profile Picture</Text>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
+
+      {!isKeyboardVisible && (
+        <View style={[styles.footerContainer, { paddingBottom: spacing.l + insets.bottom }]}>
+          <Button
+            mode="contained"
+            onPress={handleSignup}
+            loading={loading}
+            disabled={!isFormComplete || loading}
+            buttonColor={colors.darkGreen}
+            icon={require('@assets/Login_icons/sign-up.png')}
+            contentStyle={styles.signupButtonContent}
+            labelStyle={styles.signupButtonLabel}
+            style={styles.signupButton}
+          >
+            Sign Up
+          </Button>
+          <TouchableOpacity
+            onPress={() => navigation.popTo('LoginScreen')}
+            accessibilityRole="button"
+          >
+            <Text style={styles.signupText}>Already have an account? Login</Text>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Provider>
+      )}
+
+      <Portal>
+        <PaperModal
+          visible={categoryModalVisible}
+          onDismiss={() => setCategoryModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          {CATEGORY_OPTIONS.map((item) => (
+            <Button
+              key={item}
+              onPress={() => {
+                setRole(item);
+                setCategoryModalVisible(false);
+              }}
+              style={styles.modalItem}
+              labelStyle={styles.modalItemLabel}
+            >
+              {item}
+            </Button>
+          ))}
+        </PaperModal>
+      </Portal>
+
+      <Modal
+        transparent={false}
+        animationType="slide"
+        visible={universityModalVisible}
+        onRequestClose={closeUniversityModal}
+      >
+        <SafeAreaView style={styles.universityModal}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select a University</Text>
+            <TouchableOpacity
+              onPress={closeUniversityModal}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
+            >
+              <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            label="Search University"
+            mode="outlined"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            autoCorrect={false}
+            activeOutlineColor={colors.darkGreen}
+          />
+          {renderUniversityList()}
+        </SafeAreaView>
+      </Modal>
+
+      <Modal
+        transparent={true}
+        visible={imagePickerModalVisible}
+        animationType="fade"
+        onRequestClose={() => setImagePickerModalVisible(false)}
+        onDismiss={runPendingImageSource}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPressOut={() => setImagePickerModalVisible(false)}
+        >
+          <View style={styles.modalContent}>
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => chooseImageSource('gallery')}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkblue} />
+              <Text style={styles.optionText}>Gallery</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.optionButton}
+              onPress={() => chooseImageSource('default')}
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="account" size={40} color={colors.darkblue} />
+              <Text style={styles.optionText}>Default</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
   container: {
     flexGrow: 1,
     padding: 20,
@@ -607,13 +626,28 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
   },
   flatListContainer: {
+    flexGrow: 1,
     paddingVertical: spacing.m,
   },
-  alertModalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
+  universityModal: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
+  signupButtonContent: {
+    flexDirection: 'row-reverse',
+  },
+  signupButtonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
+  },
+  signupButton: {
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    marginBottom: spacing.s,
+    marginTop: spacing.l,
+    borderRadius: sizes.buttonRadius,
   },
   footerContainer: {
     position: 'absolute',

@@ -1,14 +1,26 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const GUEST_USER_ID = 'GUEST_USER';
+export const GUEST_ROLE = 'guest';
+export const LIBRARY_ROLES = ['Professor', 'Researcher', 'PhD Student'];
+
+const KEYS = {
+  userId: 'userId',
+  userRole: 'userRole',
+  userUniversity: 'userUniversity',
+  hasOnboarded: 'hasOnboarded',
+};
 
 export const setUser = async ({ userId, userRole, userUniversity }) => {
   try {
-    await AsyncStorage.setItem('userId', userId);
-    await AsyncStorage.setItem('userRole', userRole);
+    const entries = [
+      [KEYS.userId, String(userId)],
+      [KEYS.userRole, userRole || ''],
+    ];
     if (userUniversity) {
-      await AsyncStorage.setItem('userUniversity', userUniversity);
+      entries.push([KEYS.userUniversity, userUniversity]);
     }
+    await AsyncStorage.multiSet(entries);
   } catch (error) {
     console.error('Error setting user data:', error);
   }
@@ -16,8 +28,10 @@ export const setUser = async ({ userId, userRole, userUniversity }) => {
 
 export const setGuestUser = async () => {
   try {
-    await AsyncStorage.setItem('userId', GUEST_USER_ID);
-    await AsyncStorage.setItem('userRole', 'guest');
+    await AsyncStorage.multiSet([
+      [KEYS.userId, GUEST_USER_ID],
+      [KEYS.userRole, GUEST_ROLE],
+    ]);
   } catch (error) {
     console.error('Error setting guest user data:', error);
   }
@@ -25,9 +39,7 @@ export const setGuestUser = async () => {
 
 export const clearUser = async () => {
   try {
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('userRole');
-    await AsyncStorage.removeItem('userUniversity');
+    await AsyncStorage.multiRemove([KEYS.userId, KEYS.userRole, KEYS.userUniversity]);
   } catch (error) {
     console.error('Error clearing user data:', error);
   }
@@ -35,16 +47,36 @@ export const clearUser = async () => {
 
 export const getUser = async () => {
   try {
-    const userId = await AsyncStorage.getItem('userId');
-    const userRole = await AsyncStorage.getItem('userRole');
-    const userUniversity = await AsyncStorage.getItem('userUniversity');
-    return { userId, userRole, userUniversity };
+    const values = Object.fromEntries(
+      await AsyncStorage.multiGet([KEYS.userId, KEYS.userRole, KEYS.userUniversity])
+    );
+    return {
+      userId: values[KEYS.userId],
+      userRole: values[KEYS.userRole],
+      userUniversity: values[KEYS.userUniversity],
+    };
   } catch (error) {
     console.error('Error getting user data:', error);
     return {};
   }
 };
 
-export const isGuestUser = (userId) => {
-  return userId === GUEST_USER_ID;
+export const isGuestUser = (userId) => userId === GUEST_USER_ID;
+
+export const canAccessLibrary = (userRole) => LIBRARY_ROLES.includes(userRole);
+
+export const hasCompletedOnboarding = async () => {
+  try {
+    return !!(await AsyncStorage.getItem(KEYS.hasOnboarded));
+  } catch (error) {
+    return false;
+  }
+};
+
+export const setOnboardingCompleted = async () => {
+  try {
+    await AsyncStorage.setItem(KEYS.hasOnboarded, 'true');
+  } catch (error) {
+    console.error('Error saving onboarding state:', error);
+  }
 };

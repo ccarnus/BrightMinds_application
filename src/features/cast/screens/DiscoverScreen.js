@@ -1,306 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  TouchableOpacity, 
-  Text, 
-  Image, 
-  StyleSheet, 
-  Dimensions,
-  ScrollView,
-  RefreshControl
-} from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, TouchableOpacity, Text, Image, StyleSheet, Dimensions } from 'react-native';
 import { Button } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import LottieView from 'lottie-react-native';
-import { API_BASE_URL } from '@shared/config/APIConfig';
 import { colors, sizes, spacing } from '@shared/config/theme';
+import { api, getUniversityLogo } from '@shared/api/client';
 import departments from '@shared/data/departments';
-import { isGuestUser } from '@shared/utils/UserStorage';
+import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
 
 const { width, height } = Dimensions.get('window');
 
+const doneAnimation = require('@assets/lotties/done.json');
+const playIcon = require('@assets/Cast_icons/play_icon.png');
+const nextIcon = require('@assets/Discover_icons/next.png');
+
+const departmentsByName = Object.fromEntries(departments.map((dept) => [dept.name, dept]));
+
+const formatDuration = (duration = 0) => {
+  const minutes = Math.floor(duration);
+  const seconds = Math.round((duration - minutes) * 60);
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
 const DiscoverScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
+  const finishedVideoId = route.params?.finishedVideoId;
   const [videos, setVideos] = useState([]);
-  const [watchedCastIds, setWatchedCastIds] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
-  const [apiError, setApiError] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
-  const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const serverError = require('@assets/Cast_screen_icons/server_error.png');
+  const [apiError, setApiError] = useState(false);
+  const mountedRef = useRef(true);
 
-  const departmentIcons = {
-    Medicine: require('@assets/Virtual_labs/Medicine.png'),
-    SocialSciences: require('@assets/Virtual_labs/SocialSciences.png'),
-    Engineering: require('@assets/Virtual_labs/Engineering.png'),
-    ArtsandHumanities: require('@assets/Virtual_labs/ArtsandHumanities.png'),
-    ComputerScience: require('@assets/Virtual_labs/ComputerScience.png'),
-    BiochemistryGeneticsandMolecularBiology: require('@assets/Virtual_labs/BiochemistryGeneticsandMolecularBiology.png'),
-    AgriculturalandBiologicalSciences: require('@assets/Virtual_labs/AgriculturalandBiologicalSciences.png'),
-    EnvironmentalScience: require('@assets/Virtual_labs/EnvironmentalScience.png'),
-    MaterialsScience: require('@assets/Virtual_labs/MaterialsScience.png'),
-    PhysicsandAstronomy: require('@assets/Virtual_labs/PhysicsandAstronomy.png'),
-    BusinessManagementandAccounting: require('@assets/Virtual_labs/BusinessManagementandAccounting.png'),
-    HealthProfessions: require('@assets/Virtual_labs/HealthProfessions.png'),
-    EconomicsEconometricsandFinance: require('@assets/Virtual_labs/EconomicsEconometricsandFinance.png'),
-    Psychology: require('@assets/Virtual_labs/Psychology.png'),
-    Chemistry: require('@assets/Virtual_labs/Chemistry.png'),
-    EarthandPlanetarySciences: require('@assets/Virtual_labs/EarthandPlanetarySciences.png'),
-    Neuroscience: require('@assets/Virtual_labs/Neuroscience.png'),
-    Mathematics: require('@assets/Virtual_labs/Neuroscience.png'),
-    ImmunologyandMicrobiology: require('@assets/Virtual_labs/ImmunologyandMicrobiology.png'),
-    DecisionSciences: require('@assets/Virtual_labs/DecisionSciences.png'),
-    Energy: require('@assets/Virtual_labs/Energy.png'),
-    Nursing: require('@assets/Virtual_labs/Nursing.png'),
-    PharmacologyToxicologyandPharmaceutics: require('@assets/Virtual_labs/PharmacologyToxicologyandPharmaceutics.png'),
-    Dentistry: require('@assets/Virtual_labs/Dentistry.png'),
-    ChemicalEngineering: require('@assets/Virtual_labs/ChemicalEngineering.png'),
-    Veterinary: require('@assets/Virtual_labs/Veterinary.png'),
-  };
-
-  // Retrieve userId.
   useEffect(() => {
-    const getUserId = async () => {
-      const storedUserId = await AsyncStorage.getItem('userId');
-      setUserId(storedUserId);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
     };
-    getUserId();
   }, []);
 
-  // Listen for finishedVideoId from route params.
   useEffect(() => {
-    if (route.params?.finishedVideoId) {
-      console.log('Received finishedVideoId:', route.params.finishedVideoId);
-      const finishedId = route.params.finishedVideoId;
-      setFinishedVideos((prev) =>
-        prev.includes(finishedId) ? prev : [...prev, finishedId]
-      );
-    }
-  }, [route.params?.finishedVideoId]);
+    if (!finishedVideoId) return;
+    setFinishedVideos((prev) => (prev.includes(finishedVideoId) ? prev : [...prev, finishedVideoId]));
+    navigation.setParams({ finishedVideoId: undefined });
+  }, [finishedVideoId, navigation]);
 
-  // Once userId is available, fetch watched casts and then fetch videos.
-  useEffect(() => {
-    if (userId) {
-      console.log(userId)
-      if (isGuestUser(userId)) {
-        fetchVideos([]);
-      } else {
-        fetchWatchedContent();
-      }
-    }
-  }, [userId]);
-
-  const fetchWatchedContent = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
-      if (!response.ok) throw new Error('Failed to fetch watched content');
-      const userData = await response.json();
-      const watchedCasts =
-        userData.evaluation_list
-          ?.filter(item => item.type === 'cast' && item.watched)
-          .map(item => item.contentid) || [];
-      setWatchedCastIds(watchedCasts);
-      fetchVideos(watchedCasts);
-    } catch (error) {
-      console.error('Error fetching watched content:', error);
-      setApiError(true);
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch casts and filter out those already watched or marked as finished.
-  const fetchVideos = async (watchedCasts) => {
+  const loadVideos = useCallback(async () => {
     setIsLoading(true);
+    setApiError(false);
     try {
-      const response = await fetch(`${API_BASE_URL}/cast`);
-      if (!response.ok) throw new Error('Failed to fetch casts');
-      const data = await response.json();
-      const filteredVideos = data.filter(cast => 
-        !watchedCasts.includes(cast._id) && !finishedVideos.includes(cast._id)
+      const { userId } = await getUser();
+      const shouldFilterWatched = userId && !isGuestUser(userId);
+      const [userResponse, castsResponse] = await Promise.all([
+        shouldFilterWatched ? api.get(`/user/${userId}`) : null,
+        api.get('/cast'),
+      ]);
+
+      const watchedCasts = new Set(
+        (userResponse?.data?.evaluation_list || [])
+          .filter((item) => item.type === 'cast' && item.watched)
+          .map((item) => item.contentid)
       );
-      // Fetch university logos for each cast.
-      const fetchUniversityLogos = filteredVideos.map(cast =>
-        fetch(`${API_BASE_URL}/university/by/name/${cast.university}`)
-          .then(res => res.json())
-          .then(universityData => ({
-            ...cast,
-            universityLogo: universityData.iconurl,
-          }))
-          .catch(() => ({ ...cast, universityLogo: null }))
+      const casts = (Array.isArray(castsResponse.data) ? castsResponse.data : []).filter(
+        (cast) => !watchedCasts.has(cast._id)
       );
-      const dataWithLogos = await Promise.all(fetchUniversityLogos);
-      setVideos(dataWithLogos);
-      setIsLoading(false);
+      const logos = await Promise.all(casts.map((cast) => getUniversityLogo(cast.university)));
+      if (!mountedRef.current) return;
+
+      setVideos(casts.map((cast, index) => ({ ...cast, universityLogo: logos[index] })));
+      setFocusedIndex(0);
     } catch (error) {
-      console.error('Fetching error:', error);
-      setApiError(true);
-      setIsLoading(false);
+      console.error('Error fetching discover casts:', error);
+      if (mountedRef.current) setApiError(true);
+    } finally {
+      if (mountedRef.current) setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Helper functions.
-  const getDepartmentDisplayName = (departmentKey) => {
-    const deptObj = departments.find(dept => dept.name === departmentKey);
-    return deptObj ? deptObj.display : '';
-  };
+  useEffect(() => {
+    loadVideos();
+  }, [loadVideos]);
 
-  const getDepartmentIcon = (department) => {
-    return departmentIcons[department] || null;
-  };
-
-  const formatDuration = (duration) => {
-    const minutes = Math.floor(duration);
-    const seconds = Math.round((duration - minutes) * 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const togglePlay = () => {
-    const selectedVideo = videos[focusedIndex];
-    navigation.navigate('DiscoverVideoScreen', { selectedCastId: selectedVideo._id });
-  };
-
-  // When a finished cast is removed, automatically move to the next cast.
-  const handleFinishedVideo = (finishedId) => {
-    setFinishedVideos((prev) => prev.filter((id) => id !== finishedId));
-    // Remove the finished cast from the videos list:
-    setVideos((prev) => prev.filter((video) => video._id !== finishedId));
-    // And move to the next one:
-    handleNextVideoPress();
-  };
+  const currentVideo = videos[focusedIndex];
 
   const handleNextVideoPress = () => {
     if (videos.length === 0) return;
-    const nextIndex = (focusedIndex + 1) % videos.length;
-    setFocusedIndex(nextIndex);
+    setFocusedIndex((index) => (index + 1) % videos.length);
   };
 
-  if (apiError) {
+  // Removing the finished cast shifts the next one into the current index.
+  const handleFinishedVideo = (finishedId) => {
+    const remaining = videos.filter((video) => video._id !== finishedId);
+    setFinishedVideos((prev) => prev.filter((id) => id !== finishedId));
+    setVideos(remaining);
+    setFocusedIndex((index) => (remaining.length ? index % remaining.length : 0));
+  };
+
+  const backButton = (
+    <TouchableOpacity
+      style={[styles.backButton, { top: insets.top + spacing.s }]}
+      onPress={() => navigation.goBack()}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="chevron-back" size={28} color={colors.secondary} />
+    </TouchableOpacity>
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (apiError || !currentVideo) {
     return (
-      <View style={styles.errorContainer}>
-        <Image source={serverError} style={styles.errorImage} />
-        <Text style={styles.errorText}>Whoops!</Text>
-        <Text style={styles.errorDetail}>Please try to come back later!</Text>
+      <View style={styles.container}>
+        {apiError ? (
+          <StateMessage
+            icon="cloud-offline-outline"
+            title="Whoops!"
+            message="We couldn't load casts. Please check your connection and try again."
+            actionLabel="Try again"
+            onAction={loadVideos}
+          />
+        ) : (
+          <StateMessage
+            icon="checkmark-done-outline"
+            title="You're all caught up!"
+            message="You've watched every cast. Check back soon for new content."
+            actionLabel="Back to Cast"
+            onAction={() => navigation.goBack()}
+          />
+        )}
+        {backButton}
       </View>
     );
   }
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={{ width: 200, height: 200 }}
-        />
-      </View>
-    );
-  }
+  const department = currentVideo.department ? departmentsByName[currentVideo.department] : null;
 
   return (
     <View style={styles.container}>
-
-      {/* Top Section: Display the currently focused cast */}
-      {videos.length > 0 && videos[focusedIndex] && (
-        <View style={styles.topSection}>
-          <View style={styles.titleView}>
-            <Text style={styles.videoTitle}>
-              {videos[focusedIndex].title}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={[styles.imageContainer, { height: width / 1.5 }]}
-            onPress={togglePlay}
-            activeOpacity={1}
-          >
-            <Image
-              source={{ uri: videos[focusedIndex].castimageurl }}
-              style={{ width: width, height: width / 1.5 }}
-              resizeMode="contain"
-            />
-            {/* If the current video is marked as finished, overlay the Lottie animation */}
-            {finishedVideos.includes(videos[focusedIndex]._id) && (
-              <LottieView
-                source={require('@assets/lotties/done.json')}
-                autoPlay
-                loop={false}
-                onAnimationFinish={() => handleFinishedVideo(videos[focusedIndex]._id)}
-                style={styles.lottieOverlay}
-              />
-            )}
-            <View style={styles.playIconContainer}>
-              <Image
-                source={require('@assets/Cast_icons/play_icon.png')}
-                style={styles.playIcon}
-              />
-            </View>
-          </TouchableOpacity>
+      <View style={styles.topSection}>
+        <View style={styles.titleView}>
+          <Text style={styles.videoTitle}>{currentVideo.title}</Text>
         </View>
-      )}
+        <TouchableOpacity
+          style={styles.imageContainer}
+          onPress={() => navigation.navigate('DiscoverVideoScreen', { selectedCastId: currentVideo._id })}
+          activeOpacity={1}
+          accessibilityRole="button"
+          accessibilityLabel={`Play ${currentVideo.title}`}
+        >
+          <Image source={{ uri: currentVideo.castimageurl }} style={styles.image} resizeMode="contain" />
+          {finishedVideos.includes(currentVideo._id) && (
+            <LottieView
+              source={doneAnimation}
+              autoPlay
+              loop={false}
+              onAnimationFinish={() => handleFinishedVideo(currentVideo._id)}
+              style={styles.lottieOverlay}
+            />
+          )}
+          <View style={styles.playIconContainer}>
+            <Image source={playIcon} style={styles.playIcon} />
+          </View>
+        </TouchableOpacity>
+      </View>
 
-      {/* Bottom Section: Cast details and Explore Next */}
       <View style={styles.bottomSection}>
         <View style={styles.middleband}>
-          <View style={styles.leftColumn}>
-            {videos[focusedIndex] && videos[focusedIndex].department && (
-              <View style={{ alignItems: 'center' }}>
-                <Image
-                  source={getDepartmentIcon(videos[focusedIndex].department)}
-                  style={styles.departmentIcon}
-                  resizeMode="contain"
-                />
-                <Text style={styles.departmentLabel}>
-                  {getDepartmentDisplayName(videos[focusedIndex].department)}
-                </Text>
+          <View style={styles.column}>
+            {!!department && (
+              <View style={styles.departmentContainer}>
+                <Image source={department.image} style={styles.departmentIcon} resizeMode="contain" />
+                <Text style={styles.departmentLabel}>{department.display}</Text>
               </View>
             )}
           </View>
-          {/*<View style={styles.separator} />*/}
-          <View style={styles.middleColumn}>
-            {videos[focusedIndex] && videos[focusedIndex].universityLogo && (
+          <View style={styles.column}>
+            {!!currentVideo.universityLogo && (
               <Image
-                source={{ uri: videos[focusedIndex].universityLogo }}
+                source={{ uri: currentVideo.universityLogo }}
                 style={styles.universityIconMain}
                 resizeMode="contain"
               />
             )}
           </View>
-          {/*<View style={styles.separator} />*/}
-          <View style={styles.rightColumn}>
-            <Text style={styles.durationText}>
-              {videos[focusedIndex] ? formatDuration(videos[focusedIndex].duration) : '00:00'}
-            </Text>
+          <View style={styles.column}>
+            <Text style={styles.durationText}>{formatDuration(currentVideo.duration)}</Text>
           </View>
         </View>
       </View>
-        <View style={styles.band}>
-          <Button
-            mode="contained"
-            onPress={handleNextVideoPress}
-            buttonColor={colors.darkGreen}
-            icon={require('@assets/Discover_icons/next.png')}
-            contentStyle={{ flexDirection: 'row-reverse' }}
-            labelStyle={{
-              fontSize: sizes.h3,
-              fontFamily: 'Montserrat',
-              textAlign: 'center',
-              paddingTop: spacing.s,
-            }}
-            style={{
-              marginBottom: spacing.s,
-              borderRadius: sizes.buttonRadius,
-            }}
-          >
-            Explore Next
-          </Button>
-        </View>
+
+      <View style={[styles.band, { paddingBottom: spacing.m + insets.bottom }]}>
+        <Button
+          mode="contained"
+          onPress={handleNextVideoPress}
+          disabled={videos.length < 2}
+          buttonColor={colors.darkGreen}
+          icon={nextIcon}
+          contentStyle={styles.nextButtonContent}
+          labelStyle={styles.nextButtonLabel}
+          style={styles.nextButton}
+        >
+          Explore Next
+        </Button>
+      </View>
+      {backButton}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primary },
+  backButton: {
+    position: 'absolute',
+    left: spacing.m,
+    zIndex: 10,
+  },
   topSection: {
     flex: 1,
     marginTop: height * 0.1,
@@ -323,26 +244,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.s,
     width: '100%',
   },
-  leftColumn: {
+  column: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  separator: {
-    width: 1,
-    height: '60%',
-    backgroundColor: colors.secondary,
-  },
-  middleColumn: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rightColumn: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  departmentContainer: { alignItems: 'center' },
   universityIconMain: {
     width: width * 0.18,
     height: width * 0.18,
@@ -361,14 +268,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     overflow: 'hidden',
     position: 'relative',
-    width: width,
-    height: width / 1.75,
+    width,
+    height: width / 1.5,
   },
+  image: { width, height: width / 1.5 },
   lottieOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: width,
+    width,
     height: width / 1.75,
     zIndex: 1,
   },
@@ -403,47 +311,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.s,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorImage: {
-    width: width * 0.5,
-    height: width * 0.5,
-    marginBottom: 20,
-  },
-  errorText: {
+  nextButtonContent: { flexDirection: 'row-reverse' },
+  nextButtonLabel: {
     fontSize: sizes.h3,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'MontserratBold',
-  },
-  errorDetail: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    textAlign: 'center',
     fontFamily: 'Montserrat',
-    marginTop: 10,
+    textAlign: 'center',
+    paddingTop: spacing.s,
   },
-  randomButton: {
-    flex: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.m,
-    marginRight: spacing.s,
-  },
-  randomButtonIcon: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-    tintColor: colors.lightGreen,
+  nextButton: {
+    marginBottom: spacing.s,
+    borderRadius: sizes.buttonRadius,
   },
 });
 

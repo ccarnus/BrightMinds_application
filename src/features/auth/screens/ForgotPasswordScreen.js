@@ -1,54 +1,54 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, Dimensions } from 'react-native';
-import { Button, TextInput, Portal, Provider, Modal } from 'react-native-paper';
-import axios from 'axios';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, ScrollView, Dimensions } from 'react-native';
+import { Button, TextInput, Portal, Modal } from 'react-native-paper';
 import { colors, sizes, spacing } from '@shared/config/theme';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, getErrorMessage } from '@shared/api/client';
+import { isValidEmail } from '@features/auth/utils/validation';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertMessage, setCustomAlertMessage] = useState("");
-
-  const showCustomAlert = (message) => {
-    setCustomAlertMessage(message);
-    setCustomAlertVisible(true);
-  };
+  const [alert, setAlert] = useState(null);
+  const submittingRef = useRef(false);
 
   const handlePasswordResetRequest = async () => {
-    if (!email) {
-      showCustomAlert('Please enter your email.');
+    if (submittingRef.current) return;
+    const trimmedEmail = email.trim();
+    if (!isValidEmail(trimmedEmail)) {
+      setAlert({ message: 'Please enter a valid email address.', success: false });
       return;
     }
 
+    submittingRef.current = true;
     setLoading(true);
     try {
-      // Make sure you have your server endpoint set correctly:
-      await axios.post(`${API_BASE_URL}/user/reset-password-request`, { email });
-      showCustomAlert('Please check your email to reset your password.');
+      await api.post('/user/reset-password-request', { email: trimmedEmail });
+      setAlert({ message: 'Please check your email to reset your password.', success: true });
     } catch (error) {
-      console.log(error);
-      const errorMessage = error.response?.data?.message || 'Error sending reset email.';
-      showCustomAlert(errorMessage);
+      setAlert({ message: getErrorMessage(error, 'Error sending reset email.'), success: false });
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
+  // Only leave the screen once the reset email was actually sent.
   const handleAlertDismiss = () => {
-    setCustomAlertVisible(false);
-    navigation.navigate('LoginScreen', { email });
+    const succeeded = alert?.success;
+    setAlert(null);
+    if (succeeded) {
+      navigation.popTo('LoginScreen', { email: email.trim() });
+    }
   };
 
   return (
-    <Provider>
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.container}>
           <Text style={styles.title}>Reset Your Password</Text>
           <TextInput
@@ -58,51 +58,54 @@ const ForgotPasswordScreen = ({ navigation }) => {
             onChangeText={setEmail}
             mode="outlined"
             autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="send"
+            onSubmitEditing={() => {
+              if (email) handlePasswordResetRequest();
+            }}
             activeOutlineColor={colors.darkGreen}
           />
-          <Button 
-            mode="contained" 
-            onPress={handlePasswordResetRequest} 
+          <Button
+            mode="contained"
+            onPress={handlePasswordResetRequest}
             loading={loading}
-            disabled={!email}
+            disabled={!email || loading}
             buttonColor={colors.darkGreen}
             icon={require('@assets/Login_icons/reset-password.png')}
-            labelStyle={{
-              fontSize: sizes.h3,
-              fontFamily: 'Montserrat',
-              textAlign: 'center',
-              paddingTop: spacing.xs,
-            }}
-            style={{
-              marginLeft: spacing.m,
-              marginRight: spacing.m,
-              marginBottom: spacing.s,
-              marginTop: spacing.l,
-              borderRadius: sizes.buttonRadius,
-            }}
+            labelStyle={styles.buttonLabel}
+            style={styles.button}
           >
             Send Link
           </Button>
-          <Portal>
-            <Modal
-              visible={customAlertVisible}
-              onDismiss={handleAlertDismiss}  // when the modal is dismissed
-              contentContainerStyle={styles.modalContainer}
-            >
-              <Text>{customAlertMessage}</Text>
-              <Button 
-                onPress={handleAlertDismiss}
-                textColor={colors.darkGreen}  
-              >OK</Button>
-            </Modal>
-          </Portal>
         </View>
-      </KeyboardAvoidingView>
-    </Provider>
+      </ScrollView>
+      <Portal>
+        <Modal
+          visible={!!alert}
+          onDismiss={handleAlertDismiss}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Text>{alert?.message}</Text>
+          <Button onPress={handleAlertDismiss} textColor={colors.darkGreen}>
+            OK
+          </Button>
+        </Modal>
+      </Portal>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   container: {
     flex: 1,
     padding: 20,
@@ -120,6 +123,19 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     backgroundColor: 'transparent',
     fontFamily: 'Montserrat',
+  },
+  buttonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.xs,
+  },
+  button: {
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    marginBottom: spacing.s,
+    marginTop: spacing.l,
+    borderRadius: sizes.buttonRadius,
   },
   modalContainer: {
     backgroundColor: 'white',

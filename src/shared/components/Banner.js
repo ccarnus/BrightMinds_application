@@ -1,69 +1,55 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, spacing } from '@shared/config/theme';
+import { api } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+
+const defaultProfileIcon = require('@assets/Banner_icons/profile.png');
+const logo = require('@assets/BrightMinds/black_bear.png');
 
 const Banner = () => {
   const navigation = useNavigation();
-  const defaultProfileIcon = require('@assets/Banner_icons/profile.png');
-  const [profileImageSource, setProfileImageSource] = useState({ source: defaultProfileIcon });
-  const [isGuest, setIsGuest] = useState(false);
+  const insets = useSafeAreaInsets();
+  const [profileImageSource, setProfileImageSource] = useState(defaultProfileIcon);
+  const [isGuest, setIsGuest] = useState(true);
 
-  // Only call navigation when user is not guest.
-  const handleProfilePress = () => {
-    if (!isGuest) {
-      navigation.navigate('ProfileScreen');
-    }
-  };
-
-  // Every time the banner comes into focus, get the user and update state.
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
+      let active = true;
       const fetchUserData = async () => {
+        const { userId } = await getUser();
+        const guest = !userId || isGuestUser(userId);
+        if (!active) return;
+        setIsGuest(guest);
+        if (guest) return;
         try {
-          const { userId } = await getUser();
-          if (userId) {
-            const guestStatus = isGuestUser(userId);
-            setIsGuest(guestStatus);
-            // Only fetch profile details if the user is not a guest.
-            if (!guestStatus) {
-              const response = await fetch(`${API_BASE_URL}/user/${userId}`);
-              const data = await response.json();
-              if (data && data.profilePictureUrl) {
-                setProfileImageSource({ source: { uri: data.profilePictureUrl } });
-              } else {
-                setProfileImageSource({ source: defaultProfileIcon });
-              }
-            } else {
-              setProfileImageSource({ source: defaultProfileIcon });
-            }
+          const { data } = await api.get(`/user/${userId}`);
+          if (active) {
+            setProfileImageSource(data?.profilePictureUrl ? { uri: data.profilePictureUrl } : defaultProfileIcon);
           }
         } catch (error) {
-          console.error('Error fetching user data in Banner:', error);
+          // Keep the current picture if the profile cannot be fetched.
         }
       };
       fetchUserData();
+      return () => {
+        active = false;
+      };
     }, [])
   );
 
   return (
-    <View style={styles.bannerContainer}>
-      {/* Left side: always show the logo */}
-      <TouchableOpacity style={styles.logoContainer}>
-        <Image
-          source={require('@assets/BrightMinds/black_bear.png')}
-          style={styles.logoImage}
-        />
-      </TouchableOpacity>
-      {/* Right side: show profile button only if user is NOT a guest */}
+    <View style={[styles.bannerContainer, { paddingTop: Math.max(insets.top, spacing.l) }]}>
+      <Image source={logo} style={styles.logoImage} accessibilityLabel="BrightMinds" />
       {!isGuest && (
-        <TouchableOpacity onPress={handleProfilePress}>
-          <Image
-            source={profileImageSource.source}
-            style={styles.profileImage}
-          />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('ProfileScreen')}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
+          <Image source={profileImageSource} style={styles.profileImage} />
         </TouchableOpacity>
       )}
     </View>
@@ -76,18 +62,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingBottom: spacing.s,
     backgroundColor: colors.primary,
     elevation: 5,
-  },
-  logoContainer: {
-    flex: 1,
-    paddingLeft: 5,
-    marginBottom: spacing.s,
   },
   logoImage: {
     width: 48,
     height: 48,
+    marginLeft: 5,
     resizeMode: 'contain',
   },
   profileImage: {
@@ -95,7 +77,6 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 23,
     backgroundColor: colors.primaryBis,
-    marginBottom: spacing.s,
   },
 });
 

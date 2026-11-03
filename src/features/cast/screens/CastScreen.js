@@ -5,363 +5,352 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  FlatList,
   Image,
   RefreshControl,
   Dimensions,
-  Keyboard
+  Keyboard,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import Carousel from '@features/cast/components/Carousel';
-import ArticleCarousel from '@features/cast/components/ArticleCarousel';
-import LottieView from 'lottie-react-native';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Searchbar } from 'react-native-paper';
-import { RFValue } from "react-native-responsive-fontsize";
-import { useFocusEffect } from '@react-navigation/native';
+import { RFValue } from 'react-native-responsive-fontsize';
+import { colors, sizes, spacing } from '@shared/config/theme';
+import { api, openAlex, getErrorMessage } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+import { resetToAuthChoice } from '@navigation/navigationHelpers';
+import Loader from '@shared/components/Loader';
+import Carousel from '@features/cast/components/Carousel';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
+
+const SEARCH_DEBOUNCE_MS = 400;
+const SEARCH_CATEGORIES = ['Article', 'Topic', 'Video'];
+const CATEGORY_ICONS = {
+  Article: require('@assets/Cast_screen_icons/article_icon.png'),
+  Topic: require('@assets/Bottom_icons/lab.png'),
+  Video: require('@assets/Cast_screen_icons/cast_icon.png'),
+};
+const forYouIcon = require('@assets/Cast_screen_icons/foryou_icon.png');
+const trendingIcon = require('@assets/Cast_screen_icons/trending_icon.png');
+const articleIcon = require('@assets/Cast_screen_icons/article_icon.png');
+const serverErrorImage = require('@assets/Cast_screen_icons/server_error.png');
+const randomIcon = require('@assets/Cast_screen_icons/random.png');
+
+const toCastCard = (cast) => ({
+  id: cast._id,
+  image: cast.castimageurl,
+  title: cast.title,
+  duration: cast.duration,
+});
+
+const toArticleCard = (article) => ({
+  id: article._id,
+  image: article.articleimageurl,
+  title: article.title,
+  duration: article.duration,
+});
+
+const getWatchedIds = (evaluationList, type) =>
+  new Set(
+    (Array.isArray(evaluationList) ? evaluationList : [])
+      .filter((item) => item.type === type && item.watched)
+      .map((item) => item.contentid)
+  );
+
+const lastPathSegment = (id = '') => id.split('/').pop();
+
+const searchContent = async (category, query, castCacheRef) => {
+  if (category === 'Video') {
+    if (!castCacheRef.current) {
+      const { data } = await api.get('/cast/all/simplified');
+      castCacheRef.current = Array.isArray(data) ? data : [];
+    }
+    const needle = query.toLowerCase();
+    return castCacheRef.current
+      .filter((item) => (item.title || '').toLowerCase().includes(needle))
+      .map((item) => ({ category, id: item._id, label: item.title }));
+  }
+
+  if (category === 'Topic') {
+    const { data } = await openAlex.get('/topics', {
+      params: { search: query, select: 'id,display_name', per_page: 50 },
+    });
+    return (data?.results || []).map((item) => ({ category, id: item.id, label: item.display_name }));
+  }
+
+  // Commas separate OpenAlex filters, so they cannot appear inside the search value.
+  const { data } = await openAlex.get('/works', {
+    params: {
+      filter: `title.search:${query.replace(/,/g, ' ')},has_abstract:true,language:en`,
+      per_page: 50,
+    },
+  });
+  return (data?.results || []).map((item) => ({
+    category,
+    id: lastPathSegment(item.id),
+    label: item.title,
+  }));
+};
 
 const CastScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { finishedVideoId, finishedArticleId } = route.params ?? {};
 
-  // Existing state variables…
+  const [userId, setUserId] = useState(null);
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
-  const [watchedCastIds, setWatchedCastIds] = useState([]);
-  const [watchedArticleIds, setWatchedArticleIds] = useState([]);
-  const [userId, setUserId] = useState(null);
-  const [userRole, setUserRole] = useState('');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [finishedVideos, setFinishedVideos] = useState([]);
+  const [finishedArticles, setFinishedArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [apiError, setApiError] = useState(false);
-  const [allCasts, setAllCasts] = useState([]);
-  const [finishedVideos, setFinishedVideos] = useState([]);
-  const [finishedArticles, setFinishedArticles] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('Article');
+
   const [isSearching, setIsSearching] = useState(false);
-  const searchBarRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Article');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState(null);
 
-  const forYouIcon = require('@assets/Cast_screen_icons/foryou_icon.png');
-  const trendingIcon = require('@assets/Cast_screen_icons/trending_icon.png');
-  const articleIcon = require('@assets/Cast_screen_icons/article_icon.png');
-  const serverError = require('@assets/Cast_screen_icons/server_error.png');
+  const castSearchCacheRef = useRef(null);
+  const searchRequestRef = useRef(0);
+  const mountedRef = useRef(true);
 
-  const getCategoryIcon = (category) => {
-    switch (category) {
-      case 'Article':
-        return require('@assets/Cast_screen_icons/article_icon.png');
-      case 'Topic':
-        return require('@assets/Bottom_icons/lab.png');
-      case 'Video':
-        return require('@assets/Cast_screen_icons/cast_icon.png');
-      default:
-        return null;
-    }
-  };
-
-  // Focus the search bar when isSearching becomes true.
   useEffect(() => {
-    if (isSearching && searchBarRef.current) {
-      searchBarRef.current.focus();
-    }
-  }, [isSearching]);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  // When the selected category changes, clear previous results and re-run the search if there’s a query.
+  // Finished IDs arrive as route params from VideoScreen / ArticleDetails; clear them once
+  // handled so they don't re-trigger the "done" animation.
   useEffect(() => {
-    if (searchQuery.trim()) {
-      setSearchResults([]); // clear previous results
-      handleSearch(searchQuery);
+    if (!finishedVideoId && !finishedArticleId) return;
+    if (finishedVideoId) {
+      setFinishedVideos((prev) => (prev.includes(finishedVideoId) ? prev : [...prev, finishedVideoId]));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory]);
-
-  // Listen for finished IDs from route params.
-  useEffect(() => {
-    if (route.params?.finishedVideoId) {
-      console.log('Received finishedVideoId:', route.params.finishedVideoId);
-      const finishedId = route.params.finishedVideoId;
-      setFinishedVideos((prev) =>
-        prev.includes(finishedId) ? prev : [...prev, finishedId]
-      );
-    }
-    if (route.params?.finishedArticleId) {
-      console.log('Received finishedArticleId:', route.params.finishedArticleId);
-      const finishedArticleId = route.params.finishedArticleId;
+    if (finishedArticleId) {
       setFinishedArticles((prev) =>
         prev.includes(finishedArticleId) ? prev : [...prev, finishedArticleId]
       );
     }
-  }, [route.params?.finishedVideoId, route.params?.finishedArticleId]);
+    navigation.setParams({ finishedVideoId: undefined, finishedArticleId: undefined });
+  }, [finishedVideoId, finishedArticleId, navigation]);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchUserData = async () => {
-        const { userId, userRole } = await getUser();
-        if (!userId) {
-          // If no user is found, redirect to the AuthChoice screen
-          navigation.navigate('AuthChoice');
-          return;
-        }
-        setUserId(userId);
-        setUserRole(userRole);
+      let active = true;
+      getUser()
+        .then(({ userId: storedUserId }) => {
+          if (!active) return;
+          if (!storedUserId) {
+            resetToAuthChoice(navigation);
+            return;
+          }
+          setUserId(storedUserId);
+        })
+        .catch((error) => console.error('Error reading user session:', error));
+      return () => {
+        active = false;
       };
-      fetchUserData();
-    }, [])
+    }, [navigation])
   );
+
+  const loadContent = useCallback(async (currentUserId) => {
+    const guest = isGuestUser(currentUserId);
+    try {
+      const [userResponse, suggestedResponse, trendingResponse, articleResponse] = await Promise.all([
+        guest ? null : api.get(`/user/${currentUserId}`),
+        // Suggestions are optional; their failure should not take the whole feed down.
+        guest
+          ? null
+          : api.get(`/user/${currentUserId}/suggested/for/you`).catch((error) => {
+              console.error('Error fetching suggestions:', error);
+              return null;
+            }),
+        api.get('/cast/trending/right/now'),
+        api.get('/article'),
+      ]);
+      if (!mountedRef.current) return;
+
+      const evaluationList = userResponse?.data?.evaluation_list;
+      const watchedCasts = getWatchedIds(evaluationList, 'cast');
+      const watchedArticles = getWatchedIds(evaluationList, 'article');
+      const toList = (data) => (Array.isArray(data) ? data : []);
+
+      setSuggestedCastData(
+        toList(suggestedResponse?.data).filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard)
+      );
+      setTrendingCastData(
+        toList(trendingResponse.data).filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard)
+      );
+      setArticleData(
+        toList(articleResponse.data)
+          .filter((article) => !watchedArticles.has(article._id))
+          .map(toArticleCard)
+      );
+      setApiError(false);
+    } catch (error) {
+      console.error('Error fetching cast content:', error);
+      if (mountedRef.current) setApiError(true);
+    } finally {
+      if (mountedRef.current) setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (userId) {
-      if (isGuestUser(userId)) {
-        fetchAllContentGuest();
-      } else {
-        awaitFetchWatchedContent();
-      }
+      setIsLoading(true);
+      loadContent(userId);
     }
-  }, [userId]);
+  }, [userId, loadContent]);
 
-  // Combined function to fetch watched content then all casts/articles for logged-in users.
-  const awaitFetchWatchedContent = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
-      console.log(`${API_BASE_URL}/user/${userId}`);
-      const userData = await response.json();
+  const onRefresh = useCallback(async () => {
+    if (!userId) return;
+    setRefreshing(true);
+    castSearchCacheRef.current = null;
+    await loadContent(userId);
+    if (mountedRef.current) setRefreshing(false);
+  }, [userId, loadContent]);
 
-      const fetchedWatchedCastIds =
-        userData.evaluation_list
-          ?.filter(item => item.type === 'cast' && item.watched)
-          .map(item => item.contentid) || [];
-      const fetchedWatchedArticleIds =
-        userData.evaluation_list
-          ?.filter(item => item.type === 'article' && item.watched)
-          .map(item => item.contentid) || [];
-
-      setWatchedCastIds(fetchedWatchedCastIds);
-      setWatchedArticleIds(fetchedWatchedArticleIds);
-
-      // Now fetch all content with watched IDs.
-      await fetchAllContent(fetchedWatchedCastIds, fetchedWatchedArticleIds);
-    } catch (error) {
-      console.error('Error fetching watched content:', error);
-      setApiError(true);
-    }
-  };
-
-  // Function to fetch content for logged-in users.
-  const fetchAllContent = async (watchedCasts, watchedArticles) => {
+  const retry = useCallback(() => {
+    if (!userId) return;
+    setApiError(false);
     setIsLoading(true);
-    try {
-      const [
-        suggestedResponse,
-        trendingResponse,
-        articleResponse,
-        allCastsResponse
-      ] = await Promise.all([
-        fetch(`${API_BASE_URL}/user/${userId}/suggested/for/you`),
-        fetch(`${API_BASE_URL}/cast/trending/right/now`),
-        fetch(`${API_BASE_URL}/article`),
-        fetch(`${API_BASE_URL}/cast`)
-      ]);
+    loadContent(userId);
+  }, [userId, loadContent]);
 
-      const suggestedData = await suggestedResponse.json();
-      const trendingData = await trendingResponse.json();
-      const articlesData = await articleResponse.json();
-      const allCastsData = await allCastsResponse.json();
-
-      // Filter the fetched data by removing items in watched AND finished arrays.
-      const filteredSuggested = Array.isArray(suggestedData)
-        ? suggestedData
-            .filter(
-              (cast) =>
-                !watchedCasts.includes(cast._id) &&
-                !finishedVideos.includes(cast._id)
-            )
-            .map((cast) => ({
-              id: cast._id,
-              image: cast.castimageurl,
-              title: cast.title,
-              duration: cast.duration,
-            }))
-        : [];
-
-      const filteredTrending = Array.isArray(trendingData)
-        ? trendingData
-            .filter(
-              (cast) =>
-                !watchedCasts.includes(cast._id) &&
-                !finishedVideos.includes(cast._id)
-            )
-            .map((cast) => ({
-              id: cast._id,
-              image: cast.castimageurl,
-              title: cast.title,
-              duration: cast.duration,
-            }))
-        : [];
-
-      const filteredArticles = Array.isArray(articlesData)
-        ? articlesData.filter(
-            (article) =>
-              !watchedArticles.includes(article._id) &&
-              !finishedArticles.includes(article._id)
-          )
-        : [];
-
-      setSuggestedCastData(filteredSuggested);
-      setTrendingCastData(filteredTrending);
-      setArticleData(filteredArticles);
-      setAllCasts(allCastsData);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching content:', error);
-      setApiError(true);
-    }
-  };
-
-  // New function to fetch content in guest mode.
-  const fetchAllContentGuest = async () => {
-    setIsLoading(true);
-    try {
-      // Do not fetch suggested content since guest mode does not have it.
-      const [ trendingResponse, articleResponse, allCastsResponse ] = await Promise.all([
-          fetch(`${API_BASE_URL}/cast/trending/right/now`),
-          fetch(`${API_BASE_URL}/article`),
-          fetch(`${API_BASE_URL}/cast`)
-      ]);
-
-      const trendingData = await trendingResponse.json();
-      const articlesData = await articleResponse.json();
-      const allCastsData = await allCastsResponse.json();
-
-      setSuggestedCastData([]); // No suggestions for guest mode.
-      const filteredTrending = Array.isArray(trendingData)
-        ? trendingData.map((cast) => ({
-              id: cast._id,
-              image: cast.castimageurl,
-              title: cast.title,
-              duration: cast.duration,
-          }))
-        : [];
-      const filteredArticles = Array.isArray(articlesData)
-        ? articlesData
-        : [];
-      setTrendingCastData(filteredTrending);
-      setArticleData(filteredArticles);
-      setAllCasts(allCastsData);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching content for guest:', error);
-      setApiError(true);
-    }
-  };
-
-  // Modified search handler with dedicated loader flag.
-  const handleSearch = async (text) => {
-    setSearchQuery(text);
-    if (!text.trim()) {
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (!query) {
       setSearchResults([]);
-      return;
+      setSearchError(null);
+      setSearchLoading(false);
+      return undefined;
     }
+
     setSearchLoading(true);
-    if (selectedCategory === 'Video') {
-      try {
-        const response = await fetch('https://api.brightmindsresearch.com/cast/all/simplified');
-        const data = await response.json();
-        const results = data.filter(item =>
-          item.title.toLowerCase().includes(text.toLowerCase())
-        );
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error fetching video data:', error);
-      } finally {
-        setSearchLoading(false);
-      }
-    } else if (selectedCategory === 'Topic') {
-      try {
-        const response = await fetch(`https://api.openalex.org/topics?search=${text}&select=id,display_name&per_page=50`);
-        const data = await response.json();
-        const results = data.results || [];
-        setSearchResults(results);
-      } catch (error) {
-        console.error('Error fetching topic data:', error);
-      } finally {
-        setSearchLoading(false);
-      }
-    } else if (selectedCategory === 'Article') {
-      try {
-        const response = await fetch(`https://api.openalex.org/works?filter=title.search:${encodeURIComponent(text)},has_abstract:true,language:en&per_page=50`);
-        const data = await response.json();
-        const results = data.results || [];
-        // For each result, extract the last part of the id.
-        const formattedResults = results.map(item => {
-          const parts = item.id.split('/');
-          const lastPart = parts[parts.length - 1];
-          return { ...item, shortId: lastPart };
-        });
-        setSearchResults(formattedResults);
-      } catch (error) {
-        console.error('Error fetching article data from OpenAlex:', error);
-      } finally {
-        setSearchLoading(false);
-      }
-    }
-  };
+    setSearchError(null);
+    const requestId = ++searchRequestRef.current;
+    const isLatest = () => requestId === searchRequestRef.current;
 
-  const clearSearch = () => {
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchContent(selectedCategory, query, castSearchCacheRef);
+        if (isLatest()) setSearchResults(results);
+      } catch (error) {
+        console.error(`Error searching ${selectedCategory}:`, error);
+        if (isLatest()) {
+          setSearchResults([]);
+          setSearchError(getErrorMessage(error, 'Search failed. Please try again.'));
+        }
+      } finally {
+        if (isLatest()) setSearchLoading(false);
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(timer);
+      // Invalidate any in-flight request so stale results never overwrite newer ones.
+      searchRequestRef.current += 1;
+    };
+  }, [searchQuery, selectedCategory]);
+
+  const closeSearch = () => {
+    setIsSearching(false);
     setSearchQuery('');
-    setSearchResults([]);
+    Keyboard.dismiss();
   };
 
-  const handleSearchResultPress = (id) => {
-    if (selectedCategory === 'Article') {
-      // For articles, navigate with the short id (e.g. "W2935714482")
+  const handleSearchResultPress = ({ category, id }) => {
+    if (category === 'Article') {
       navigation.navigate('OpenAlexDetailsScreen', { articleId: id });
-    } else if (selectedCategory === 'Topic') {
+    } else if (category === 'Topic') {
       navigation.navigate('SearchTopicResult', { topicId: id });
     } else {
       navigation.navigate('VideoScreen', { selectedCastId: id });
     }
-    console.log(id);
-    setIsSearching(false);
-    clearSearch();
+    closeSearch();
   };
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    setApiError(false);
-    if (userId) {
-      await awaitFetchWatchedContent();
-    } else {
-      await fetchAllContentGuest();
+  const removeFinishedVideo = useCallback((id) => {
+    setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
+    setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
+    setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
+  }, []);
+
+  const removeFinishedArticle = useCallback((id) => {
+    setArticleData((prev) => prev.filter((item) => item.id !== id));
+    setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
+  }, []);
+
+  const renderCategoryRow = (rowStyle) => (
+    <View style={rowStyle}>
+      {SEARCH_CATEGORIES.map((category) => {
+        const selected = selectedCategory === category;
+        return (
+          <TouchableOpacity
+            key={category}
+            style={[styles.categoryButton, selected && styles.selectedCategoryButton]}
+            onPress={() => setSelectedCategory(category)}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+          >
+            <Image
+              source={CATEGORY_ICONS[category]}
+              style={[styles.categoryIcon, selected && { tintColor: colors.primary }]}
+            />
+            <Text style={[styles.categoryButtonText, selected && styles.selectedCategoryButtonText]}>
+              {category}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
+  );
+
+  const renderSearchResults = () => {
+    if (searchLoading) {
+      return (
+        <View style={styles.searchLoaderContainer}>
+          <Loader fullScreen={false} size={150} />
+        </View>
+      );
     }
-    setRefreshing(false);
-  }, [userId]);
+    if (searchError) {
+      return <Text style={styles.noResultsText}>{searchError}</Text>;
+    }
+    if (searchResults.length > 0) {
+      return (
+        <FlatList
+          data={searchResults}
+          keyExtractor={(item, index) => `${item.id}-${index}`}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => handleSearchResultPress(item)} accessibilityRole="button">
+              <Text style={styles.searchResultItem}>{item.label}</Text>
+            </TouchableOpacity>
+          )}
+        />
+      );
+    }
+    if (searchQuery.trim().length > 0) {
+      return <Text style={styles.noResultsText}>No results found.</Text>;
+    }
+    return null;
+  };
 
   if (apiError) {
     return (
       <View style={styles.errorContainer}>
-        <Image source={serverError} style={styles.errorImage} />
+        <Image source={serverErrorImage} style={styles.errorImage} />
         <Text style={styles.errorText}>Whoops!</Text>
         <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={async () => {
-            setApiError(false);
-            setIsLoading(true);
-            if (userId) {
-              await awaitFetchWatchedContent();
-            } else {
-              await fetchAllContentGuest();
-            }
-          }}
-        >
+        <TouchableOpacity style={styles.refreshButton} onPress={retry} accessibilityRole="button">
           <Text style={styles.refreshButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -369,210 +358,108 @@ const CastScreen = () => {
   }
 
   if (isLoading) {
+    return <Loader backgroundColor={colors.primaryBis} />;
+  }
+
+  if (isSearching) {
     return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
+      <View style={styles.container}>
+        <View style={styles.searchHeader}>
+          <Searchbar
+            placeholder="Type your search..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+            autoFocus
+            autoCorrect={false}
+            returnKeyType="search"
+          />
+          <TouchableOpacity
+            onPress={closeSearch}
+            accessibilityRole="button"
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.cancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+        {renderCategoryRow(styles.categoryRowExpanded)}
+        <View style={styles.searchResultsWrapper}>{renderSearchResults()}</View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {isSearching ? (
-        <View style={{ flex: 1 }}>
-          <View style={styles.searchHeader}>
-            <Searchbar
-              ref={searchBarRef}
-              placeholder="Type your search..."
-              onChangeText={handleSearch}
-              value={searchQuery}
-              style={styles.searchBar}
-              autoFocus
-              onFocus={() => setIsSearching(true)}
-            />
-            <TouchableOpacity
-              onPress={() => {
-                setIsSearching(false);
-                clearSearch();
-                Keyboard.dismiss();
-              }}
-            >
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-          {/* Category row under the search bar */}
-          <View style={styles.categoryRowExpended}>
-            {['Article', 'Topic', 'Video'].map((category) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.categoryButton,
-                  selectedCategory === category && styles.selectedCategoryButton
-                ]}
-                onPress={() => setSelectedCategory(category)}
-              >
-                <Image
-                  source={getCategoryIcon(category)}
-                  style={[
-                    styles.categoryIcon,
-                    selectedCategory === category && { tintColor: colors.primary }
-                  ]}
-                />
-                <Text
-                  style={[
-                    styles.categoryButtonText,
-                    selectedCategory === category && styles.selectedCategoryButtonText
-                  ]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.searchResultsWrapper}>
-            {searchLoading ? (
-              <View style={styles.searchLoaderContainer}>
-                <LottieView
-                  source={require('@assets/Loader/loader.json')}
-                  autoPlay
-                  loop
-                  style={styles.searchLoader}
-                />
-              </View>
-            ) : searchResults.length > 0 ? (
-              <ScrollView>
-                {searchResults.map((item) => {
-                  const itemId = selectedCategory === 'Article'
-                    ? item.shortId
-                    : (item._id ? item._id : item.id);
-                  return (
-                    <TouchableOpacity
-                      key={itemId}
-                      onPress={() => handleSearchResultPress(itemId)}
-                    >
-                      <Text style={styles.searchResultItem}>
-                        {selectedCategory === 'Topic' ? item.display_name : item.title}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            ) : searchQuery.length > 0 ? (
-              <Text style={styles.noResultsText}>No results found.</Text>
-            ) : null}
-          </View>
+      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+        <View style={styles.searchSection}>
+          <Text style={styles.titleText}>I want to learn about..</Text>
+          <Searchbar
+            placeholder="Type your search..."
+            onChangeText={setSearchQuery}
+            value={searchQuery}
+            style={styles.searchBar}
+            onFocus={() => setIsSearching(true)}
+          />
+          {renderCategoryRow(styles.categoryRow)}
+          <TouchableOpacity
+            style={styles.randomButton}
+            onPress={() => navigation.navigate('DiscoverScreen')}
+            accessibilityRole="button"
+            accessibilityLabel="Discover a random cast"
+          >
+            <Image source={randomIcon} style={styles.randomButtonIcon} />
+          </TouchableOpacity>
         </View>
-      ) : (
-        // Normal layout with search bar under "What do you want to learn about?"
-        <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
-          <View style={styles.searchSection}>
-            <Text style={styles.titleText}>I want to learn about..</Text>
-            <Searchbar
-              placeholder="Type your search..."
-              onChangeText={handleSearch}
-              value={searchQuery}
-              style={styles.searchBar}
-              onFocus={() => setIsSearching(true)}
-            />
-            <View style={styles.categoryRow}>
-              {['Article', 'Topic', 'Video'].map((category) => (
-                <TouchableOpacity
-                  key={category}
-                  style={[
-                    styles.categoryButton,
-                    selectedCategory === category && styles.selectedCategoryButton
-                  ]}
-                  onPress={() => setSelectedCategory(category)}
-                >
-                  <Image
-                    source={getCategoryIcon(category)}
-                    style={[
-                      styles.categoryIcon,
-                      selectedCategory === category && { tintColor: colors.primary }
-                    ]}
-                  />
-                  <Text
-                    style={[
-                      styles.categoryButtonText,
-                      selectedCategory === category && styles.selectedCategoryButtonText
-                    ]}
-                  >
-                    {category}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+
+        {!isGuestUser(userId) && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Image source={forYouIcon} style={styles.sectionIcon} />
+              <Text style={styles.sectionTitle}>For You</Text>
             </View>
-            <TouchableOpacity style={styles.randomButton} onPress={() => navigation.navigate('DiscoverScreen')}>
-              <Image source={require('@assets/Cast_screen_icons/random.png')} style={styles.randomButtonIcon} />
-            </TouchableOpacity>
-          </View>
+            {suggestedCastData.length > 0 ? (
+              <Carousel
+                list={suggestedCastData}
+                variant="cast"
+                finishedIds={finishedVideos}
+                onAnimationFinish={removeFinishedVideo}
+              />
+            ) : (
+              <Text style={styles.noDataText}>No suggestions available.</Text>
+            )}
+          </>
+        )}
 
-          {/* Render "Suggested For You" only if a user is logged in */}
-          {!isGuestUser(userId) && (
-            <>
-              <View style={styles.sectionHeader}>
-                <Image source={forYouIcon} style={styles.sectionIcon} />
-                <Text style={styles.sectionTitle}>For You</Text>
-              </View>
-              {suggestedCastData.length > 0 ? (
-                <Carousel
-                  list={suggestedCastData}
-                  carouselType="suggested"
-                  finishedVideos={finishedVideos}
-                  onAnimationFinish={(id) => {
-                    setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
-                    setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-                  }}
-                />
-              ) : (
-                <Text style={styles.noDataText}>No suggestions available.</Text>
-              )}
-            </>
-          )}
+        <View style={styles.sectionHeader}>
+          <Image source={trendingIcon} style={styles.sectionIcon} />
+          <Text style={styles.sectionTitle}>Trending Now</Text>
+        </View>
+        {trendingCastData.length > 0 ? (
+          <Carousel
+            list={trendingCastData}
+            variant="cast"
+            finishedIds={finishedVideos}
+            onAnimationFinish={removeFinishedVideo}
+          />
+        ) : (
+          <Text style={styles.noDataText}>No trending casts available.</Text>
+        )}
 
-          {/* Trending Now */}
-          <View style={styles.sectionHeader}>
-            <Image source={trendingIcon} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>Trending Now</Text>
-          </View>
-          {trendingCastData.length > 0 ? (
-            <Carousel
-              list={trendingCastData}
-              carouselType="trending"
-              finishedVideos={finishedVideos}
-              onAnimationFinish={(id) => {
-                setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
-                setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-              }}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No trending casts available.</Text>
-          )}
-
-          {/* Articles */}
-          <View style={styles.sectionHeader}>
-            <Image source={articleIcon} style={styles.sectionIcon} />
-            <Text style={styles.sectionTitle}>Articles</Text>
-          </View>
-          {articleData.length > 0 ? (
-            <ArticleCarousel
-              list={articleData}
-              finishedArticles={finishedArticles}
-              onAnimationFinish={(id) => {
-                setArticleData((prev) => prev.filter((item) => item._id !== id));
-                setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
-              }}
-            />
-          ) : (
-            <Text style={styles.noDataText}>No articles available.</Text>
-          )}
-        </ScrollView>
-      )}
+        <View style={styles.sectionHeader}>
+          <Image source={articleIcon} style={styles.sectionIcon} />
+          <Text style={styles.sectionTitle}>Articles</Text>
+        </View>
+        {articleData.length > 0 ? (
+          <Carousel
+            list={articleData}
+            variant="article"
+            finishedIds={finishedArticles}
+            onAnimationFinish={removeFinishedArticle}
+          />
+        ) : (
+          <Text style={styles.noDataText}>No articles available.</Text>
+        )}
+      </ScrollView>
     </View>
   );
 };
@@ -603,7 +490,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
     fontSize: sizes.h4,
     fontFamily: 'Montserrat',
-    color: colors.white,
+    color: colors.black,
   },
   noResultsText: {
     textAlign: 'center',
@@ -621,7 +508,7 @@ const styles = StyleSheet.create({
   titleText: {
     fontSize: RFValue(sizes.title),
     fontFamily: 'Montserrat',
-    color: colors.white,
+    color: colors.black,
     textAlign: 'center',
     marginBottom: spacing.xl,
     marginTop: spacing.m,
@@ -632,7 +519,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.l,
     marginTop: spacing.m,
   },
-  categoryRowExpended: {
+  categoryRowExpanded: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginHorizontal: spacing.m,
@@ -738,10 +625,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat',
     textAlign: 'center',
   },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primaryBis },
-  lottie: { width: 200, height: 200 },
   searchLoaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.m },
-  searchLoader: { width: 150, height: 150 }
 });
 
 export default CastScreen;

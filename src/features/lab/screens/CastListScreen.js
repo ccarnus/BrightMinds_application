@@ -1,169 +1,186 @@
-import React, { useEffect, useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ActivityIndicator, 
-  ScrollView, 
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
   Image,
   TouchableOpacity,
+  RefreshControl,
 } from 'react-native';
-import { Button, Searchbar } from 'react-native-paper';
+import { Searchbar } from 'react-native-paper';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, sizes, spacing } from '@shared/config/theme';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, getErrorMessage, getUniversityLogo } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+
+const formatDuration = (duration) => `${Math.round(Number(duration) || 0)} min`;
+
+const CastCard = React.memo(({ cast, logoUrl, onPress }) => (
+  <TouchableOpacity
+    style={styles.castCard}
+    onPress={() => onPress(cast._id)}
+    accessibilityRole="button"
+    accessibilityLabel={cast.title}
+  >
+    <Image source={{ uri: cast.castimageurl }} style={styles.castImage} resizeMode="cover" />
+    <View style={styles.cardContent}>
+      <View style={styles.textContainer}>
+        <Text style={styles.castTitle}>{cast.title}</Text>
+        <Text style={styles.castDuration}>Duration: {formatDuration(cast.duration)}</Text>
+      </View>
+      <View style={styles.uniIconContainer}>
+        {!!logoUrl && (
+          <Image source={{ uri: logoUrl }} style={styles.uniIcon} resizeMode="contain" />
+        )}
+      </View>
+    </View>
+  </TouchableOpacity>
+));
 
 const CastListScreen = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { department, topic } = route.params;
   const [casts, setCasts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [uniIcons, setUniIcons] = useState({});
 
-  // Fetch casts from the provided API
-  useEffect(() => {
-    const fetchCasts = async () => {
-      try {
-        const url = `${API_BASE_URL}/cast/department/${department}?topic=${topic}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          throw new Error('Failed to fetch casts');
-        }
-        const data = await res.json();
-        setCasts(data);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCasts();
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
+
+  const fetchCasts = useCallback(async () => {
+    setError(null);
+    try {
+      const { data } = await api.get(`/cast/department/${encodeURIComponent(department)}`, {
+        params: { topic },
+      });
+      if (isMounted.current) setCasts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to fetch casts:', err);
+      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load the casts.'));
+    }
   }, [department, topic]);
 
-  // For each unique university in the casts, fetch its icon
+  const loadCasts = useCallback(() => {
+    setLoading(true);
+    fetchCasts().finally(() => {
+      if (isMounted.current) setLoading(false);
+    });
+  }, [fetchCasts]);
+
   useEffect(() => {
-    if (casts.length > 0) {
-      const uniqueUniversities = Array.from(new Set(casts.map(cast => cast.university)));
-      uniqueUniversities.forEach(uni => {
-        if (!uniIcons[uni]) {
-          fetch(`http://3.17.219.54/university/by/name/${encodeURIComponent(uni)}`)
-            .then(response => response.json())
-            .then(data => {
-              setUniIcons(prev => ({ ...prev, [uni]: data.iconurl }));
-            })
-            .catch(err => console.error(err));
-        }
+    loadCasts();
+  }, [loadCasts]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchCasts();
+    if (isMounted.current) setRefreshing(false);
+  }, [fetchCasts]);
+
+  useEffect(() => {
+    const universities = [...new Set(casts.map(cast => cast.university).filter(Boolean))];
+    if (universities.length === 0) return undefined;
+    let active = true;
+    Promise.all(universities.map(uni => getUniversityLogo(uni))).then((logos) => {
+      if (!active) return;
+      const icons = {};
+      universities.forEach((uni, i) => {
+        if (logos[i]) icons[uni] = logos[i];
       });
-    }
+      setUniIcons(icons);
+    });
+    return () => { active = false; };
   }, [casts]);
 
-  const onChangeSearch = (query) => setSearchQuery(query);
+  const filteredCasts = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return casts;
+    return casts.filter(cast => cast.title?.toLowerCase().includes(query));
+  }, [casts, searchQuery]);
 
-  const filteredCasts = casts.filter(cast =>
-    cast.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const openCast = useCallback((castId) => {
+    navigation.navigate('VirtualLabVideoScreen', { selectedCastId: castId });
+  }, [navigation]);
+
+  const renderCast = useCallback(
+    ({ item }) => <CastCard cast={item} logoUrl={uniIcons[item.university]} onPress={openCast} />,
+    [uniIcons, openCast]
   );
 
-  const formatDuration = (duration) => {
-    return `${duration.toFixed(0)} min`;
-  };
-
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-         <ActivityIndicator size="large" color="#00aaff" />
-      </View>
-    );
+    return <Loader size={200} backgroundColor={colors.primaryBis} />;
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-         <Text style={styles.errorText}>Error: {error}</Text>
-         <Button onPress={() => {/* Optionally implement retry logic */}}>
-           Retry
-         </Button>
+      <View style={[styles.screen, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Couldn't load casts"
+          message={error}
+          actionLabel="Try again"
+          onAction={loadCasts}
+        />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Searchbar
-        placeholder="Search casts..."
-        onChangeText={onChangeSearch}
-        value={searchQuery}
-        style={styles.searchBar}
-      />
-      {filteredCasts.length > 0 ? (
-        filteredCasts.map(cast => (
-          <TouchableOpacity 
-            key={cast._id} 
-            style={styles.castCard}
-            onPress={() => navigation.navigate('VirtualLabVideoScreen', { selectedCastId: cast._id })}
-          >
-            <Image 
-              source={{ uri: cast.castimageurl }} 
-              style={styles.castImage} 
-              resizeMode="cover"
-            />
-            <View style={styles.cardContent}>
-              <View style={styles.textContainer}>
-                <Text style={styles.castTitle}>{cast.title}</Text>
-                <Text style={styles.castDuration}>Duration: {formatDuration(cast.duration)}</Text>
-              </View>
-              <View style={styles.uniIconContainer}>
-                {uniIcons[cast.university] ? (
-                  <Image 
-                    source={{ uri: uniIcons[cast.university] }} 
-                    style={styles.uniIcon} 
-                    resizeMode="contain"
-                  />
-                ) : (
-                  <View style={styles.placeholderIcon} />
-                )}
-              </View>
-            </View>
-          </TouchableOpacity>
-        ))
-      ) : (
-        <Text style={styles.noDataText}>No casts found.</Text>
-      )}
-    </ScrollView>
+    <FlatList
+      style={styles.screen}
+      contentContainerStyle={[
+        styles.container,
+        { paddingTop: spacing.m + insets.top, paddingBottom: spacing.xl + insets.bottom },
+      ]}
+      data={filteredCasts}
+      keyExtractor={(item) => String(item._id)}
+      renderItem={renderCast}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      ListHeaderComponent={
+        <Searchbar
+          placeholder="Search casts..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchBar}
+        />
+      }
+      ListEmptyComponent={
+        <StateMessage
+          icon={casts.length === 0 ? 'videocam-outline' : 'search-outline'}
+          title={casts.length === 0 ? 'No casts yet' : 'No matching casts'}
+          message={
+            casts.length === 0
+              ? 'No casts have been published on this topic yet.'
+              : `No cast matches "${searchQuery.trim()}".`
+          }
+        />
+      }
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.m,
-    marginTop: spacing.l,
-    marginBottom: spacing.xl,    
+  screen: {
+    flex: 1,
     backgroundColor: colors.primaryBis,
+  },
+  container: {
+    paddingHorizontal: spacing.m,
+    flexGrow: 1,
   },
   searchBar: {
     marginBottom: spacing.m,
     backgroundColor: colors.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.m,
-    backgroundColor: colors.primaryBis,
-  },
-  errorText: {
-    fontSize: sizes.h4,
-    color: 'red',
-    marginBottom: spacing.m,
   },
   castCard: {
     backgroundColor: colors.primary,
@@ -206,16 +223,6 @@ const styles = StyleSheet.create({
   uniIcon: {
     width: '100%',
     height: '100%',
-  },
-  placeholderIcon: {
-    width: '100%',
-    height: '100%',
-  },
-  noDataText: {
-    textAlign: 'center',
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    marginTop: spacing.m,
   },
 });
 

@@ -1,8 +1,7 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { View, StyleSheet, Animated, Keyboard, BackHandler, Platform, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { View, StyleSheet, Animated, Keyboard, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CastScreen from '@features/cast/screens/CastScreen';
 import TrackScreen from '@features/track/screens/TrackScreen';
@@ -10,6 +9,7 @@ import LabScreen from '@features/lab/screens/LabScreen';
 import LibraryScreen from '@features/library/screens/LibraryScreen';
 import { colors } from '@shared/config/theme';
 import Icon from '@shared/components/Icon';
+import { getUser, canAccessLibrary } from '@shared/utils/UserStorage';
 
 const Tab = createBottomTabNavigator();
 
@@ -19,7 +19,7 @@ const INDICATOR_HEIGHT = 3;
 
 const useKeyboardVisibility = () => {
   const [visible, setVisible] = useState(false);
-  React.useEffect(() => {
+  useEffect(() => {
     const showSubscription = Keyboard.addListener('keyboardDidShow', () => setVisible(true));
     const hideSubscription = Keyboard.addListener('keyboardDidHide', () => setVisible(false));
     return () => {
@@ -37,37 +37,19 @@ const BottomNavigation = () => {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
+  // Re-read the role on focus so the Library tab appears/disappears after login or profile changes.
   useFocusEffect(
     useCallback(() => {
-      const fetchUserRole = async () => {
-        try {
-          const role = await AsyncStorage.getItem('userRole');
-          setUserRole(role || '');
-        } catch (error) {
-          console.error('Error fetching user role:', error);
-        }
-      };
-
-      fetchUserRole();
-
-      const onBackPress = () => true;
-      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => {
-        subscription.remove();
-      };
+      getUser().then(({ userRole }) => setUserRole(userRole || ''));
     }, [])
   );
 
-  const baseTabs = [
+  const tabs = [
     { name: 'Cast', screen: CastScreen },
     { name: 'Track', screen: TrackScreen },
     { name: 'Lab', screen: LabScreen },
+    ...(canAccessLibrary(userRole) ? [{ name: 'Library', screen: LibraryScreen }] : []),
   ];
-
-  const tabs = [...baseTabs];
-  if (userRole === 'Professor' || userRole === 'Researcher' || userRole === 'PhD Student') {
-    tabs.push({ name: 'Library', screen: LibraryScreen });
-  }
 
   const bottomPadding = Platform.OS === 'ios' ? insets.bottom : 0;
   const totalBarHeight = TAB_BAR_HEIGHT + bottomPadding;
@@ -101,7 +83,7 @@ const BottomNavigation = () => {
             name={name}
             component={screen}
             options={{
-              tabBarHideOnKeyboard: true,
+              tabBarAccessibilityLabel: name,
               tabBarIcon: ({ focused }) => (
                 <Icon
                   icon={name}

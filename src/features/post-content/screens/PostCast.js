@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,156 +6,127 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Image,
+  Linking,
   Modal as ModalReact,
-  FlatList,
   KeyboardAvoidingView,
-  Platform
+  Platform,
 } from 'react-native';
-import { Button, TextInput, Portal, Modal } from 'react-native-paper';
+import { Button, TextInput } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import LottieView from 'lottie-react-native';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import categories from '@shared/data/categories';
 import departments from '@shared/data/departments';
 import { colors, sizes, spacing } from '@shared/config/theme';
-import { Slider } from '@miblanchard/react-native-slider';
-import visibilityCategories from '@shared/data/visibilityCategories';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, getErrorMessage } from '@shared/api/client';
+import {
+  BackButton,
+  OptionsModal,
+  SelectorField,
+  TopicPickerModal,
+  UploadingOverlay,
+  VisibilitySlider,
+  ensureCanPost,
+  isNonEmpty,
+  postFormStyles,
+  useDepartmentTopics,
+  usePostAuthor,
+} from '@features/post-content/components/PostFormFields';
+
+const UPLOAD_TIMEOUT_MS = 300000;
+
+const SourceButton = ({ title, onPress, style }) => (
+  <TouchableOpacity onPress={onPress} style={[styles.button, style]} accessibilityRole="button">
+    <Text style={styles.buttonText}>{title}</Text>
+  </TouchableOpacity>
+);
+
+const requestPermission = async (source) => {
+  const { granted } =
+    source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (!granted) {
+    Alert.alert(
+      'Permission required',
+      source === 'camera'
+        ? 'Please allow camera access in your device settings to record a video.'
+        : 'Please allow photo library access in your device settings to choose a video.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Open Settings', onPress: () => Linking.openSettings() },
+      ]
+    );
+  }
+  return granted;
+};
 
 const PostCast = ({ navigation }) => {
-  // Basic state
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [link, setLink] = useState('');
   const [category, setCategory] = useState('');
   const [department, setDepartment] = useState('');
   const [topic, setTopic] = useState('');
   const [video, setVideo] = useState(null);
-  const [thumbnailUri, setThumbnailUri] = useState(null);
   const [visibility, setVisibility] = useState(1);
+  const previewPlayer = useVideoPlayer(video?.uri ?? null);
 
-  // Loading
   const [loading, setLoading] = useState(false);
-  const [topicLoading, setTopicLoading] = useState(false);
+  const submittingRef = useRef(false);
 
-  // Modals
-  const [isModalVisible, setModalVisible] = useState(false);
+  const [isSourceModalVisible, setSourceModalVisible] = useState(false);
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isDepartmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [isTopicModalVisible, setTopicModalVisible] = useState(false);
+  const pendingSourceRef = useRef(null);
 
-  // Topic-related
-  const [topicOptions, setTopicOptions] = useState([]);
-  const [isManualTopicEntry, setManualTopicEntry] = useState(false);
-  const [manualTopicText, setManualTopicText] = useState('');
+  const { userId, university } = usePostAuthor('GeorgiaTech');
+  const topicsState = useDepartmentTopics(department);
 
-  // Custom alert
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
-
-  // User & University
-  const [userId, setUserId] = useState(null);
-  const [university, setUniversity] = useState('GeorgiaTech');
-
-  useEffect(() => {
-    // Fetch userId and university from AsyncStorage
-    const fetchUserIdAndUniversity = async () => {
-      const storedUserId = await AsyncStorage.getItem('userId');
-      const storedUniversity = await AsyncStorage.getItem('userUniversity');
-      setUserId(storedUserId);
-      if (storedUniversity) {
-        setUniversity(storedUniversity);
-      }
-    };
-    fetchUserIdAndUniversity();
-  }, []);
-
-  // Whenever a department is selected, fetch topics from the API
-  useEffect(() => {
-    if (department) {
-      fetchTopicsForDepartment(department);
-    }
-  }, [department]);
-
-  // Fetch topics for the selected department
-  const fetchTopicsForDepartment = async (deptName) => {
-    try {
-      setTopicLoading(true);
-      setTopicOptions([]);
+  const selectDepartment = (dept) => {
+    if (dept.name !== department) {
+      setDepartment(dept.name);
       setTopic('');
-      const response = await fetch(`${API_BASE_URL}/topic/department/${deptName}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch topics from the server');
-      }
-      const data = await response.json();
-      setTopicOptions(data);
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-      showCustomAlert('Failed to load topics. Please try again later.');
-    } finally {
-      setTopicLoading(false);
     }
+    setDepartmentModalVisible(false);
   };
 
-  // Custom alert toggler
-  const showCustomAlert = (message) => {
-    setCustomAlertMessage(message);
-    setCustomAlertVisible(true);
-  };
-
-  // Video handling
-  const takeNewVideo = async () => {
+  const pickVideo = async (source) => {
     try {
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
+      if (!(await requestPermission(source))) return;
+      const options = { mediaTypes: ['videos'] };
+      const result =
+        source === 'camera'
+          ? await ImagePicker.launchCameraAsync(options)
+          : await ImagePicker.launchImageLibraryAsync(options);
+      if (!result.canceled && result.assets?.length > 0) {
         setVideo(result.assets[0]);
-        setThumbnailUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error taking new video:', error);
+      console.error('Error selecting video:', error);
+      Alert.alert('Error', 'Could not open the video picker. Please try again.');
     }
   };
 
-  const pickVideoFromGallery = async () => {
-    try {
-      let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Videos,
-      });
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        setVideo(result.assets[0]);
-        setThumbnailUri(result.assets[0].uri);
-      }
-    } catch (error) {
-      console.error('Error picking video from gallery:', error);
-    }
+  // iOS cannot present the picker while the source modal is still animating out,
+  // so the launch is deferred to the modal's onDismiss there.
+  const launchPendingSource = () => {
+    const source = pendingSourceRef.current;
+    pendingSourceRef.current = null;
+    if (source) pickVideo(source);
   };
 
-  const handlePlayVideo = () => {
-    navigation.navigate('VideoPlayer', { videoUri: video.uri });
+  const chooseSource = (source) => {
+    pendingSourceRef.current = source;
+    setSourceModalVisible(false);
+    if (Platform.OS !== 'ios') launchPendingSource();
   };
 
-  // Video source modal toggler
-  const toggleModal = () => {
-    setModalVisible(!isModalVisible);
-  };
-
-  // Make sure we always store an integer for `visibility`
-  const handleVisibilityChange = (val) => {
-    // The slider might return an array like [3]
-    // or a single value if there's only one knob
-    if (Array.isArray(val)) {
-      setVisibility(parseInt(val[0], 10));
-    } else {
-      setVisibility(parseInt(val, 10));
-    }
-  };
-
-  // Send cast to API
   const sendCast = async () => {
-    let missingFields = [];
+    if (submittingRef.current) return;
 
+    const missingFields = [];
     if (!title.trim()) missingFields.push('Title');
     if (!link.trim()) missingFields.push('Link');
     if (!category.trim()) missingFields.push('Category');
@@ -164,12 +135,12 @@ const PostCast = ({ navigation }) => {
     if (!video) missingFields.push('Video');
 
     if (missingFields.length > 0) {
-      let errorMessage =
-        'Please fill in all the required fields:\n\n ' + missingFields.join('\n\n ');
-      showCustomAlert(errorMessage);
+      Alert.alert('Missing information', 'Please fill in all the required fields:\n\n' + missingFields.join('\n'));
       return;
     }
+    if (!ensureCanPost(userId, navigation)) return;
 
+    submittingRef.current = true;
     setLoading(true);
 
     const castData = {
@@ -192,65 +163,20 @@ const PostCast = ({ navigation }) => {
     });
 
     try {
-      const response = await fetch(`${API_BASE_URL}/cast`, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await api.post('/cast', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: UPLOAD_TIMEOUT_MS,
       });
-
-      if (response.ok) {
-        Alert.alert('Success', 'Cast posted successfully!');
-        navigation.navigate('Cast');
-      } else {
-        const errorData = await response.text();
-        Alert.alert('Error', `Failed to post cast. Error: ${errorData}`);
-      }
+      Alert.alert('Success', 'Cast posted successfully!');
+      navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
       console.error('Error sending cast:', error);
-      Alert.alert('Error', 'An error occurred while sending the cast.');
+      Alert.alert('Error', getErrorMessage(error, 'An error occurred while sending the cast.'));
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
-
-  // Department render
-  const renderDepartmentItem = ({ item }) => (
-    <Button
-      onPress={() => {
-        setDepartment(item.name);
-        setDepartmentModalVisible(false);
-      }}
-      style={styles.modalItem}
-      labelStyle={styles.modalItemLabel}
-    >
-      {item.display}
-    </Button>
-  );
-
-  // Topic render for each item from the API
-  const renderTopicItem = ({ item }) => (
-    <Button
-      onPress={() => {
-        setTopic(item.name);
-        setTopicModalVisible(false);
-      }}
-      style={styles.modalItem}
-      labelStyle={styles.modalItemLabel}
-    >
-      {item.name}
-    </Button>
-  );
-
-  // Reusable button in the custom modals
-  const CustomButton = ({ title, onPress, style, textStyle }) => (
-    <TouchableOpacity onPress={onPress} style={[styles.button, style]}>
-      <Text style={[styles.buttonText, textStyle]}>{title}</Text>
-    </TouchableOpacity>
-  );
-
-  const isNonEmpty = (val) => val && val.trim().length > 0;
 
   return (
     <KeyboardAvoidingView
@@ -258,31 +184,17 @@ const PostCast = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        style={styles.scrollContent}
-        contentContainerStyle={{ flexGrow: 1 }}
+        style={styles.container}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Lottie-based loading overlay */}
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <View style={styles.loadingContainer}>
-              <LottieView
-                source={require('@assets/Loader/loader.json')}
-                autoPlay
-                loop
-                style={styles.lottie}
-              />
-            </View>
-          </View>
-        )}
-
         <View style={styles.content}>
-          <Text style={styles.Maintitle}>Post a Cast</Text>
+          <BackButton onPress={() => navigation.goBack()} style={postFormStyles.backButton} />
+          <Text style={postFormStyles.Maintitle}>Post a Cast</Text>
 
-          {/* Title (always visible) */}
           <TextInput
             label="Title"
-            style={styles.input}
+            style={postFormStyles.input}
             value={title}
             onChangeText={setTitle}
             mode="outlined"
@@ -291,269 +203,148 @@ const PostCast = ({ navigation }) => {
             maxLength={85}
           />
 
-          {/* Link (only if title is not empty) */}
           {isNonEmpty(title) && (
             <TextInput
               label="Link"
-              style={styles.input}
+              style={postFormStyles.input}
               value={link}
               onChangeText={setLink}
               mode="outlined"
               autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
               activeOutlineColor={colors.darkGreen}
             />
           )}
 
-          {/* Category (only if link is not empty) */}
           {isNonEmpty(link) && (
-            <>
-              <TouchableOpacity
-                style={styles.selectorContainer}
-                onPress={() => setCategoryModalVisible(true)}
-              >
-                <Text style={styles.selectorText}>
-                  {category || 'Select Category'}
-                </Text>
-              </TouchableOpacity>
-              <Portal>
-                <Modal
-                  visible={isCategoryModalVisible}
-                  onDismiss={() => setCategoryModalVisible(false)}
-                  contentContainerStyle={styles.modalContainer}
-                >
-                  {categories.map((item, index) => (
-                    <Button
-                      key={index}
-                      onPress={() => {
-                        setCategory(item);
-                        setCategoryModalVisible(false);
-                      }}
-                      style={styles.modalItem}
-                      labelStyle={styles.modalItemLabel}
-                    >
-                      {item}
-                    </Button>
-                  ))}
-                </Modal>
-              </Portal>
-            </>
+            <SelectorField
+              label={category || 'Select Category'}
+              onPress={() => setCategoryModalVisible(true)}
+            />
           )}
 
-          {/* Department (only if category is chosen) */}
           {isNonEmpty(category) && (
-            <>
-              <TouchableOpacity
-                style={styles.selectorContainer}
-                onPress={() => setDepartmentModalVisible(true)}
-              >
-                <Text style={styles.selectorText}>
-                  {department
-                    ? departments.find((dept) => dept.name === department)?.display
-                    : 'Select Department'}
-                </Text>
-              </TouchableOpacity>
-              <Portal>
-                <Modal
-                  visible={isDepartmentModalVisible}
-                  onDismiss={() => setDepartmentModalVisible(false)}
-                  contentContainerStyle={styles.modalContainer}
-                >
-                  <FlatList
-                    data={departments}
-                    renderItem={renderDepartmentItem}
-                    keyExtractor={(item) => item.name}
-                  />
-                </Modal>
-              </Portal>
-            </>
+            <SelectorField
+              label={departments.find((dept) => dept.name === department)?.display || 'Select Department'}
+              onPress={() => setDepartmentModalVisible(true)}
+            />
           )}
 
-          {/* Topic (only if department is selected) */}
           {isNonEmpty(department) && (
-            <>
-              <TouchableOpacity
-                style={styles.selectorContainer}
-                onPress={() => setTopicModalVisible(true)}
-              >
-                <Text style={styles.selectorText}>{topic || 'Select Topic'}</Text>
-              </TouchableOpacity>
-              <Portal>
-                <Modal
-                  visible={isTopicModalVisible}
-                  onDismiss={() => setTopicModalVisible(false)}
-                  contentContainerStyle={styles.modalContainer}
-                >
-                  {topicLoading ? (
-                    <LottieView
-                      source={require('@assets/Loader/loader.json')}
-                      autoPlay
-                      loop
-                      style={{ width: 100, height: 100, alignSelf: 'center' }}
-                    />
-                  ) : (
-                    <>
-                      <FlatList
-                        data={topicOptions}
-                        renderItem={renderTopicItem}
-                        keyExtractor={(item) => item._id}
-                      />
-                      {!isManualTopicEntry && (
-                        <Button
-                          onPress={() => setManualTopicEntry(true)}
-                          style={[styles.modalItem, { marginTop: 10 }]}
-                          labelStyle={styles.modalItemLabel}
-                        >
-                          Enter Custom Topic
-                        </Button>
-                      )}
-
-                      {isManualTopicEntry && (
-                        <View>
-                          <TextInput
-                            label="Custom Topic"
-                            value={manualTopicText}
-                            onChangeText={(text) => setManualTopicText(text)}
-                            mode="outlined"
-                            style={styles.input}
-                          />
-                          <Button
-                            onPress={() => {
-                              if (manualTopicText.trim().length > 0) {
-                                setTopic(manualTopicText.trim());
-                                setTopicModalVisible(false);
-                              }
-                              setManualTopicEntry(false);
-                              setManualTopicText('');
-                            }}
-                            style={styles.modalItem}
-                            labelStyle={styles.modalItemLabel}
-                          >
-                            Save Topic
-                          </Button>
-                        </View>
-                      )}
-                    </>
-                  )}
-                </Modal>
-              </Portal>
-            </>
+            <SelectorField
+              label={topic || 'Select Topic'}
+              onPress={() => setTopicModalVisible(true)}
+            />
           )}
 
-          {/* Visibility slider (only if topic is selected) */}
           {isNonEmpty(topic) && (
             <>
-              <Text style={styles.visibilityLabel}>
-                {visibilityCategories[visibility - 1].label}
-              </Text>
-              <Slider
-                value={visibility}
-                onValueChange={handleVisibilityChange}
-                minimumValue={1}
-                maximumValue={5}
-                step={1}
-                containerStyle={{ width: '100%', marginTop: 8 , marginBottom: 20}}
-                trackStyle={{ height: 4, backgroundColor: colors.lightGray }}
-                thumbStyle={{
-                  height: 20,
-                  width: 20,
-                  backgroundColor: colors.darkGreen,
-                  borderRadius: 10,
-                }}
-              />
-            </>
-          )}
-
-          {/* Video Picker + Thumbnail below (only if topic is selected) */}
-          {isNonEmpty(topic) && (
-            <View style={styles.videoPicker}>
-              <TouchableOpacity onPress={toggleModal} style={styles.imagePicker}>
-                <Text style={styles.imagePickerText}>Select Video</Text>
-              </TouchableOpacity>
-
-              {video && (
+              <VisibilitySlider value={visibility} onChange={setVisibility} />
+              <View style={styles.videoPicker}>
                 <TouchableOpacity
-                  onPress={handlePlayVideo}
-                  style={styles.thumbnailContainer}
+                  onPress={() => setSourceModalVisible(true)}
+                  style={styles.imagePicker}
+                  accessibilityRole="button"
                 >
-                  <Image source={{ uri: thumbnailUri }} style={styles.thumbnail} />
-                  <View style={styles.playButton}>
-                    <Text style={styles.playButtonText}>▶</Text>
-                  </View>
+                  <Text style={styles.imagePickerText}>
+                    {video ? 'Change Video' : 'Select Video'}
+                  </Text>
                 </TouchableOpacity>
-              )}
-            </View>
+
+                {video && (
+                  <View style={styles.previewContainer}>
+                    <VideoView
+                      player={previewPlayer}
+                      style={styles.preview}
+                      contentFit="contain"
+                      nativeControls
+                    />
+                  </View>
+                )}
+              </View>
+            </>
           )}
         </View>
-        <ModalReact
-          animationType="slide"
-          transparent={true}
-          visible={isModalVisible}
-          onRequestClose={toggleModal}
-        >
-          <View style={styles.centeredView}>
-            <View style={styles.modalView}>
-              <Text style={styles.modalText}>Choose Video Source</Text>
-              <CustomButton
-                title="Record Video"
-                onPress={() => {
-                  takeNewVideo();
-                  toggleModal();
-                }}
-                style={styles.recordButton}
-                textStyle={styles.recordButtonText}
-              />
-              <CustomButton
-                title="Choose from Gallery"
-                onPress={() => {
-                  pickVideoFromGallery();
-                  toggleModal();
-                }}
-                style={styles.galleryButton}
-                textStyle={styles.galleryButtonText}
-              />
-              <CustomButton
-                title="Cancel"
-                onPress={toggleModal}
-                style={styles.cancelButton}
-                textStyle={styles.cancelButtonText}
-              />
-            </View>
-          </View>
-        </ModalReact>
-
-        <ModalReact
-          visible={customAlertVisible}
-          transparent={true}
-          animationType="slide"
-          onRequestClose={() => setCustomAlertVisible(false)}
-        >
-          <View style={styles.centeredView}>
-            <View style={styles.customAlertModalView}>
-              <Text style={styles.customAlertText}>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)} textColor={colors.darkGreen}>OK</Button>
-            </View>
-          </View>
-        </ModalReact>
       </ScrollView>
-      <View styles={styles.footerContainer}>
+
+      <View style={[styles.footerContainer, { paddingBottom: insets.bottom }]}>
         <Button
           onPress={sendCast}
+          loading={loading}
           disabled={loading}
           mode="contained"
           buttonColor={colors.darkGreen}
           icon={require('@assets/Postcontent_icons/send.png')}
-          labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-          style={{ 
-            marginLeft: spacing.m,
-            marginRight: spacing.m,
-            marginBottom: spacing.l,
-            marginTop: spacing.l,
-            paddingHorizontal: spacing.s
-          }}
+          labelStyle={postFormStyles.postButtonLabel}
+          style={postFormStyles.postButton}
         >
           POST
         </Button>
       </View>
+
+      <OptionsModal
+        visible={isCategoryModalVisible}
+        onDismiss={() => setCategoryModalVisible(false)}
+        options={categories}
+        getKey={(item) => item}
+        getLabel={(item) => item}
+        onSelect={(item) => {
+          setCategory(item);
+          setCategoryModalVisible(false);
+        }}
+      />
+      <OptionsModal
+        visible={isDepartmentModalVisible}
+        onDismiss={() => setDepartmentModalVisible(false)}
+        options={departments}
+        getKey={(item) => item.name}
+        getLabel={(item) => item.display}
+        onSelect={selectDepartment}
+      />
+      <TopicPickerModal
+        visible={isTopicModalVisible}
+        onDismiss={() => setTopicModalVisible(false)}
+        topics={topicsState.topics}
+        loading={topicsState.loading}
+        error={topicsState.error}
+        onRetry={topicsState.reload}
+        onSelect={(name) => {
+          setTopic(name);
+          setTopicModalVisible(false);
+        }}
+      />
+
+      <ModalReact
+        animationType="slide"
+        transparent={true}
+        visible={isSourceModalVisible}
+        onRequestClose={() => setSourceModalVisible(false)}
+        onDismiss={launchPendingSource}
+      >
+        <View style={styles.centeredView}>
+          <View style={styles.modalView}>
+            <Text style={styles.modalText}>Choose Video Source</Text>
+            <SourceButton
+              title="Record Video"
+              onPress={() => chooseSource('camera')}
+              style={styles.sourceButton}
+            />
+            <SourceButton
+              title="Choose from Gallery"
+              onPress={() => chooseSource('library')}
+              style={styles.sourceButton}
+            />
+            <SourceButton
+              title="Cancel"
+              onPress={() => setSourceModalVisible(false)}
+              style={styles.cancelButton}
+            />
+          </View>
+        </View>
+      </ModalReact>
+
+      <UploadingOverlay visible={loading} message="Uploading your cast..." />
     </KeyboardAvoidingView>
   );
 };
@@ -571,87 +362,23 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   footerContainer: {
-    padding: 20,
     backgroundColor: colors.primaryBis,
     borderTopWidth: 1,
     borderColor: colors.lightGray,
   },
-  Maintitle: {
-    fontSize: sizes.title,
-    textAlign: 'center',
-    marginBottom: spacing.l,
-    marginTop: spacing.xl,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  input: {
-    marginBottom: spacing.m,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
-  },
-  selectorContainer: {
-    marginBottom: spacing.m,
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: sizes.radius,
-    backgroundColor: 'white',
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.m,
-    justifyContent: 'center',
-  },
-  selectorText: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-  },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
-  },
-  modalItem: {
-    color: colors.secondary,
-  },
-  modalItemLabel: {
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  thumbnailContainer: {
+  previewContainer: {
     width: '70%',
     height: 200,
-    marginLeft: '15%',
-    position: 'relative',
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignSelf: 'center',
     marginTop: spacing.m,
     marginBottom: spacing.xl,
     borderRadius: 10,
     overflow: 'hidden',
+    backgroundColor: colors.black,
   },
-  thumbnail: {
+  preview: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
-  },
-  playButton: {
-    position: 'absolute',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  playButtonText: {
-    color: '#FFF',
-    fontSize: 24,
-  },
-  visibilityLabel: {
-    fontSize: sizes.h3,
-    textAlign: 'center',
-    marginTop: spacing.l,
-    color: colors.darkblue,
-    fontFamily: 'Montserrat',
   },
   videoPicker: {
     marginTop: spacing.l,
@@ -670,26 +397,6 @@ const styles = StyleSheet.create({
   imagePickerText: {
     color: 'gray',
     fontFamily: 'Montserrat',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    zIndex: 1000,
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingContainer: {
-    width: 200,
-    height: 200,
-  },
-  lottie: {
-    width: '100%',
-    height: '100%',
-    tintColor: colors.secondary,
   },
   centeredView: {
     flex: 1,
@@ -725,31 +432,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: sizes.h3,
   },
-  recordButton: {
-    backgroundColor: colors.darkblue,
-  },
-  galleryButton: {
+  sourceButton: {
     backgroundColor: colors.darkblue,
   },
   cancelButton: {
     backgroundColor: colors.secondary,
-  },
-  cancelButtonText: {
-    color: colors.primaryBis,
-  },
-  customAlertModalView: {
-    margin: 20,
-    backgroundColor: 'white',
-    borderRadius: sizes.radius,
-    padding: 35,
-    alignItems: 'center',
-    elevation: 5,
-  },
-  customAlertText: {
-    marginBottom: spacing.m,
-    textAlign: 'center',
-    fontFamily: 'Montserrat',
-    fontSize: 16,
   },
 });
 
