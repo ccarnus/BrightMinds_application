@@ -18,6 +18,7 @@ export const colors = {
   darkOrange: '#FF8C00',
   lightTeal: '#66cccc',
   darkTeal: '#006666',
+  black: '#000000',
 };
 
 

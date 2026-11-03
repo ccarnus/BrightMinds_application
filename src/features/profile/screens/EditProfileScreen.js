@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,305 +10,389 @@ import {
   KeyboardAvoidingView,
   Alert,
   Modal,
-  FlatList
+  FlatList,
+  Linking,
 } from 'react-native';
-import { Button, TextInput, Portal, Provider } from 'react-native-paper';
+import { Button, TextInput } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
-import axios from 'axios';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, sizes, spacing } from '@shared/config/theme';
+import { api, getErrorMessage } from '@shared/api/client';
+import { getUser, setUser, isGuestUser, canAccessLibrary } from '@shared/utils/UserStorage';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+
+const ROLES = ['College Student', 'Professor', 'Researcher', 'Learning Enthusiast', 'PhD Student'];
+const UPLOAD_TIMEOUT_MS = 120000;
 
 const EditProfileScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
-  // Use a <Picker> for role, same as in SignupScreen
   const [role, setRole] = useState('College Student');
-  const [profilePicture, setProfilePicture] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [currentPictureUrl, setCurrentPictureUrl] = useState(null);
+  // Only a newly picked local image is uploaded; the existing remote picture is left untouched.
+  const [pickedImage, setPickedImage] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+  const [loadError, setLoadError] = useState(null);
 
-  // For universities
   const [universities, setUniversities] = useState([]);
+  const [universitiesError, setUniversitiesError] = useState(null);
+  const [isLoadingUniversities, setIsLoadingUniversities] = useState(false);
   const [selectedUniversity, setSelectedUniversity] = useState(null);
   const [universityModalVisible, setUniversityModalVisible] = useState(false);
-
-  // Search state for filtering universities by name
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Alert modal
-  const [customAlertVisible, setCustomAlertVisible] = useState(false);
-  const [customAlertMessage, setCustomAlertMessage] = useState('');
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const storedUserId = await AsyncStorage.getItem('userId');
-      if (storedUserId) {
-        setUserId(storedUserId);
-        try {
-          const response = await axios.get(`${API_BASE_URL}/user/${storedUserId}`);
-          const userData = response.data;
-          setEmail(userData.email);
-          setUsername(userData.username);
-          setRole(userData.role);
-          setProfilePicture({ uri: userData.profilePictureUrl });
-          if (userData.university) {
-            // We only have the university name in userData, so store an object
-            setSelectedUniversity({ name: userData.university });
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      }
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
     };
-
-    const fetchUniversities = async () => {
-      try {
-        const response = await axios.get(`${API_BASE_URL}/university`);
-        setUniversities(response.data);
-      } catch (error) {
-        console.error('Error fetching universities:', error);
-      }
-    };
-
-    fetchUserData();
-    fetchUniversities();
   }, []);
 
-  // Filter universities based on search query
-  const filteredUniversities = universities.filter((item) => {
-    const universityName = item.displayedName || item.name;
-    return universityName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+  const fetchUserData = useCallback(async () => {
+    setIsLoadingUser(true);
+    setLoadError(null);
+    try {
+      const { userId: storedUserId } = await getUser();
+      if (!storedUserId || isGuestUser(storedUserId)) {
+        throw new Error('No signed-in user');
+      }
+      const { data: userData } = await api.get(`/user/${storedUserId}`);
+      if (!mountedRef.current) return;
+      setUserId(storedUserId);
+      setEmail(userData.email || '');
+      setUsername(userData.username || '');
+      if (userData.role) setRole(userData.role);
+      setCurrentPictureUrl(userData.profilePictureUrl || null);
+      // Only the university name is stored on the user.
+      setSelectedUniversity(userData.university ? { name: userData.university } : null);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      if (mountedRef.current) {
+        setLoadError(getErrorMessage(error, "We couldn't load your profile."));
+      }
+    } finally {
+      if (mountedRef.current) setIsLoadingUser(false);
+    }
+  }, []);
+
+  const fetchUniversities = useCallback(async () => {
+    setIsLoadingUniversities(true);
+    setUniversitiesError(null);
+    try {
+      const { data } = await api.get('/university');
+      if (mountedRef.current) setUniversities(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching universities:', error);
+      if (mountedRef.current) {
+        setUniversitiesError(getErrorMessage(error, "We couldn't load the universities."));
+      }
+    } finally {
+      if (mountedRef.current) setIsLoadingUniversities(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUserData();
+    fetchUniversities();
+  }, [fetchUserData, fetchUniversities]);
+
+  const filteredUniversities = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return universities;
+    return universities.filter((item) =>
+      (item.displayedName || item.name || '').toLowerCase().includes(query)
+    );
+  }, [universities, searchQuery]);
 
   const pickImage = async () => {
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-    });
-  
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProfilePicture(result.assets[0]);
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Permission needed',
+        'Please allow access to your photos to change your profile picture.',
+        permission.canAskAgain
+          ? [{ text: 'OK' }]
+          : [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Open Settings', onPress: () => Linking.openSettings() },
+            ]
+      );
+      return;
+    }
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.5,
+      });
+      if (!result.canceled && result.assets?.length > 0) {
+        setPickedImage(result.assets[0]);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Could not open your photos', 'Please try again.');
     }
   };
 
-  const handleSaveProfile = async () => {
-    if (!userId) return;
-    setLoading(true);
+  const closeUniversityModal = () => {
+    setUniversityModalVisible(false);
+    setSearchQuery('');
+  };
 
-    // Build the user update
+  const needsUniversity = canAccessLibrary(role);
+
+  const handleSaveProfile = async () => {
+    if (!userId || saving) return;
+    const trimmedEmail = email.trim();
+    const trimmedUsername = username.trim();
+    if (!trimmedEmail || !trimmedUsername) {
+      Alert.alert('Missing information', 'Please enter both an email and a username.');
+      return;
+    }
+
+    setSaving(true);
+    const universityName = selectedUniversity ? selectedUniversity.name : '';
     const updatedUser = {
-      email,
-      username,
+      email: trimmedEmail,
+      username: trimmedUsername,
       role,
-      university: selectedUniversity ? selectedUniversity.name : '',
+      university: universityName,
     };
 
     const formData = new FormData();
     formData.append('user', JSON.stringify(updatedUser));
-    if (profilePicture && profilePicture.uri) {
+    if (pickedImage?.uri) {
       formData.append('image', {
-        uri: profilePicture.uri,
-        type: 'image/jpeg',
-        name: 'profile.jpg',
+        uri: pickedImage.uri,
+        type: pickedImage.mimeType || 'image/jpeg',
+        name: pickedImage.fileName || 'profile.jpg',
       });
     }
 
     try {
-      await axios.put(`${API_BASE_URL}/user/${userId}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      await api.put(`/user/${userId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: UPLOAD_TIMEOUT_MS,
       });
+      // Keep the cached session in sync so role-based access (Library tab) updates immediately.
+      await setUser({ userId, userRole: role, userUniversity: universityName });
+      if (!mountedRef.current) return;
       Alert.alert('Profile updated successfully.');
       navigation.goBack();
     } catch (error) {
-      Alert.alert('Error updating profile.', error.message || 'Please try again.');
       console.error('Error updating profile:', error);
+      Alert.alert('Error updating profile.', getErrorMessage(error, 'Please try again.'));
     } finally {
-      setLoading(false);
+      if (mountedRef.current) setSaving(false);
     }
   };
 
-  const showCustomAlert = (message) => {
-    setCustomAlertMessage(message);
-    setCustomAlertVisible(true);
-  };
+  const renderUniversityItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.universityItemWrapper}
+      onPress={() => {
+        setSelectedUniversity(item);
+        closeUniversityModal();
+      }}
+      accessibilityRole="button"
+    >
+      {!!item.iconurl && <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />}
+      <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
+    </TouchableOpacity>
+  );
 
-  // For the custom university list items
-  const renderUniversityItem = ({ item }) => {
+  const renderUniversityList = () => {
+    if (isLoadingUniversities) {
+      return <Loader backgroundColor={colors.primary} />;
+    }
+    if (universitiesError) {
+      return (
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Something went wrong"
+          message={universitiesError}
+          actionLabel="Try again"
+          onAction={fetchUniversities}
+        />
+      );
+    }
     return (
-      <TouchableOpacity
-        style={styles.universityItemWrapper}
-        onPress={() => {
-          setSelectedUniversity(item);
-          setUniversityModalVisible(false);
-          // Reset search when an item is selected
-          setSearchQuery('');
-        }}
-      >
-        {item.iconurl && (
-          <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
-        )}
-        <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
-      </TouchableOpacity>
+      <FlatList
+        data={filteredUniversities}
+        keyExtractor={(item, index) => String(item._id || item.name || index)}
+        renderItem={renderUniversityItem}
+        contentContainerStyle={styles.flatListContainer}
+        keyboardShouldPersistTaps="handled"
+        initialNumToRender={20}
+        ListEmptyComponent={<Text style={styles.emptyText}>No universities found.</Text>}
+      />
     );
   };
 
+  if (isLoadingUser) {
+    return <Loader backgroundColor={colors.primaryBis} />;
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.stateContainer, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Something went wrong"
+          message={loadError}
+          actionLabel="Try again"
+          onAction={fetchUserData}
+        />
+        <Button mode="text" textColor={colors.secondary} onPress={() => navigation.goBack()} style={styles.backButton}>
+          Go back
+        </Button>
+      </View>
+    );
+  }
+
+  const previewUri = pickedImage?.uri || currentPictureUrl;
+
   return (
-    <Provider>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: 20 + insets.top, paddingBottom: 20 + insets.bottom },
+        ]}
+        keyboardShouldPersistTaps="handled"
       >
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.title}>Edit Profile</Text>
+        <Text style={styles.title}>Edit Profile</Text>
 
-          {/* Email */}
-          <TextInput
-            label="Email"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            mode="outlined"
-            autoCapitalize="none"
-          />
+        <TextInput
+          label="Email"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+          mode="outlined"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          textContentType="emailAddress"
+          autoComplete="email"
+        />
 
-          {/* Username */}
-          <TextInput
-            label="Username"
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            mode="outlined"
-            autoCapitalize="none"
-          />
+        <TextInput
+          label="Username"
+          style={styles.input}
+          value={username}
+          onChangeText={setUsername}
+          mode="outlined"
+          autoCapitalize="none"
+          autoCorrect={false}
+          textContentType="username"
+        />
 
-          {/* Role Picker */}
-          <View style={styles.pickerContainer}>
-            <Picker
-              selectedValue={role}
-              style={styles.picker}
-              onValueChange={(itemValue) => setRole(itemValue)}
-            >
-              <Picker.Item label="College Student" value="College Student" />
-              <Picker.Item label="Professor" value="Professor" />
-              <Picker.Item label="Researcher" value="Researcher" />
-              <Picker.Item label="Learning Enthusiast" value="Learning Enthusiast" />
-              <Picker.Item label="PhD Student" value="PhD Student" />
-            </Picker>
-          </View>
+        <View style={styles.pickerContainer}>
+          <Picker
+            selectedValue={role}
+            style={styles.picker}
+            onValueChange={(itemValue) => setRole(itemValue)}
+            accessibilityLabel="Role"
+          >
+            {ROLES.map((roleOption) => (
+              <Picker.Item key={roleOption} label={roleOption} value={roleOption} />
+            ))}
+          </Picker>
+        </View>
 
-          {/* University Selector (only if needed) */}
-          {(role === 'Professor' || role === 'Researcher' || role === 'PhD Student') && (
-            <TouchableOpacity
-              style={styles.universitySelector}
-              onPress={() => setUniversityModalVisible(true)}
-            >
-              {selectedUniversity ? (
-                <View style={styles.universitySelectedWrapper}>
-                  {selectedUniversity.iconurl && (
-                    <Image
-                      source={{ uri: selectedUniversity.iconurl }}
-                      style={styles.universityIcon}
-                    />
-                  )}
-                  <Text style={styles.universityText}>
-                    {selectedUniversity.displayedName || selectedUniversity.name}
-                  </Text>
-                </View>
-              ) : (
-                <Text style={styles.universityPlaceholder}>Select University</Text>
-              )}
-            </TouchableOpacity>
-          )}
-
-          {/* Profile Picture */}
-          <TouchableOpacity onPress={pickImage} style={styles.imagePicker}>
-            {profilePicture ? (
-              <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
+        {needsUniversity && (
+          <TouchableOpacity
+            style={styles.universitySelector}
+            onPress={() => setUniversityModalVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Select university"
+          >
+            {selectedUniversity ? (
+              <View style={styles.universitySelectedWrapper}>
+                {!!selectedUniversity.iconurl && (
+                  <Image source={{ uri: selectedUniversity.iconurl }} style={styles.universityIcon} />
+                )}
+                <Text style={styles.universityText}>
+                  {selectedUniversity.displayedName || selectedUniversity.name}
+                </Text>
+              </View>
             ) : (
-              <Text style={styles.imagePickerText}>Select Profile Picture</Text>
+              <Text style={styles.universityPlaceholder}>Select University</Text>
             )}
           </TouchableOpacity>
+        )}
 
-          <Button
-            mode="contained"
-            onPress={handleSaveProfile}
-            loading={loading}
-            buttonColor={colors.darkGreen}
-            icon={require('@assets/Profile_icons/save.png')}
-            labelStyle={{
-              fontSize: sizes.h3,
-              fontFamily: 'Montserrat',
-              textAlign: 'center',
-              paddingTop: spacing.xs,
-            }}
-            style={{
-              marginLeft: spacing.m,
-              marginRight: spacing.m,
-              marginBottom: spacing.s,
-              marginTop: spacing.l,
-              borderRadius: sizes.buttonRadius,
-            }}
-          >
-            Save
-          </Button>
+        <TouchableOpacity
+          onPress={pickImage}
+          style={styles.imagePicker}
+          accessibilityRole="button"
+          accessibilityLabel="Change profile picture"
+        >
+          {previewUri ? (
+            <Image source={{ uri: previewUri }} style={styles.profileImage} />
+          ) : (
+            <Text style={styles.imagePickerText}>Select Profile Picture</Text>
+          )}
+        </TouchableOpacity>
 
-          {/* University Modal */}
-          <Modal
-            transparent={false}
-            animationType="slide"
-            visible={universityModalVisible}
-            onRequestClose={() => setUniversityModalVisible(false)}
-          >
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select a University</Text>
-              <TouchableOpacity onPress={() => setUniversityModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
-              </TouchableOpacity>
-            </View>
-            {/* Search input for universities */}
-            <TextInput
-              label="Search University"
-              mode="outlined"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              style={styles.searchInput}
-            />
-            <FlatList
-              data={filteredUniversities}
-              keyExtractor={(item) => item._id}
-              renderItem={renderUniversityItem}
-              contentContainerStyle={styles.flatListContainer}
-            />
-          </Modal>
+        <Button
+          mode="contained"
+          onPress={handleSaveProfile}
+          loading={saving}
+          disabled={saving}
+          buttonColor={colors.darkGreen}
+          icon={require('@assets/Profile_icons/save.png')}
+          labelStyle={styles.saveButtonLabel}
+          style={styles.saveButton}
+        >
+          Save
+        </Button>
+      </ScrollView>
 
-          {/* Custom Alert Modal */}
-          <Portal>
-            <Modal
-              visible={customAlertVisible}
-              onDismiss={() => setCustomAlertVisible(false)}
-              contentContainerStyle={styles.modalContainer}
+      <Modal
+        transparent={false}
+        animationType="slide"
+        visible={universityModalVisible}
+        onRequestClose={closeUniversityModal}
+      >
+        <SafeAreaView style={styles.modalSafeArea}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Select a University</Text>
+            <TouchableOpacity
+              onPress={closeUniversityModal}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Close"
             >
-              <Text>{customAlertMessage}</Text>
-              <Button onPress={() => setCustomAlertVisible(false)}>OK</Button>
-            </Modal>
-          </Portal>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </Provider>
+              <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            label="Search University"
+            mode="outlined"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={styles.searchInput}
+            autoCorrect={false}
+          />
+          {renderUniversityList()}
+        </SafeAreaView>
+      </Modal>
+    </KeyboardAvoidingView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -393,10 +477,40 @@ const styles = StyleSheet.create({
     color: 'gray',
     fontFamily: 'Montserrat',
   },
-  button: {
-    backgroundColor: colors.secondary,
+  saveButton: {
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    marginBottom: spacing.s,
     marginTop: spacing.l,
-    marginBottom: spacing.l,
+    borderRadius: sizes.buttonRadius,
+  },
+  saveButtonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.xs,
+  },
+  flex: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
+  stateContainer: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+    paddingBottom: spacing.xl,
+  },
+  backButton: {
+    alignSelf: 'center',
+  },
+  modalSafeArea: {
+    flex: 1,
+    backgroundColor: colors.primary,
+  },
+  emptyText: {
+    fontFamily: 'Montserrat',
+    color: colors.secondary,
+    textAlign: 'center',
+    marginTop: spacing.l,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -408,6 +522,8 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: sizes.h1,
     fontFamily: 'Montserrat',
+    color: colors.secondary,
+    flexShrink: 1,
   },
   searchInput: {
     marginHorizontal: spacing.m,
@@ -416,12 +532,6 @@ const styles = StyleSheet.create({
   },
   flatListContainer: {
     paddingVertical: spacing.m,
-  },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
   },
 });
 

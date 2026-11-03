@@ -14,10 +14,6 @@
       "image": "./assets/BrightMinds/splash.png",
       "backgroundColor": "#f1f1f1"
     },
-    "statusBar": {
-      "backgroundColor": "#ffffff",
-      "style": "light"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -37,16 +33,25 @@
       "package": "com.ccarnus3.brightminds",
       "newArchEnabled": true
     },
-    "web": {
-      "favicon": "./assets/BrightMinds/ios_icon.png"
-    },
     "extra": {
       "eas": {
         "projectId": "9c6866c1-2446-45c8-a5b0-82bc6aa94aac"
       }
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "BrightMinds needs access to your photo library so you can choose a profile picture or upload a research cast.",
+          "cameraPermission": "BrightMinds needs access to your camera so you can record a research cast.",
+          "microphonePermission": "BrightMinds needs access to your microphone to record audio for your research cast."
+        }
+      ],
+      "expo-splash-screen",
+      "expo-video",
+      "expo-audio"
     ]
   }
 }

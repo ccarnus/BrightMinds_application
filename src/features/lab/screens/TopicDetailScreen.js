@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   Animated,
-  ActivityIndicator,
   ScrollView,
   Dimensions,
   TouchableOpacity,
-  Image
+  Image,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Provider, Snackbar } from 'react-native-paper';
+import { Snackbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { RFValue } from "react-native-responsive-fontsize";
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RFValue } from 'react-native-responsive-fontsize';
 import { colors, sizes, spacing } from '@shared/config/theme';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import ActivityImage from '@assets/Virtual_lab_icons/activity.png';
@@ -21,22 +21,33 @@ import ImpactImage from '@assets/Virtual_lab_icons/impact.png';
 import citationIcon from '@assets/Virtual_lab_icons/citation.png';
 import worksIcon from '@assets/Virtual_lab_icons/works.png';
 import castIcon from '@assets/Cast_screen_icons/cast_icon.png';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, openAlex, getErrorMessage } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
 
 const { width, height } = Dimensions.get('window');
 
+const MAX_ACTIVITY = 9000;
+const MAX_IMPACT = 2000;
+const MAX_CITATIONS = 8000000;
+
+const toFill = (value, max) => Math.min(100, Math.max(0, ((Number(value) || 0) / max) * 100));
+
+// OpenAlex ids may be stored either as "T12345" or as "https://openalex.org/T12345".
+const toShortOpenAlexId = (id) => (id ? String(id).split('/').pop() : null);
+
 const TopicDetailScreen = ({ route }) => {
   const { topicId } = route.params;
-  const OpenAlexId = useRef(null);
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [brightData, setBrightData] = useState(null);
   const [openData, setOpenData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const scrollY = useRef(new Animated.Value(0)).current;
-  const initialHeaderHeight = height / 4;
-  const minHeaderHeight = height / 9;
+  const initialHeaderHeight = height / 4 + insets.top;
+  const minHeaderHeight = height / 9 + insets.top;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
 
   const headerHeight = scrollY.interpolate({
@@ -50,231 +61,228 @@ const TopicDetailScreen = ({ route }) => {
     extrapolate: 'clamp',
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res1 = await fetch(`${API_BASE_URL}/topic/${topicId}`);
-        if (!res1.ok) {
-          throw new Error('Failed to fetch Brightminds topic details');
-        }
-        const bright = await res1.json();
-        setBrightData(bright);
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
 
-        openalexID = bright.openalexID;
-        const res2 = await fetch(`https://api.openalex.org/topics/${openalexID}`);
-        if (!res2.ok) {
-          throw new Error('Failed to fetch OpenAlex topic details');
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: bright } = await api.get(`/topic/${encodeURIComponent(topicId)}`);
+      if (!isMounted.current) return;
+      setBrightData(bright);
+
+      const openAlexId = toShortOpenAlexId(bright?.openalexID);
+      if (openAlexId) {
+        try {
+          const { data: open } = await openAlex.get(`/topics/${encodeURIComponent(openAlexId)}`);
+          if (isMounted.current) setOpenData(open);
+        } catch (openErr) {
+          // OpenAlex enrichment is optional: keep showing the BrightMinds data.
+          console.warn('Failed to fetch OpenAlex topic details:', openErr?.message);
         }
-        const open = await res2.json();
-        setOpenData(open);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchData();
+    } catch (err) {
+      console.error('Failed to fetch topic details:', err);
+      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load this topic.'));
+    } finally {
+      if (isMounted.current) setLoading(false);
+    }
   }, [topicId]);
 
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#00aaff" />
-      </View>
-    );
+    return <Loader size={200} backgroundColor={colors.primaryBis} />;
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error: {error}</Text>
-        <Button onPress={() => navigation.goBack()}>Go Back</Button>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Couldn't load this topic"
+          message={error}
+          actionLabel="Try again"
+          onAction={fetchData}
+        />
+        <TouchableOpacity
+          style={styles.backLink}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+        >
+          <Text style={styles.backLinkText}>Go back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   const { name: brightName, departmentName, castCount, activity, impact } = brightData || {};
-  const { display_name, description, keywords, works_count, cited_by_count } = openData || {};
+  const { display_name, description, keywords, cited_by_count } = openData || {};
+  const openAlexTopicId = toShortOpenAlexId(brightData?.openalexID);
   const topicTitle = display_name || brightName || 'Topic Detail';
-  const activityFill = brightData ? (activity / 9000) * 100 : 0;
-  const impactFill = brightData ? (impact / 2000) * 100 : 0;
-  const citationFill = openData ? (cited_by_count / 8000000) * 100 : 0;
+  const activityFill = toFill(activity, MAX_ACTIVITY);
+  const impactFill = toFill(impact, MAX_IMPACT);
+  const citationFill = toFill(cited_by_count, MAX_CITATIONS);
 
   return (
-    <Provider>
-      <View style={styles.container}>
-        {/* Animated Header */}
-        <Animated.View style={[styles.header, { height: headerHeight }]}>
-          <LinearGradient
-            colors={[colors.secondary, colors.primaryBis]}
-            style={styles.headerGradient}
-          >
-            <Animated.Text
-              style={[styles.headerTitle, { fontSize: titleFontSize }]}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.5}
-            >
-              {topicTitle}
-            </Animated.Text>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Scrollable Content */}
-        <Animated.ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{ paddingTop: initialHeaderHeight }}
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
+    <View style={styles.container}>
+      <Animated.View style={[styles.header, { height: headerHeight }]}>
+        <LinearGradient
+          colors={[colors.secondary, colors.primaryBis]}
+          style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
-          {/* Overview Section */}
-          <View style={styles.overviewContainer}>
-            {/* Gauges Row for Activity and Impact */}
-            <View style={styles.gaugeRow}>
-              <View style={styles.gaugeContainer}>
-                <AnimatedCircularProgress
-                  size={width * 0.35}
-                  width={10}
-                  fill={activityFill}
-                  tintColor={colors.lightTeal}
-                  backgroundColor={colors.primaryBis}
-                  rotation={-115}
-                  arcSweepAngle={230}
-                  lineCap="round"
-                >
-                  {() => (
-                    <Image 
-                      source={ActivityImage} 
-                      style={styles.gaugeIcon} 
-                      resizeMode="contain"
-                    />
-                  )}
-                </AnimatedCircularProgress>
-                <Text style={styles.gaugeLabelActivity}>Activity</Text>
-              </View>
-              <View style={styles.gaugeContainer}>
-                <AnimatedCircularProgress
-                  size={width * 0.35}
-                  width={10}
-                  fill={impactFill}
-                  tintColor={colors.darkTeal}
-                  backgroundColor={colors.primaryBis}
-                  rotation={-115}
-                  arcSweepAngle={230}
-                  lineCap="round"
-                >
-                  {() => (
-                    <Image 
-                      source={ImpactImage} 
-                      style={styles.gaugeIcon} 
-                      resizeMode="contain"
-                    />
-                  )}
-                </AnimatedCircularProgress>
-                <Text style={styles.gaugeLabelImpact}>Impact</Text>
-              </View>
-            </View>
+          <Animated.Text
+            style={[styles.headerTitle, { fontSize: titleFontSize }]}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.5}
+          >
+            {topicTitle}
+          </Animated.Text>
+        </LinearGradient>
+      </Animated.View>
 
-            {/* Horizontal Gauge for Citations, positioned above the buttons */}
-            <View style={styles.citationIconContainer}>
-              <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
-              <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingTop: initialHeaderHeight, paddingBottom: insets.bottom }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+      >
+        <View style={styles.overviewContainer}>
+          <View style={styles.gaugeRow}>
+            <View style={styles.gaugeContainer}>
+              <AnimatedCircularProgress
+                size={width * 0.35}
+                width={10}
+                fill={activityFill}
+                tintColor={colors.lightTeal}
+                backgroundColor={colors.primaryBis}
+                rotation={-115}
+                arcSweepAngle={230}
+                lineCap="round"
+              >
+                {() => (
+                  <Image source={ActivityImage} style={styles.gaugeIcon} resizeMode="contain" />
+                )}
+              </AnimatedCircularProgress>
+              <Text style={styles.gaugeLabelActivity}>Activity</Text>
             </View>
-            <View style={styles.horizontalGaugeWrapper}>
-              <View style={styles.horizontalGaugeContainer}>
-                <View style={styles.horizontalGaugeBackground}>
-                  <Animated.View 
-                    style={[
-                      styles.horizontalGaugeFill, 
-                      { width: `${citationFill}%` }
-                    ]}
-                  />
+            <View style={styles.gaugeContainer}>
+              <AnimatedCircularProgress
+                size={width * 0.35}
+                width={10}
+                fill={impactFill}
+                tintColor={colors.darkTeal}
+                backgroundColor={colors.primaryBis}
+                rotation={-115}
+                arcSweepAngle={230}
+                lineCap="round"
+              >
+                {() => (
+                  <Image source={ImpactImage} style={styles.gaugeIcon} resizeMode="contain" />
+                )}
+              </AnimatedCircularProgress>
+              <Text style={styles.gaugeLabelImpact}>Impact</Text>
+            </View>
+          </View>
+
+          {cited_by_count != null && (
+            <>
+              <View style={styles.citationIconContainer}>
+                <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+                <Text style={styles.citationCountText}>
+                  {Number(cited_by_count).toLocaleString()} Citations
+                </Text>
+              </View>
+              <View style={styles.horizontalGaugeWrapper}>
+                <View style={styles.horizontalGaugeContainer}>
+                  <View style={styles.horizontalGaugeBackground}>
+                    <View style={[styles.horizontalGaugeFill, { width: `${citationFill}%` }]} />
+                  </View>
                 </View>
               </View>
-            </View>
+            </>
+          )}
 
-            {/* Buttons Row for Works, Casts*/}
-            <View style={styles.buttonsRow}>
-            <TouchableOpacity 
-                style={styles.statButton} 
-                onPress={() => {
-                  navigation.navigate('WorksListScreen', {
-                    topicId: openalexID 
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity
+              style={[styles.statButton, !openAlexTopicId && styles.statButtonDisabled]}
+              disabled={!openAlexTopicId}
+              accessibilityRole="button"
+              accessibilityLabel="Browse research works"
+              onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexTopicId })}
+            >
+              <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+              <Text style={styles.statButtonLabel}>Works</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.statButton}
+              accessibilityRole="button"
+              accessibilityLabel="Browse casts"
+              onPress={() => {
+                if (!castCount) {
+                  setSnackbarVisible(true);
+                } else {
+                  navigation.navigate('CastListScreen', {
+                    department: departmentName,
+                    topic: topicTitle,
                   });
-                }}
-              >
-                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
-                <Text style={styles.statButtonLabel}>Works</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.statButton} 
-                onPress={() => {
-                  if (castCount === 0) {
-                    setSnackbarVisible(true);
-                  } else {
-                    navigation.navigate('CastListScreen', { 
-                      department: departmentName, 
-                      topic: topicTitle 
-                    });
-                  }
-                }}
-              >
-                <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
-                <Text style={styles.statButtonLabel}>Casts</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Department Information */}
-            {departmentName && (
-              <View style={styles.departmentContainer}>
-                <Text style={styles.departmentText}>Department: {departmentName}</Text>
-              </View>
-            )}
+                }
+              }}
+            >
+              <Image source={castIcon} style={styles.statButtonIcon} resizeMode="contain" />
+              <Text style={styles.statButtonLabel}>Casts</Text>
+            </TouchableOpacity>
           </View>
 
-          {/* Content Section */}
-          <View style={styles.contentContainer}>
-            {/* Description Section */}
+          {!!departmentName && (
+            <View style={styles.departmentContainer}>
+              <Text style={styles.departmentText}>Department: {departmentName}</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionHeader}>Description</Text>
+            <Text style={styles.descriptionText}>
+              {description || 'No description available for this topic yet.'}
+            </Text>
+          </View>
+
+          {keywords && keywords.length > 0 && (
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Description</Text>
-              <Text style={styles.descriptionText}>{description}</Text>
+              <Text style={styles.sectionHeader}>Keywords</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.keywordsContainer}
+              >
+                {keywords.map((word, index) => (
+                  <View key={`${word}-${index}`} style={styles.keywordChip}>
+                    <Text style={styles.keywordText}>{word}</Text>
+                  </View>
+                ))}
+              </ScrollView>
             </View>
+          )}
+        </View>
+      </Animated.ScrollView>
 
-            {/* Keywords Section with multi-line wrapping and horizontal scrolling */}
-            {keywords && keywords.length > 0 && (
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionHeader}>Keywords</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false} 
-                  contentContainerStyle={styles.keywordsContainer}
-                >
-                  {keywords.map((word, index) => (
-                    <View key={index} style={styles.keywordChip}>
-                      <Text style={styles.keywordText}>{word}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-        </Animated.ScrollView>
-
-        {/* Snackbar to display "No casts available" */}
-        <Snackbar
-          visible={snackbarVisible}
-          onDismiss={() => setSnackbarVisible(false)}
-          duration={3000}
-          style={styles.snackbar}
-        >
-          No casts available.
-        </Snackbar>
-      </View>
-    </Provider>
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={[styles.snackbar, { marginBottom: spacing.s + insets.bottom }]}
+      >
+        No casts available.
+      </Snackbar>
+    </View>
   );
 };
 
@@ -398,10 +406,8 @@ const styles = StyleSheet.create({
     fontFamily: 'MontserratBold',
     color: colors.primary,
   },
-  statButtonCount: {
-    fontSize: RFValue(16),
-    color: colors.darkblue,
-    fontFamily: 'Montserrat',
+  statButtonDisabled: {
+    opacity: 0.5,
   },
   departmentContainer: {
     marginTop: spacing.m,
@@ -455,23 +461,15 @@ const styles = StyleSheet.create({
     fontFamily: 'MontserratBold',
     color: colors.primary,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
+  backLink: {
+    alignSelf: 'center',
+    padding: spacing.m,
+    marginBottom: spacing.l,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.primaryBis,
-  },
-  errorText: {
-    fontSize: RFValue(16),
-    color: 'red',
-    marginBottom: spacing.m,
+  backLinkText: {
+    fontSize: RFValue(14),
+    fontFamily: 'MontserratBold',
+    color: colors.secondary,
   },
   snackbar: {
     position: 'absolute',

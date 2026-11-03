@@ -1,231 +1,182 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Linking,
-  Alert,
-  TouchableOpacity
-} from 'react-native';
-import LottieView from 'lottie-react-native';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, Image, ScrollView, StyleSheet, Dimensions, Linking, Alert, TouchableOpacity } from 'react-native';
 import { Button } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, sizes, spacing } from '@shared/config/theme';
+import { openAlex, getErrorMessage } from '@shared/api/client';
 import departments from '@shared/data/departments';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
-// Mapping to help match a department based on the field name.
-const getDepartmentDetails = (id) => {
-  return departments.find((dept) => dept.id === id);
-};
-
-// Helper: reconstruct an abstract from an inverted index object.
-// It extracts word positions and then sorts and joins them.
+// OpenAlex ships abstracts as an inverted index ({ word: [positions] }).
 const reconstructAbstract = (invertedIndex) => {
   if (!invertedIndex) return '';
   const positions = [];
   Object.entries(invertedIndex).forEach(([word, posArray]) => {
-    posArray.forEach(pos => positions.push({ pos, word }));
+    posArray.forEach((pos) => positions.push({ pos, word }));
   });
   positions.sort((a, b) => a.pos - b.pos);
-  const words = positions.map(entry => entry.word);
-  return words.join(' ');
+  return positions.map((entry) => entry.word).join(' ');
 };
 
-// Helper: convert a date string to a relative time string.
 const getTimeSincePosted = (dateString) => {
-  const publicationDate = new Date(dateString);
-  const now = new Date();
-  const diffMs = now - publicationDate;
-  const diffDays = Math.floor(diffMs / (1000 * 3600 * 24));
+  const diffDays = Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
+  if (Number.isNaN(diffDays)) return '';
   if (diffDays < 365) {
-    return diffDays === 0 ? "today" : `${diffDays} days ago`;
-  } else {
-    const years = Math.floor(diffDays / 365);
-    return `${years} ${years === 1 ? 'year' : 'years'} ago`;
+    if (diffDays <= 0) return 'today';
+    return diffDays === 1 ? '1 day ago' : `${diffDays} days ago`;
   }
+  const years = Math.floor(diffDays / 365);
+  return `${years} ${years === 1 ? 'year' : 'years'} ago`;
 };
 
-const OpenAlexDetailsScreen = ({ route }) => {
-  // The parameter "articleId" (i.e. the work's short ID) is passed from the previous screen.
+const OpenAlexDetailsScreen = ({ route, navigation }) => {
+  // Short OpenAlex work id, e.g. "W2935714482".
   const { articleId } = route.params;
-  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [work, setWork] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const mountedRef = useRef(true);
 
-  // Retrieve userId from AsyncStorage (if needed)
   useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const storedUserId = await AsyncStorage.getItem('userId');
-        setUserId(storedUserId);
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-      }
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
     };
-    getUserData();
   }, []);
 
-  useEffect(() => {
-    if (articleId) {
-      fetchWork();
+  const fetchWork = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const { data } = await openAlex.get(`/works/${encodeURIComponent(articleId)}`);
+      if (!mountedRef.current) return;
+      setWork(data?.title ? data : null);
+    } catch (error) {
+      console.error('Error fetching work details:', error);
+      if (mountedRef.current) {
+        setLoadError(getErrorMessage(error, 'We could not load this research paper.'));
+      }
+    } finally {
+      if (mountedRef.current) setIsLoading(false);
     }
   }, [articleId]);
 
-  // 20-second timeout alert if work is not loaded.
   useEffect(() => {
-    const timeoutTimer = setTimeout(() => {
-      if (!work) {
-        Alert.alert("Error", "Loading took too long, please try again later.", [
-          { text: "OK", onPress: () => navigation.navigate('BottomNav') }
-        ]);
-      }
-    }, 20000);
-    return () => clearTimeout(timeoutTimer);
-  }, [work, navigation]);
+    fetchWork();
+  }, [fetchWork]);
 
-  const fetchWork = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`https://api.openalex.org/works/${articleId}`);
-      const data = await response.json();
-      if (data && data.title) {
-        setWork(data);
-      } else {
-        // Retry fetching if not valid.
-        setTimeout(fetchWork, 2000);
-      }
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error fetching work details:', error);
-      setIsLoading(false);
+  const abstractText = useMemo(() => {
+    const index = work?.abstract_inverted_index_v3 || work?.abstract_inverted_index;
+    return index ? reconstructAbstract(index) : 'No abstract available.';
+  }, [work]);
+
+  const goToCast = () => navigation.navigate('BottomNav', { screen: 'Cast' });
+
+  const openFullResearch = () => {
+    const url = work?.primary_location?.landing_page_url;
+    if (!url) {
+      Alert.alert('Unavailable', 'No link available for this work.');
+      return;
     }
+    Linking.openURL(url).catch((error) => {
+      console.error('Failed to open URL:', error);
+      Alert.alert('Error', 'Unable to open the research link.');
+    });
   };
 
-  // Determine department details using the primary_topic.field.display_name.
-  const id =
-    work && work.primary_topic && work.primary_topic.field
-      ? work.primary_topic.field.id
-      : null;
-  const departmentDetails = id ? getDepartmentDetails(id) : null;
-
-  // Use abstract_inverted_index_v3 if available; otherwise, fall back to abstract_inverted_index.
-  const abstractText = work && (work.abstract_inverted_index_v3 || work.abstract_inverted_index)
-    ? reconstructAbstract(work.abstract_inverted_index_v3 || work.abstract_inverted_index)
-    : "No abstract available.";
+  const backButton = (
+    <TouchableOpacity
+      style={[styles.backButton, { top: insets.top + spacing.s }]}
+      onPress={() => navigation.goBack()}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="chevron-back" size={28} color={colors.secondary} />
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
+    return <Loader backgroundColor={colors.primaryBis} />;
+  }
+
+  if (loadError || !work) {
     return (
-      <View style={styles.centered}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop={true}
-          style={styles.lottie}
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon={loadError ? 'cloud-offline-outline' : 'document-text-outline'}
+          title={loadError ? 'Something went wrong' : 'Research paper not found'}
+          message={loadError || 'This work is not available right now.'}
+          actionLabel={loadError ? 'Try again' : 'Back to Cast'}
+          onAction={loadError ? fetchWork : goToCast}
         />
+        {backButton}
       </View>
     );
   }
 
-  if (!work) {
-    return (
-      <View style={styles.centered}>
-        <Text>Work not found</Text>
-      </View>
-    );
-  }
+  const fieldId = work.primary_topic?.field?.id;
+  const departmentDetails = fieldId ? departments.find((dept) => dept.id === fieldId) : null;
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.containerScroll}>
-        {/* If available, you might display a header image here.
-            OpenAlex does not include one by default, so this section is omitted.
-            You could add a placeholder image if desired. */}
+      <ScrollView
+        style={styles.containerScroll}
+        contentContainerStyle={{ paddingTop: insets.top + spacing.s }}
+      >
         <View style={styles.content}>
           <Text style={styles.title}>{work.title}</Text>
-          {/* Display the department details using primary_topic.field */}
-          {departmentDetails && (
+          {!!departmentDetails && (
             <TouchableOpacity
               style={styles.topIconContainer}
               onPress={() =>
                 navigation.navigate('VirtualLab', {
                   labId: departmentDetails.name,
-                  labDisplayName: departmentDetails.display
+                  labDisplayName: departmentDetails.display,
                 })
               }
+              accessibilityRole="button"
             >
               <Image source={departmentDetails.image} style={styles.icon} />
               <Text style={styles.iconTextDepartment}>{departmentDetails.display}</Text>
             </TouchableOpacity>
           )}
           <View style={styles.dateContainer}>
-            <Text style={styles.dateText}>
-              {getTimeSincePosted(work.publication_date)}
-            </Text>
+            <Text style={styles.dateText}>{getTimeSincePosted(work.publication_date)}</Text>
           </View>
           <Text style={styles.description}>{abstractText}</Text>
         </View>
         <View style={styles.buttonContainer}>
           <Button
             mode="contained"
-            onPress={() => navigation.navigate('BottomNav', { screen: 'Cast' })}
+            onPress={goToCast}
             buttonColor={colors.darkGreen}
             icon={require('@assets/Cast_screen_icons/like.png')}
-            labelStyle={{
-              fontSize: sizes.h3,
-              fontFamily: 'Montserrat',
-              textAlign: 'center',
-              paddingTop: spacing.s,
-            }}
-            style={{
-              marginLeft: spacing.m,
-              marginRight: spacing.m,
-              marginBottom: height * 0.08,
-              marginTop: spacing.l,
-              paddingHorizontal: spacing.m,
-              borderRadius: sizes.buttonRadius,
-            }}
+            labelStyle={styles.gotItLabel}
+            style={styles.gotItButton}
           >
             Got it!
           </Button>
         </View>
       </ScrollView>
-      <View style={styles.fixedButtonContainer}>
+      <View style={[styles.fixedButtonContainer, { paddingBottom: spacing.m + insets.bottom }]}>
         <Button
           mode="contained"
-          onPress={() => {
-            if (
-              work &&
-              work.primary_location &&
-              work.primary_location.landing_page_url
-            ) {
-              Linking.openURL(work.primary_location.landing_page_url).catch(err =>
-                console.error('Failed to open URL:', err)
-              );
-            } else {
-              alert('No link available for this work.');
-            }
-          }}
+          onPress={openFullResearch}
           buttonColor={colors.darkblue}
           icon={require('@assets/Cast_screen_icons/link.png')}
-          labelStyle={{ fontSize: sizes.h3, fontFamily: 'Montserrat' }}
-          style={{
-            marginLeft: spacing.m,
-            marginRight: spacing.m,
-            marginBottom: spacing.s,
-            marginTop: spacing.l,
-            paddingHorizontal: spacing.s,
-          }}
+          labelStyle={styles.researchLabel}
+          style={styles.researchButton}
         >
           Access Full Research
         </Button>
       </View>
+      {backButton}
     </View>
   );
 };
@@ -233,6 +184,11 @@ const OpenAlexDetailsScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.primaryBis },
   containerScroll: { backgroundColor: colors.primaryBis },
+  backButton: {
+    position: 'absolute',
+    left: spacing.m,
+    zIndex: 10,
+  },
   content: { padding: spacing.m },
   title: {
     fontSize: sizes.h1,
@@ -243,11 +199,10 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: sizes.h3,
-    color: colors.text,
+    color: colors.black,
     textAlign: 'left',
     fontFamily: 'Montserrat',
   },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   topIconContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -283,6 +238,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.l * 2,
   },
+  gotItLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
+  },
+  gotItButton: {
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    marginBottom: height * 0.08,
+    marginTop: spacing.l,
+    paddingHorizontal: spacing.m,
+    borderRadius: sizes.buttonRadius,
+  },
   fixedButtonContainer: {
     position: 'absolute',
     bottom: 0,
@@ -291,7 +260,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     padding: spacing.m,
   },
-  lottie: { width: width * 0.6, height: width * 0.6 },
+  researchLabel: { fontSize: sizes.h3, fontFamily: 'Montserrat' },
+  researchButton: {
+    marginLeft: spacing.m,
+    marginRight: spacing.m,
+    marginBottom: spacing.s,
+    marginTop: spacing.l,
+    paddingHorizontal: spacing.s,
+  },
 });
 
 export default OpenAlexDetailsScreen;

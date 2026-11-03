@@ -1,15 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { Button } from 'react-native-paper';
-import axios from 'axios';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import departments from '@shared/data/departments';
 import { colors, sizes, spacing } from '@shared/config/theme';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, getErrorMessage } from '@shared/api/client';
+import { getUser } from '@shared/utils/UserStorage';
+
+const MIN_SELECTION = 3;
 
 const PreferencesScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [selectedDepartments, setSelectedDepartments] = useState([]);
-  const [isButtonDisabled, setIsButtonDisabled] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Departments already saved, so a retry after a partial failure doesn't double-count them.
+  const savedDepartmentsRef = useRef(new Set());
+  const isButtonDisabled = selectedDepartments.length < MIN_SELECTION || isSubmitting;
 
   const toggleDepartmentSelection = (department) => {
     setSelectedDepartments((prevSelected) =>
@@ -19,74 +25,76 @@ const PreferencesScreen = ({ navigation }) => {
     );
   };
 
-  useEffect(() => {
-    setIsButtonDisabled(selectedDepartments.length < 3);
-  }, [selectedDepartments]);
-
   const handleConfirm = async () => {
-    const userId = await AsyncStorage.getItem('userId');
-
+    if (isButtonDisabled) return;
+    setIsSubmitting(true);
     try {
+      const { userId } = await getUser();
+      if (!userId) throw new Error('No signed-in user');
+      // Sequential on purpose: each request updates the same preferences document.
       for (const department of selectedDepartments) {
-        await axios.post(`${API_BASE_URL}/user/${userId}/preferences`, {
+        if (savedDepartmentsRef.current.has(department)) continue;
+        await api.post(`/user/${userId}/preferences`, {
           category: department,
           modification: 'positive',
         });
+        savedDepartmentsRef.current.add(department);
       }
-      navigation.navigate('WelcomeScreen');
+      navigation.reset({ index: 0, routes: [{ name: 'WelcomeScreen' }] });
     } catch (error) {
       console.error('Failed to set preferences:', error);
+      Alert.alert(
+        'Could not save your preferences',
+        getErrorMessage(error, 'Please try again.')
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      style={styles.scrollView}
+      contentContainerStyle={[
+        styles.container,
+        { paddingTop: 20 + insets.top, paddingBottom: 20 + insets.bottom },
+      ]}
+    >
       <Text style={styles.title}>What do you want to learn about?</Text>
-      <Text style={styles.subtitle}>At least 3</Text>
+      <Text style={styles.subtitle}>At least {MIN_SELECTION}</Text>
       <View style={styles.bubbleContainer}>
-        {departments.map(({ display, name }) => (
-          <TouchableOpacity
-            key={name}
-            style={[
-              styles.bubble,
-              selectedDepartments.includes(name) && styles.bubbleSelected
-            ]}
-            onPress={() => toggleDepartmentSelection(name)}
-          >
-            <Text
-              style={[
-                styles.bubbleText,
-                selectedDepartments.includes(name) && styles.bubbleTextSelected
-              ]}
+        {departments.map(({ display, name }) => {
+          const isSelected = selectedDepartments.includes(name);
+          return (
+            <TouchableOpacity
+              key={name}
+              style={[styles.bubble, isSelected && styles.bubbleSelected]}
+              onPress={() => toggleDepartmentSelection(name)}
+              disabled={isSubmitting}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: isSelected, disabled: isSubmitting }}
             >
-              {display}
-            </Text>
-          </TouchableOpacity>
-        ))}
+              <Text style={[styles.bubbleText, isSelected && styles.bubbleTextSelected]}>
+                {display}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
       <Button
         mode="contained"
         onPress={handleConfirm}
         disabled={isButtonDisabled}
+        loading={isSubmitting}
         buttonColor={colors.darkGreen}
-        labelStyle={{
-          fontSize: sizes.h3,
-          fontFamily: 'Montserrat',
-          textAlign: 'center',
-          paddingTop: spacing.s,
-        }}
-        style={{
-          marginBottom: spacing.s,
-          marginTop: spacing.l,
-          borderRadius: sizes.buttonRadius,
-        }}
+        labelStyle={styles.buttonLabel}
+        style={styles.button}
       >
         Confirm
       </Button>
     </ScrollView>
   );
 };
-
 const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
@@ -133,10 +141,20 @@ const styles = StyleSheet.create({
   bubbleTextSelected: {
     color: colors.primary,
   },
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.primaryBis,
+  },
   button: {
-    backgroundColor: colors.secondary,
+    marginBottom: spacing.s,
     marginTop: spacing.l,
+    borderRadius: sizes.buttonRadius,
+  },
+  buttonLabel: {
+    fontSize: sizes.h3,
     fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
   },
 });
 

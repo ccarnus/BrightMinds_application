@@ -1,78 +1,51 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { spacing, colors, sizes } from '@shared/config/theme';
+import { BackButton } from '@features/post-content/components/PostFormFields';
 
-const CastTypeChoice = () => {
-  const navigation = useNavigation();
-  const fadeInDuration = 400;
+const FADE_IN_DURATION = 400;
 
-  const fadeAnim1 = useState(new Animated.Value(0))[0];
-  const fadeAnim2 = useState(new Animated.Value(0))[0];
-  const fadeAnim3 = useState(new Animated.Value(0))[0];
+const CHOICES = [
+  { route: 'PostCast', label: 'Clip', icon: require('@assets/Cast_screen_icons/cast_logo.png') },
+  { route: 'PostArticle', label: 'Article', icon: require('@assets/Cast_screen_icons/article_logo.png') },
+];
+
+const CastTypeChoice = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const fadeAnims = useRef(CHOICES.map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim1, {
-      toValue: 1,
-      duration: fadeInDuration,
-      useNativeDriver: true,
-    }).start();
-
-    setTimeout(() => {
-      Animated.timing(fadeAnim2, {
-        toValue: 1,
-        duration: fadeInDuration,
-        useNativeDriver: true,
-      }).start();
-    }, fadeInDuration);
-
-    setTimeout(() => {
-      Animated.timing(fadeAnim3, {
-        toValue: 1,
-        duration: fadeInDuration,
-        useNativeDriver: true,
-      }).start();
-    }, fadeInDuration * 2);
-  }, [fadeAnim1, fadeAnim2, fadeAnim3]);
-
-  const handleChoice = (castType) => {
-    switch (castType) {
-      case 'Clip':
-        navigation.navigate('PostCast');
-        break;
-      case 'Article':
-        navigation.navigate('PostArticle');
-        break;
-      default:
-        break;
-    }
-  };
+    const animation = Animated.stagger(
+      FADE_IN_DURATION,
+      fadeAnims.map((value) =>
+        Animated.timing(value, { toValue: 1, duration: FADE_IN_DURATION, useNativeDriver: true })
+      )
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [fadeAnims]);
 
   return (
     <View style={styles.container}>
-      <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim2 }]}>
-        <TouchableOpacity onPress={() => handleChoice('Clip')}>
-          <View style={styles.content}>
-            <Image
-              source={require('@assets/Cast_screen_icons/cast_logo.png')}
-              style={styles.icon}
-            />
-            <Text style={styles.buttonText}>Clip</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
-
-      <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim3 }]}>
-        <TouchableOpacity onPress={() => handleChoice('Article')}>
-          <View style={styles.content}>
-            <Image
-              source={require('@assets/Cast_screen_icons/article_logo.png')}
-              style={styles.icon}
-            />
-            <Text style={styles.buttonText}>Article</Text>
-          </View>
-        </TouchableOpacity>
-      </Animated.View>
+      <BackButton onPress={() => navigation.goBack()} style={{ top: insets.top + spacing.s }} />
+      {CHOICES.map((choice, index) => (
+        <Animated.View
+          key={choice.route}
+          style={[styles.buttonContainer, { opacity: fadeAnims[index] }]}
+        >
+          <TouchableOpacity
+            onPress={() => navigation.navigate(choice.route)}
+            accessibilityRole="button"
+            accessibilityLabel={`Post a ${choice.label.toLowerCase()}`}
+          >
+            <View style={styles.content}>
+              <Image source={choice.icon} style={styles.icon} />
+              <Text style={styles.buttonText}>{choice.label}</Text>
+            </View>
+          </TouchableOpacity>
+        </Animated.View>
+      ))}
     </View>
   );
 };
@@ -86,7 +59,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '80%',
-    minHeight: 100, 
+    minHeight: 100,
     justifyContent: 'center',
     padding: spacing.s,
     marginVertical: spacing.m,

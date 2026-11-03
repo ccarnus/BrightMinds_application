@@ -1,212 +1,178 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  Animated,
-  ScrollView,
-  Dimensions,
-  TouchableOpacity,
-  Alert,
-  Image
-} from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Button, Provider } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import { RFValue } from "react-native-responsive-fontsize";
-import LottieView from 'lottie-react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { RFValue } from 'react-native-responsive-fontsize';
 import { colors, sizes, spacing } from '@shared/config/theme';
+import { openAlex, getErrorMessage } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
 
 import citationIcon from '@assets/Virtual_lab_icons/citation.png';
 import worksIcon from '@assets/Virtual_lab_icons/works.png';
 
 const { width, height } = Dimensions.get('window');
 
-const SearchTopicResult = ({ route }) => {
-  // Expecting route.params.topicId to be a full OpenAlex URL, e.g., "https://openalex.org/T11577"
+// The citation gauge is scaled against this many citations.
+const MAX_GAUGE_CITATIONS = 8000000;
+const INITIAL_HEADER_HEIGHT = height / 4;
+const MIN_HEADER_HEIGHT = height / 9;
+const HEADER_SHRINK_RANGE = INITIAL_HEADER_HEIGHT - MIN_HEADER_HEIGHT;
+
+const SearchTopicResult = ({ route, navigation }) => {
+  // topicId may be a full OpenAlex URL (e.g. "https://openalex.org/T11577") or a bare id.
   const { topicId } = route.params;
-  const navigation = useNavigation();
+  const openAlexId = topicId ? String(topicId).split('/').pop() : topicId;
+  const insets = useSafeAreaInsets();
   const [topicData, setTopicData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const mountedRef = useRef(true);
 
-  // Extract the OpenAlex ID from the full URL.
-  const extractTopicId = (id) => {
-    if (id) {
-      const parts = id.split('/');
-      return parts[parts.length - 1];
-    }
-    return id;
-  };
-
-  // Use the extracted id for navigation
-  const openAlexId = extractTopicId(topicId);
-
-  // Animated header variables.
   const scrollY = useRef(new Animated.Value(0)).current;
-  const initialHeaderHeight = height / 4;
-  const minHeaderHeight = height / 9;
-  const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
   const headerHeight = scrollY.interpolate({
-    inputRange: [0, headerShrinkRange],
-    outputRange: [initialHeaderHeight, minHeaderHeight],
+    inputRange: [0, HEADER_SHRINK_RANGE],
+    outputRange: [INITIAL_HEADER_HEIGHT + insets.top, MIN_HEADER_HEIGHT + insets.top],
     extrapolate: 'clamp',
   });
   const titleFontSize = scrollY.interpolate({
-    inputRange: [0, headerShrinkRange],
+    inputRange: [0, HEADER_SHRINK_RANGE],
     outputRange: [RFValue(sizes.h1), RFValue(sizes.h3)],
     extrapolate: 'clamp',
   });
 
   useEffect(() => {
-    const fetchTopicData = async () => {
-      try {
-        const res = await fetch(`https://api.openalex.org/topics/${openAlexId}`);
-        if (!res.ok) {
-          throw new Error('Failed to fetch topic details');
-        }
-        const data = await res.json();
-        setTopicData(data);
-      } catch (err) {
-        console.error(err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
     };
+  }, []);
 
-    fetchTopicData();
+  const fetchTopicData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data } = await openAlex.get(`/topics/${encodeURIComponent(openAlexId)}`);
+      if (mountedRef.current) setTopicData(data || null);
+    } catch (err) {
+      console.error('Error fetching topic details:', err);
+      if (mountedRef.current) setError(getErrorMessage(err, 'We could not load this topic.'));
+    } finally {
+      if (mountedRef.current) setLoading(false);
+    }
   }, [openAlexId]);
 
-  // Add a 20-second timeout.
   useEffect(() => {
-    const timeoutTimer = setTimeout(() => {
-      if (!topicData) {
-        Alert.alert("Error", "Loading took too long, please try again later.", [
-          { text: "OK", onPress: () => navigation.navigate('BottomNav') }
-        ]);
-      }
-    }, 20000);
-    return () => clearTimeout(timeoutTimer);
-  }, [topicData, navigation]);
+    fetchTopicData();
+  }, [fetchTopicData]);
+
+  const renderBackButton = (color) => (
+    <TouchableOpacity
+      style={[styles.backButton, { top: insets.top + spacing.s }]}
+      onPress={() => navigation.goBack()}
+      accessibilityRole="button"
+      accessibilityLabel="Go back"
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Ionicons name="chevron-back" size={28} color={color} />
+    </TouchableOpacity>
+  );
 
   if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
-      </View>
-    );
+    return <Loader backgroundColor={colors.primaryBis} />;
   }
+
   if (error || !topicData) {
     return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error: {error || 'Topic not found'}</Text>
-        <Button onPress={() => navigation.goBack()}>Go Back</Button>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon={error ? 'cloud-offline-outline' : 'search-outline'}
+          title={error ? 'Something went wrong' : 'Topic not found'}
+          message={error || 'This topic is not available right now.'}
+          actionLabel={error ? 'Try again' : 'Back to Cast'}
+          onAction={error ? fetchTopicData : () => navigation.navigate('BottomNav', { screen: 'Cast' })}
+        />
+        {renderBackButton(colors.secondary)}
       </View>
     );
   }
 
-  // Destructure fields from OpenAlex topic data.
-  const { display_name, description, works_count, cited_by_count, keywords } = topicData;
-  // For the horizontal citation gauge, we assume a maximum of 8,000,000 citations.
-  const citationFill = topicData ? (cited_by_count / 8000000) * 100 : 0;
+  const { display_name, description, cited_by_count = 0, keywords } = topicData;
+  const citationFill = Math.min((cited_by_count / MAX_GAUGE_CITATIONS) * 100, 100);
 
   return (
-    <Provider>
-      <View style={styles.container}>
-        {/* Animated Header */}
-        <Animated.View style={[styles.header, { height: headerHeight }]}>
-          <LinearGradient
-            colors={[colors.secondary, colors.primaryBis]}
-            style={styles.headerGradient}
-          >
-            <Animated.Text
-              style={[styles.headerTitle, { fontSize: titleFontSize }]}
-              adjustsFontSizeToFit
-              minimumFontScale={0.5}
-            >
-              {display_name}
-            </Animated.Text>
-          </LinearGradient>
-        </Animated.View>
-
-        {/* Scrollable Content */}
-        <Animated.ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={{ paddingTop: initialHeaderHeight }}
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
+    <View style={styles.container}>
+      <Animated.View style={[styles.header, { height: headerHeight }]}>
+        <LinearGradient
+          colors={[colors.secondary, colors.primaryBis]}
+          style={[styles.headerGradient, { paddingTop: insets.top }]}
         >
-          <View style={styles.overviewContainer}>
-            {/* Horizontal Citation Gauge */}
-            <View style={styles.citationGaugeWrapper}>
-              <View style={styles.citationIconContainer}>
-                <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
-                <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
-              </View>
-              <View style={styles.horizontalGaugeWrapper}>
-                <View style={styles.horizontalGaugeContainer}>
-                  <View style={styles.horizontalGaugeBackground}>
-                    <Animated.View 
-                      style={[
-                        styles.horizontalGaugeFill, 
-                        { width: `${citationFill}%` }
-                      ]}
-                    />
-                  </View>
-                </View>
-              </View>
-            </View>
-            {/* Works Statistic Button */}
-            <View style={styles.buttonsRow}>
-              <TouchableOpacity 
-                style={styles.statButton} 
-                onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexId })}
-              >
-                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
-                <Text style={styles.statButtonLabel}>Works</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          <Animated.Text
+            style={[styles.headerTitle, { fontSize: titleFontSize }]}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+          >
+            {display_name}
+          </Animated.Text>
+        </LinearGradient>
+        {renderBackButton(colors.primary)}
+      </Animated.View>
 
-          {/* Content Section */}
-          <View style={styles.contentContainer}>
-            {/* Description Section */}
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Description</Text>
-              <Text style={styles.descriptionText}>
-                {description || "No description available."}
-              </Text>
+      <Animated.ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingTop: INITIAL_HEADER_HEIGHT + insets.top }}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
+          useNativeDriver: false,
+        })}
+      >
+        <View style={styles.overviewContainer}>
+          <View style={styles.citationGaugeWrapper}>
+            <View style={styles.citationIconContainer}>
+              <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+              <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
             </View>
-            {/* Keywords Section */}
-            {keywords && keywords.length > 0 && (
-              <View style={styles.sectionContainer}>
-                <Text style={styles.sectionHeader}>Keywords</Text>
-                <ScrollView 
-                  horizontal 
-                  showsHorizontalScrollIndicator={false} 
-                  contentContainerStyle={styles.keywordsContainer}
-                >
-                  {keywords.map((word, index) => (
-                    <View key={index} style={styles.keywordChip}>
-                      <Text style={styles.keywordText}>{word}</Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
+            <View style={styles.horizontalGaugeWrapper}>
+              <View style={[styles.horizontalGaugeFill, { width: `${citationFill}%` }]} />
+            </View>
           </View>
-        </Animated.ScrollView>
-      </View>
-    </Provider>
+          <View style={styles.buttonsRow}>
+            <TouchableOpacity
+              style={styles.statButton}
+              onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexId })}
+              accessibilityRole="button"
+            >
+              <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+              <Text style={styles.statButtonLabel}>Works</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.contentContainer}>
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionHeader}>Description</Text>
+            <Text style={styles.descriptionText}>{description || 'No description available.'}</Text>
+          </View>
+          {Array.isArray(keywords) && keywords.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionHeader}>Keywords</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.keywordsContainer}
+              >
+                {keywords.map((word, index) => (
+                  <View key={`${word}-${index}`} style={styles.keywordChip}>
+                    <Text style={styles.keywordText}>{word}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+      </Animated.ScrollView>
+    </View>
   );
 };
 
@@ -214,6 +180,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
+  },
+  backButton: {
+    position: 'absolute',
+    left: spacing.m,
+    zIndex: 1001,
   },
   header: {
     position: 'absolute',
@@ -292,14 +263,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: colors.primaryBis,
   },
-  horizontalGaugeContainer: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
-  },
-  horizontalGaugeBackground: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
-  },
   horizontalGaugeFill: {
     height: '100%',
     backgroundColor: colors.lightblue,
@@ -346,27 +309,6 @@ const styles = StyleSheet.create({
     fontSize: RFValue(12),
     fontFamily: 'MontserratBold',
     color: colors.primary,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: RFValue(16),
-    color: 'red',
-    marginBottom: spacing.m,
-  },
-  lottie: {
-    width: width * 0.8,
-    height: width * 0.8,
   },
 });
 

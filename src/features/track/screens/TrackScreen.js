@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,107 +13,102 @@ import { AnimatedCircularProgress } from 'react-native-circular-progress';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { colors, sizes, spacing } from '@shared/config/theme';
 import { LinearGradient } from 'expo-linear-gradient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import departments from '@shared/data/departments';
 import { Button } from 'react-native-paper';
-import LottieView from 'lottie-react-native';
-import { API_BASE_URL } from '@shared/config/APIConfig';
 import { BlurView } from 'expo-blur';
-import { getUser, isGuestUser, GUEST_USER_ID } from '@shared/utils/UserStorage';
+import { api } from '@shared/api/client';
+import { getUser, isGuestUser, clearUser } from '@shared/utils/UserStorage';
+import { resetToAuthChoice } from '@navigation/navigationHelpers';
+import Loader from '@shared/components/Loader';
 
 const { width } = Dimensions.get('window');
+const Learning = require('@assets/Track_icons/learning.png');
+const Progress = require('@assets/Track_icons/progress_illustration.png');
+const serverError = require('@assets/Cast_screen_icons/server_error.png');
+
+const toPercent = (ratio) => Math.min(Math.max(Number.isFinite(ratio) ? ratio : 0, 0), 1) * 100;
 
 const TrackScreen = () => {
-  const [trackingData, setTrackingData] = useState({ objective: '', progress: 0, target: 50 });
+  const [trackingData, setTrackingData] = useState({ objective: '', progress: 0 });
   const [history, setHistory] = useState([]);
   const [answeredCount, setAnsweredCount] = useState(0);
-  const [userId, setUserId] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigation = useNavigation();
-  const Learning = require('@assets/Track_icons/learning.png');
-  const Progress = require('@assets/Track_icons/progress_illustration.png');
-  const serverError = require('@assets/Cast_screen_icons/server_error.png');
+  const hasLoadedRef = useRef(false);
 
-  // NAVIGATIONS
-  const handleReadyScreenPress = () => {
-    navigation.navigate('Ready');
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetchUserData = async () => {
-        const { userId } = await getUser();
-        setUserId(userId);
-        setIsGuest(isGuestUser(userId));
-      };
-      fetchUserData();
-    }, [])
-  );
-
-  const fetchTrackingData = async (id) => {
-    setApiError(false);
+  const fetchAllData = useCallback(async ({ isActive = () => true } = {}) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${id}/tracking`);
-      const data = await response.json();
-      if (data.tracking) {
+      const { userId } = await getUser();
+      const guest = !userId || isGuestUser(userId);
+      if (!isActive()) return;
+      setIsGuest(guest);
+      // Guests have no tracking data; the sign-in overlay is shown instead.
+      if (guest) return;
+
+      const [trackingResponse, userResponse] = await Promise.all([
+        api.get(`/user/${userId}/tracking`),
+        api.get(`/user/${userId}`),
+      ]);
+      if (!isActive()) return;
+
+      const tracking = trackingResponse.data?.tracking;
+      if (tracking) {
         setTrackingData({
-          objective: data.tracking.objective,
-          progress: data.tracking.progress / data.tracking.target,
+          objective: tracking.objective,
+          progress: tracking.target ? tracking.progress / tracking.target : 0,
         });
-        if (data.tracking.history) {
-          setHistory(
-            data.tracking.history.map((hist) => ({
-              category: hist.category,
-              progress: hist.count,
-            }))
-          );
-        }
+        setHistory(
+          (tracking.history || []).map((hist) => ({
+            category: hist.category,
+            progress: hist.count,
+          }))
+        );
       }
+      const evaluationList = userResponse.data?.evaluation_list || [];
+      setAnsweredCount(evaluationList.filter((evaluation) => evaluation.answered).length);
+      setApiError(false);
+      hasLoadedRef.current = true;
     } catch (error) {
       console.error('Error fetching tracking data:', error);
-      setApiError(true);
-    }
-  };
-
-  const fetchUserData = async (id) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${id}`);
-      const data = await response.json();
-      if (data.evaluation_list) {
-        const answeredEvaluations = data.evaluation_list.filter(
-          (evaluation) => evaluation.answered
-        ).length;
-        setAnsweredCount(answeredEvaluations);
+      // A failed background refresh keeps the data already on screen.
+      if (isActive() && !hasLoadedRef.current) setApiError(true);
+    } finally {
+      if (isActive()) {
+        setIsLoading(false);
+        setRefreshing(false);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setApiError(true);
     }
-  };
+  }, []);
 
-  const fetchAllData = async () => {
-    if (!userId) return;
-    setIsLoading(true);
-    setApiError(false);
-    await Promise.all([fetchTrackingData(userId), fetchUserData(userId)]);
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (userId) {
-      fetchAllData();
-    }
-  }, [userId]);
+  // Refetch on focus so progress is up to date after finishing a quiz.
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      fetchAllData({ isActive: () => active });
+      return () => {
+        active = false;
+      };
+    }, [fetchAllData])
+  );
 
   const onRefresh = useCallback(() => {
-    if (userId) {
-      setRefreshing(true);
-      fetchAllData().then(() => setRefreshing(false));
-    }
-  }, [userId]);
+    setRefreshing(true);
+    fetchAllData();
+  }, [fetchAllData]);
+
+  const retry = () => {
+    setApiError(false);
+    setIsLoading(true);
+    fetchAllData();
+  };
+
+  const handleSignIn = async () => {
+    await clearUser();
+    resetToAuthChoice(navigation);
+  };
 
   if (apiError) {
     return (
@@ -123,14 +118,7 @@ const TrackScreen = () => {
         <Text style={styles.errorDetail}>
           Please try refreshing or come back later!
         </Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => {
-            setApiError(false);
-            setIsLoading(true);
-            fetchAllData();
-          }}
-        >
+        <TouchableOpacity style={styles.refreshButton} onPress={retry} accessibilityRole="button">
           <Text style={styles.refreshButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
@@ -138,16 +126,7 @@ const TrackScreen = () => {
   }
 
   if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
-        />
-      </View>
-    );
+    return <Loader backgroundColor={colors.primaryBis} />;
   }
 
   return (
@@ -156,7 +135,7 @@ const TrackScreen = () => {
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: 120 }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          isGuest ? undefined : <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* Blue Gradient */}
@@ -195,15 +174,15 @@ const TrackScreen = () => {
             <AnimatedCircularProgress
               size={150}
               width={15}
-              fill={trackingData.progress * 100}
+              fill={toPercent(trackingData.progress)}
               tintColor={colors.darkGreen}
               backgroundColor={colors.primaryBis}
               lineCap="round"
               rotation={0}
             >
-              {(fill) => (
+              {() => (
                 <Text style={styles.gaugeText}>
-                  {`${Math.round(trackingData.progress * 100)}%`}
+                  {`${Math.round(toPercent(trackingData.progress))}%`}
                 </Text>
               )}
             </AnimatedCircularProgress>
@@ -219,20 +198,7 @@ const TrackScreen = () => {
         >
           <View style={{ flexDirection: 'row' }}>
             <Image source={Progress} style={styles.infoImage2} />
-            <Text
-              style={{
-                textAlign: 'left',
-                fontSize: sizes.h3,
-                fontFamily: 'Montserrat',
-                flexShrink: 1,
-                flexWrap: 'wrap',
-                marginTop: spacing.s,
-                marginLeft: spacing.s,
-                marginRight: spacing.s,
-              }}
-            >
-              What you are learning about
-            </Text>
+            <Text style={styles.chartTitle}>What you are learning about</Text>
           </View>
           <View style={styles.circularGaugesContainer}>
             {history.length > 0 ? (
@@ -240,22 +206,21 @@ const TrackScreen = () => {
                 const department = departments.find(
                   (dep) => dep.name === item.category
                 );
+                const percent = toPercent(item.progress / 10);
                 return (
-                  <View style={styles.ChartandTextContainer} key={index}>
+                  <View style={styles.ChartandTextContainer} key={item.category || index}>
                     <View style={styles.circularGaugeItem}>
                       <AnimatedCircularProgress
-                        size={width * 0.25} 
+                        size={width * 0.25}
                         width={10}
-                        fill={(item.progress / 10) * 100}
+                        fill={percent}
                         tintColor={colors.darkGreen}
                         backgroundColor={colors.primaryBis}
                         lineCap="round"
                         rotation={0}
                       >
-                        {(fill) => (
-                          <Text style={styles.gaugeText}>
-                            {`${Math.round((item.progress / 10) * 100)}%`}
-                          </Text>
+                        {() => (
+                          <Text style={styles.gaugeText}>{`${Math.round(percent)}%`}</Text>
                         )}
                       </AnimatedCircularProgress>
                       <Text style={styles.departmentName}>
@@ -276,19 +241,11 @@ const TrackScreen = () => {
       <View style={styles.fixedButtonContainer}>
         <Button
           mode="contained"
-          onPress={handleReadyScreenPress}
+          onPress={() => navigation.navigate('Ready')}
           buttonColor={colors.darkGreen}
           icon={require('@assets/Track_icons/test.png')}
-          labelStyle={{
-            fontSize: sizes.h3,
-            fontFamily: 'Montserrat',
-            textAlign: 'center',
-            paddingTop: spacing.s,
-          }}
-          style={{
-            borderRadius: sizes.buttonRadius,
-            marginBottom: spacing.s,
-          }}
+          labelStyle={styles.buttonLabel}
+          style={styles.button}
         >
           Test Yourself
         </Button>
@@ -301,21 +258,13 @@ const TrackScreen = () => {
             <Text style={styles.overlayText}>Create an account to access all features.</Text>
             <Button
               mode="contained"
-              onPress={() => navigation.navigate('AuthChoice')}
+              onPress={handleSignIn}
               buttonColor={colors.darkGreen}
               icon={require('@assets/Track_icons/user.png')}
-              labelStyle={{
-                fontSize: sizes.h3,
-                fontFamily: 'Montserrat',
-                textAlign: 'center',
-                paddingTop: spacing.s,
-              }}
-              style={{
-                borderRadius: sizes.buttonRadius,
-                marginBottom: spacing.s,
-              }}
+              labelStyle={styles.buttonLabel}
+              style={styles.button}
             >
-              Log in 
+              Log in
             </Button>
           </View>
         </BlurView>
@@ -323,7 +272,6 @@ const TrackScreen = () => {
     </View>
   );
 };
-
 export default TrackScreen;
 
 const styles = StyleSheet.create({
@@ -397,38 +345,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     padding: 5,
   },
-  greenSection: {
-    padding: spacing.s,
-    marginHorizontal: spacing.m,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
-    borderRadius: sizes.radius,
-    elevation: 5,
-  },
-  greenSectionTitle: {
-    fontSize: sizes.h3,
-    marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
-    color: colors.primary,
-  },
-  greenSectionContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  greenSectionColumn: {
-    alignItems: 'center',
-  },
-  greenSectionIcon: {
-    width: 48,
-    height: 48,
-    marginBottom: spacing.s,
-  },
-  greenSectionText: {
-    fontSize: sizes.h3,
-    color: colors.primaryBis,
-    fontFamily: 'MontserratBold',
-  },
   ProgressContainer: {
     backgroundColor: colors.primary,
     padding: spacing.m,
@@ -498,16 +414,6 @@ const styles = StyleSheet.create({
     marginInlineStart: 2,
     marginRight: 2,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
-  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -560,7 +466,24 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
-  overlayButton: {
+  chartTitle: {
+    textAlign: 'left',
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    marginTop: spacing.s,
+    marginLeft: spacing.s,
+    marginRight: spacing.s,
+  },
+  button: {
     borderRadius: sizes.buttonRadius,
+    marginBottom: spacing.s,
+  },
+  buttonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+    paddingTop: spacing.s,
   },
 });

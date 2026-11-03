@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,163 +7,126 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import LottieView from 'lottie-react-native';
 import { colors, sizes, spacing } from '@shared/config/theme';
-import { API_BASE_URL } from '@shared/config/APIConfig';
+import { api, getErrorMessage } from '@shared/api/client';
+import { getUser, canAccessLibrary, isGuestUser } from '@shared/utils/UserStorage';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
 
-const { width } = Dimensions.get('window');
+const articleLogo = require('@assets/Cast_screen_icons/article_logo.png');
+const castLogo = require('@assets/Cast_screen_icons/cast_logo.png');
 
 const LibraryScreen = () => {
+  const navigation = useNavigation();
   const [userRole, setUserRole] = useState('');
-  const [userId, setUserId] = useState(null);
   const [castCount, setCastCount] = useState(0);
   const [articleCount, setArticleCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState(false);
+  const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const hasLoaded = useRef(false);
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
 
-  const navigation = useNavigation();
-
-  // Reuse the server error image from CastScreen
-  const serverError = require('@assets/Cast_screen_icons/server_error.png');
-
-  // Pull user data from AsyncStorage & fetch publications
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
-      setApiError(false);
-      setIsLoading(true);
+      const { userId, userRole: role } = await getUser();
+      if (!isMounted.current) return;
+      setUserRole(role || '');
 
-      const storedUserId = await AsyncStorage.getItem('userId');
-      const storedUserRole = await AsyncStorage.getItem('userRole');
-      setUserId(storedUserId);
-      setUserRole(storedUserRole);
-
-      if (storedUserId) {
-        const response = await fetch(`${API_BASE_URL}/user/${storedUserId}`);
-        const data = await response.json();
-        // Update local state with the number of casts and articles
-        setCastCount(data.castPublications?.length || 0);
-        setArticleCount(data.articlePublications?.length || 0);
+      if (userId && !isGuestUser(userId) && canAccessLibrary(role)) {
+        const { data } = await api.get(`/user/${encodeURIComponent(userId)}`);
+        if (!isMounted.current) return;
+        setCastCount(data?.castPublications?.length || 0);
+        setArticleCount(data?.articlePublications?.length || 0);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      setApiError(true);
+      setError(null);
+      hasLoaded.current = true;
+    } catch (err) {
+      console.error('Error fetching user data:', err);
+      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load your publications.'));
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) setIsLoading(false);
     }
-  };
-
-  // Refresh/pull to refresh callback
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    fetchUserData().then(() => setRefreshing(false));
   }, []);
 
-  // Re-fetch user data every time this screen is focused
+  // Refresh counts every time the tab is focused (e.g. after publishing); only the
+  // first load shows the full-screen loader.
   useFocusEffect(
     useCallback(() => {
       fetchUserData();
-    }, [])
+    }, [fetchUserData])
   );
 
-  // Initial load
-  useEffect(() => {
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchUserData();
+    if (isMounted.current) setRefreshing(false);
+  }, [fetchUserData]);
+
+  const retry = useCallback(() => {
+    setIsLoading(true);
     fetchUserData();
-  }, []);
+  }, [fetchUserData]);
 
-  // Navigate to the corresponding publications screen
-  const handleNavigateToPublications = (type) => {
-    if (type === 'cast') {
-      navigation.navigate('CastPublicationsScreen');
-    } else if (type === 'article') {
-      navigation.navigate('ArticlePublicationsScreen');
-    }
-  };
-
-  // If there's an API error, show error layout
-  if (apiError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Image source={serverError} style={styles.errorImage} />
-        <Text style={styles.errorText}>Whoops!</Text>
-        <Text style={styles.errorDetail}>
-          Please try refreshing or come back later!
-        </Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={() => {
-            setApiError(false);
-            setIsLoading(true);
-            fetchUserData();
-          }}
-        >
-          <Text style={styles.refreshButtonText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
+  if (isLoading) {
+    return <Loader size={200} backgroundColor={colors.primaryBis} />;
   }
 
-  // If loading, show the same lottie loader as in CastScreen
-  if (isLoading) {
+  if (error && !hasLoaded.current) {
     return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
+      <View style={styles.container}>
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Whoops!"
+          message={error}
+          actionLabel="Try again"
+          onAction={retry}
         />
       </View>
     );
   }
 
-  // Otherwise, render main content
   return (
     <View style={styles.container}>
-      {/* ScrollView with pull-to-refresh */}
       <ScrollView
-        contentContainerStyle={{ paddingVertical: spacing.l }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.title}>Your Publications</Text>
 
-        {/* Only show publications if the user’s role is Professor/Researcher/PhD */}
-        {(userRole === 'Professor' ||
-          userRole === 'Researcher' ||
-          userRole === 'PhD Student') && (
+        {canAccessLibrary(userRole) ? (
           <View style={styles.publicationsContainer}>
-            {/* Articles */}
             <TouchableOpacity
               style={styles.publicationColumn}
-              onPress={() => handleNavigateToPublications('article')}
+              onPress={() => navigation.navigate('ArticlePublicationsScreen')}
+              accessibilityRole="button"
+              accessibilityLabel={`Your articles: ${articleCount}`}
             >
-              <Image
-                source={require('@assets/Cast_screen_icons/article_logo.png')}
-                style={styles.publicationIcon}
-              />
+              <Image source={articleLogo} style={styles.publicationIcon} />
               <Text style={styles.publicationCount}>{articleCount}</Text>
               <Text style={styles.publicationLabel}>Articles</Text>
             </TouchableOpacity>
 
-            {/* Casts */}
             <TouchableOpacity
               style={styles.publicationColumn}
-              onPress={() => handleNavigateToPublications('cast')}
+              onPress={() => navigation.navigate('CastPublicationsScreen')}
+              accessibilityRole="button"
+              accessibilityLabel={`Your casts: ${castCount}`}
             >
-              <Image
-                source={require('@assets/Cast_screen_icons/cast_logo.png')}
-                style={styles.publicationIcon}
-              />
+              <Image source={castLogo} style={styles.publicationIcon} />
               <Text style={styles.publicationCount}>{castCount}</Text>
               <Text style={styles.publicationLabel}>Casts</Text>
             </TouchableOpacity>
           </View>
+        ) : (
+          <StateMessage
+            icon="library-outline"
+            title="Library unavailable"
+            message="The library is available to professors, researchers and PhD students."
+          />
         )}
       </ScrollView>
     </View>
@@ -176,6 +139,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primaryBis,
+  },
+  content: {
+    flexGrow: 1,
+    paddingVertical: spacing.l,
   },
   title: {
     fontSize: sizes.title,
@@ -208,54 +175,5 @@ const styles = StyleSheet.create({
     fontSize: sizes.h4,
     color: colors.secondary,
     fontFamily: 'Montserrat',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
-  },
-  // Error screen
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.m,
-    backgroundColor: colors.primaryBis,
-  },
-  errorImage: {
-    width: width * 0.5,
-    height: width * 0.5,
-    marginBottom: spacing.m,
-    resizeMode: 'contain',
-  },
-  errorText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'MontserratBold',
-  },
-  errorDetail: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'Montserrat',
-    marginTop: spacing.s,
-    marginBottom: spacing.m,
-  },
-  refreshButton: {
-    backgroundColor: colors.secondary,
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-  },
-  refreshButtonText: {
-    color: colors.primary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
   },
 });

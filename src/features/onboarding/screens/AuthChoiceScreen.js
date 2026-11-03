@@ -1,28 +1,21 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-} from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, StyleSheet, Image } from 'react-native';
 import { Button } from 'react-native-paper';
-import { colors, sizes, spacing } from '@shared/config/theme';
 import LottieView from 'lottie-react-native';
-import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { setGuestUser } from '@shared/utils/UserStorage'
+import { colors, sizes, spacing } from '@shared/config/theme';
+import { setGuestUser } from '@shared/utils/UserStorage';
+import { resetToHome } from '@navigation/navigationHelpers';
 
-const AuthChoiceScreen = () => {
-
-  const navigation = useNavigation();
+const AuthChoiceScreen = ({ navigation }) => {
+  const [enteringAsGuest, setEnteringAsGuest] = useState(false);
+  const enteringRef = useRef(false);
 
   const handleContinueAsGuest = async () => {
-    try {
-      await setGuestUser();
-      navigation.navigate('BottomNav');
-    } catch (error) {
-      console.error('Error setting guest user:', error);
-    }
+    if (enteringRef.current) return;
+    enteringRef.current = true;
+    setEnteringAsGuest(true);
+    await setGuestUser();
+    resetToHome(navigation);
   };
 
   return (
@@ -64,6 +57,7 @@ const AuthChoiceScreen = () => {
         <Button
           mode="contained"
           onPress={handleContinueAsGuest}
+          disabled={enteringAsGuest}
           buttonColor={colors.darkblue}
           labelStyle={styles.buttonLabel}
           style={styles.authButton}
@@ -93,7 +87,7 @@ const styles = StyleSheet.create({
   },
   authButton: {
     width: '100%',
-    marginVertical: spacing.s, 
+    marginVertical: spacing.s,
     borderRadius: sizes.buttonRadius,
   },
   buttonLabel: {

@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
   Animated,
-  Image, 
-  TouchableOpacity, 
-  Dimensions 
+  Image,
+  TouchableOpacity,
+  Dimensions,
 } from 'react-native';
 import { colors, sizes, spacing } from '@shared/config/theme';
 import InfoIcon from '@assets/Virtual_lab_icons/info_icon.png';
@@ -14,63 +14,99 @@ import ActivityImage from '@assets/Virtual_lab_icons/activity.png';
 import ImpactImage from '@assets/Virtual_lab_icons/impact.png';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import departments from '@shared/data/departments';
-import { Modal, Portal, Button, Provider, Searchbar } from 'react-native-paper';
-import { API_BASE_URL } from '@shared/config/APIConfig';
-import LottieView from 'lottie-react-native';
+import { Modal, Portal, Button, Searchbar } from 'react-native-paper';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
-import { RFValue } from "react-native-responsive-fontsize";
+import { RFValue } from 'react-native-responsive-fontsize';
+import { api, getErrorMessage } from '@shared/api/client';
+import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+import departmentImages from '@features/lab/data/departmentImages';
 
 const { width, height } = Dimensions.get('window');
 
-const departmentImages = {
-  Medicine: require('@assets/Virtual_labs/Medicine.png'),
-  SocialSciences: require('@assets/Virtual_labs/SocialSciences.png'),
-  Engineering: require('@assets/Virtual_labs/Engineering.png'),
-  ArtsandHumanities: require('@assets/Virtual_labs/ArtsandHumanities.png'),
-  ComputerScience: require('@assets/Virtual_labs/ComputerScience.png'),
-  BiochemistryGeneticsandMolecularBiology: require('@assets/Virtual_labs/BiochemistryGeneticsandMolecularBiology.png'),
-  AgriculturalandBiologicalSciences: require('@assets/Virtual_labs/AgriculturalandBiologicalSciences.png'),
-  EnvironmentalScience: require('@assets/Virtual_labs/EnvironmentalScience.png'),
-  MaterialsScience: require('@assets/Virtual_labs/MaterialsScience.png'),
-  PhysicsandAstronomy: require('@assets/Virtual_labs/PhysicsandAstronomy.png'),
-  BusinessManagementandAccounting: require('@assets/Virtual_labs/BusinessManagementandAccounting.png'),
-  HealthProfessions: require('@assets/Virtual_labs/HealthProfessions.png'),
-  EconomicsEconometricsandFinance: require('@assets/Virtual_labs/EconomicsEconometricsandFinance.png'),
-  Psychology: require('@assets/Virtual_labs/Psychology.png'),
-  Chemistry: require('@assets/Virtual_labs/Chemistry.png'),
-  EarthandPlanetarySciences: require('@assets/Virtual_labs/EarthandPlanetarySciences.png'),
-  Neuroscience: require('@assets/Virtual_labs/Neuroscience.png'),
-  Mathematics: require('@assets/Virtual_labs/Neuroscience.png'),
-  ImmunologyandMicrobiology: require('@assets/Virtual_labs/ImmunologyandMicrobiology.png'),
-  DecisionSciences: require('@assets/Virtual_labs/DecisionSciences.png'),
-  Energy: require('@assets/Virtual_labs/Energy.png'),
-  Nursing: require('@assets/Virtual_labs/Nursing.png'),
-  PharmacologyToxicologyandPharmaceutics: require('@assets/Virtual_labs/PharmacologyToxicologyandPharmaceutics.png'),
-  Dentistry: require('@assets/Virtual_labs/Dentistry.png'),
-  ChemicalEngineering: require('@assets/Virtual_labs/ChemicalEngineering.png'),
-  Veterinary: require('@assets/Virtual_labs/Veterinary.png'),
-};
+// Fixed reference scales for the gauges (topic activity / impact).
+const MAX_ACTIVITY = 9000;
+const MAX_IMPACT = 2000;
+const GAUGE_SIZE = width * 0.35;
+const nextIcon = require('@assets/Discover_icons/next.png');
+
+const toFill = (value, max) => Math.min(100, Math.max(0, ((Number(value) || 0) / max) * 100));
 
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
 
+const TopicCard = React.memo(({ topic, onPress }) => {
+  const handlePress = () => onPress(topic._id);
+  return (
+    <View style={styles.topicContainer}>
+      <TouchableOpacity onPress={handlePress} activeOpacity={0.8} accessibilityRole="button">
+        <Text style={styles.topicName} numberOfLines={3} ellipsizeMode="tail">
+          {topic.name}
+        </Text>
+        <View style={styles.gaugeRow}>
+          <View style={styles.gaugeContainer}>
+            <AnimatedCircularProgress
+              size={GAUGE_SIZE}
+              width={10}
+              fill={toFill(topic.activity, MAX_ACTIVITY)}
+              tintColor={colors.lightTeal}
+              backgroundColor={colors.primaryBis}
+              rotation={-115}
+              arcSweepAngle={230}
+              lineCap="round"
+            >
+              {() => <Image source={ActivityImage} style={styles.gaugeIcon} resizeMode="contain" />}
+            </AnimatedCircularProgress>
+          </View>
+          <View style={styles.gaugeContainer}>
+            <AnimatedCircularProgress
+              size={GAUGE_SIZE}
+              width={10}
+              fill={toFill(topic.impact, MAX_IMPACT)}
+              tintColor={colors.darkTeal}
+              backgroundColor={colors.primaryBis}
+              rotation={-115}
+              arcSweepAngle={230}
+              lineCap="round"
+            >
+              {() => <Image source={ImpactImage} style={styles.gaugeIcon} resizeMode="contain" />}
+            </AnimatedCircularProgress>
+          </View>
+        </View>
+      </TouchableOpacity>
+      <Button
+        mode="contained"
+        onPress={handlePress}
+        buttonColor={colors.darkGreen}
+        contentStyle={styles.exploreButtonContent}
+        icon={nextIcon}
+        labelStyle={styles.exploreButtonLabel}
+        style={styles.exploreButton}
+      >
+        Explore
+      </Button>
+    </View>
+  );
+});
+
 const VirtualLab = ({ route }) => {
   const { labId, labDisplayName } = route.params;
+  const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const navigation = useNavigation();
   const [infoVisible, setInfoVisible] = useState(false);
-  const [departmentDescription, setDepartmentDescription] = useState('');
   const departmentImageSource =
     departmentImages[labId] || departmentImages[labDisplayName] || null;
 
   const scrollY = useRef(new Animated.Value(0)).current;
-  const initialHeaderHeight = height / 4;
-  const minHeaderHeight = height / 9;
+  const initialHeaderHeight = height / 4 + insets.top;
+  const minHeaderHeight = height / 9 + insets.top;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
 
-  // Interpolated values for header, image, title, and info icon.
   const headerHeight = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
     outputRange: [initialHeaderHeight, minHeaderHeight],
@@ -92,231 +128,169 @@ const VirtualLab = ({ route }) => {
     extrapolate: 'clamp',
   });
 
+  const isMounted = useRef(true);
+  useEffect(() => () => { isMounted.current = false; }, []);
+
+  const fetchTopics = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const { data } = await api.get(`/topic/department/${encodeURIComponent(labId)}`);
+      if (isMounted.current) setTopics(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Error fetching topics:', err);
+      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load the topics of this lab.'));
+    } finally {
+      if (isMounted.current) setIsLoading(false);
+    }
+  }, [labId]);
+
   useEffect(() => {
     fetchTopics();
-  }, []);
+  }, [fetchTopics]);
 
-  const fetchTopics = async () => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/topic/department/${labId}`);
-      const data = await response.json();
-      setTopics(data);
-    } catch (error) {
-      console.error('Error fetching topics:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleTopicPress = (topicId) => {
+  const handleTopicPress = useCallback((topicId) => {
     navigation.navigate('TopicDetailScreen', { topicId });
-  };
+  }, [navigation]);
 
-  const showInfoModal = () => {
+  const departmentDescription = useMemo(() => {
     const department = departments.find(
       (dep) =>
         dep.display.toLowerCase() === labDisplayName?.toLowerCase() ||
         dep.name.toLowerCase() === labId?.toLowerCase()
     );
-    if (department) {
-      setDepartmentDescription(department.description);
-    } else {
-      setDepartmentDescription('Description not available.');
-    }
-    setInfoVisible(true);
-  };
+    return department?.description || 'Description not available.';
+  }, [labId, labDisplayName]);
 
-  const hideInfoModal = () => {
-    setInfoVisible(false);
-    setDepartmentDescription('');
-  };
+  const filteredTopics = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return topics;
+    return topics.filter(topic => topic.name?.toLowerCase().includes(query));
+  }, [topics, searchQuery]);
 
-  // Filter topics based on the search query (case-insensitive)
-  const filteredTopics = topics.filter(topic =>
-    topic.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const renderTopic = useCallback(
+    ({ item }) => <TopicCard topic={item} onPress={handleTopicPress} />,
+    [handleTopicPress]
   );
 
-  //const maxActivity = topics.length > 0 ? Math.max(...topics.map(t => t.activity)) : 1;
-  const maxActivity = 9000;
-  //const maxImpact = topics.length > 0 ? Math.max(...topics.map(t => t.impact)) : 1;
-  const maxImpact = 2000;
-
   if (isLoading) {
+    return <Loader size={200} backgroundColor={colors.primaryBis} />;
+  }
+
+  if (error) {
     return (
-      <View style={styles.loadingContainer}>
-        <LottieView
-          source={require('@assets/Loader/loader.json')}
-          autoPlay
-          loop
-          style={styles.lottie}
+      <View style={[styles.container, styles.bottomSection, { paddingTop: insets.top }]}>
+        <StateMessage
+          icon="cloud-offline-outline"
+          title="Couldn't load this lab"
+          message={error}
+          actionLabel="Try again"
+          onAction={fetchTopics}
         />
       </View>
     );
   }
 
   return (
-    <Provider>
-      <View style={styles.container}>
-        {/* Animated Header */}
-        <AnimatedLinearGradient
-          colors={[colors.secondary, colors.primaryBis]}
-          style={[styles.topSection, { height: headerHeight }]}
-        >
-          <View style={styles.headerContent}>
-            {departmentImageSource && (
-              <Animated.Image
-                source={departmentImageSource}
-                style={[styles.departmentImage, { width: imageSize, height: imageSize }]}
-                resizeMode="contain"
-              />
-            )}
-            <Animated.Text
-              style={[styles.labTitle, { fontSize: titleFontSize, flexShrink: 1 }]}
-              adjustsFontSizeToFit={true}
-              minimumFontScale={0.5}
-              numberOfLines={3}
-            >
-              {labDisplayName || 'Virtual Laboratory'}
-            </Animated.Text>
-          </View>
-          <View style={styles.topRightButtons}>
-            <TouchableOpacity onPress={showInfoModal}>
-              <Animated.Image 
-                source={InfoIcon} 
-                style={[styles.topRightIcon, { width: infoIconSize, height: infoIconSize }]} 
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </View>
-        </AnimatedLinearGradient>
-
-        {/* Scrollable Content */}
-        <Animated.ScrollView
-          style={styles.bottomSection}
-          contentContainerStyle={{ paddingTop: initialHeaderHeight }}
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
+    <View style={styles.container}>
+      <AnimatedLinearGradient
+        colors={[colors.secondary, colors.primaryBis]}
+        style={[styles.topSection, { height: headerHeight, paddingTop: spacing.m + insets.top }]}
+      >
+        <View style={styles.headerContent}>
+          {departmentImageSource && (
+            <Animated.Image
+              source={departmentImageSource}
+              style={[styles.departmentImage, { width: imageSize, height: imageSize }]}
+              resizeMode="contain"
+            />
           )}
-        >
+          <Animated.Text
+            style={[styles.labTitle, { fontSize: titleFontSize, flexShrink: 1 }]}
+            adjustsFontSizeToFit={true}
+            minimumFontScale={0.5}
+            numberOfLines={3}
+          >
+            {labDisplayName || 'Virtual Laboratory'}
+          </Animated.Text>
+        </View>
+        <View style={styles.topRightButtons}>
+          <TouchableOpacity
+            onPress={() => setInfoVisible(true)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="About this department"
+          >
+            <Animated.Image
+              source={InfoIcon}
+              style={[styles.topRightIcon, { width: infoIconSize, height: infoIconSize }]}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+      </AnimatedLinearGradient>
+
+      <Animated.FlatList
+        style={styles.bottomSection}
+        contentContainerStyle={{ paddingTop: initialHeaderHeight, paddingBottom: spacing.l + insets.bottom }}
+        data={filteredTopics}
+        keyExtractor={(item) => String(item._id)}
+        renderItem={renderTopic}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        initialNumToRender={4}
+        windowSize={7}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false }
+        )}
+        ListHeaderComponent={
           <Searchbar
             placeholder="Search topics..."
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchBar}
           />
-          <View style={{ marginBottom: spacing.l }}>
-            {filteredTopics.length === 0 ? (
-              <Text style={styles.noDataText}>No topics available.</Text>
-            ) : (
-              filteredTopics.map((topic) => {
-                const activityFill = maxActivity ? (topic.activity / maxActivity) * 100 : 0;
-                const impactFill = maxImpact ? (topic.impact / maxImpact) * 100 : 0;
-                return (
-                  <View key={topic._id} style={styles.topicContainer}>
-                    <TouchableOpacity onPress={() => handleTopicPress(topic._id)} activeOpacity={0.8}>
-                      <Text 
-                        style={styles.topicName}
-                        numberOfLines={3}
-                        ellipsizeMode="tail"
-                      >
-                        {topic.name}
-                      </Text>
-                      {/* Two gauges side by side */}
-                      <View style={styles.gaugeRow}>
-                        <View style={styles.gaugeContainer}>
-                          <AnimatedCircularProgress
-                            size={width * 0.35}
-                            width={10}
-                            fill={activityFill}
-                            tintColor={colors.lightTeal}
-                            backgroundColor={colors.primaryBis}
-                            rotation={-115}
-                            arcSweepAngle={230}
-                            lineCap="round"
-                          >
-                            {() => (
-                              <Image 
-                                source={ActivityImage} 
-                                style={styles.gaugeIcon} 
-                                resizeMode="contain"
-                              />
-                            )}
-                          </AnimatedCircularProgress>
-                        </View>
-                        <View style={styles.gaugeContainer}>
-                          <AnimatedCircularProgress
-                            size={width * 0.35}
-                            width={10}
-                            fill={impactFill}
-                            tintColor={colors.darkTeal}
-                            backgroundColor={colors.primaryBis}
-                            rotation={-115}
-                            arcSweepAngle={230}
-                            lineCap="round"
-                          >
-                            {() => (
-                              <Image 
-                                source={ImpactImage} 
-                                style={styles.gaugeIcon} 
-                                resizeMode="contain"
-                              />
-                            )}
-                          </AnimatedCircularProgress>
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                    {/* Explore Button */}
-                    <Button
-                      mode="contained"
-                      onPress={() => handleTopicPress(topic._id)}
-                      buttonColor={colors.darkGreen}
-                      contentStyle={{ flexDirection: 'row-reverse' }}
-                      icon={require('@assets/Discover_icons/next.png')}
-                      labelStyle={{
-                        fontSize: sizes.h3,
-                        fontFamily: 'Montserrat',
-                        textAlign: 'center'
-                      }}
-                      style={{
-                        marginTop: spacing.m,
-                        marginHorizontal: spacing.xs,
-                        borderRadius: sizes.buttonRadius,
-                      }}
-                    >
-                      Explore
-                    </Button>
-                  </View>
-                );
-              })
-            )}
-          </View>
-        </Animated.ScrollView>
+        }
+        ListEmptyComponent={
+          topics.length === 0 ? (
+            <StateMessage
+              icon="flask-outline"
+              title="No topics yet"
+              message="This lab doesn't have any topics yet. Come back later!"
+              actionLabel="Refresh"
+              onAction={fetchTopics}
+            />
+          ) : (
+            <StateMessage
+              icon="search-outline"
+              title="No matching topics"
+              message={`No topic matches "${searchQuery.trim()}".`}
+            />
+          )
+        }
+      />
 
-        {/* Info Modal */}
-        <Portal>
-          <Modal
-            visible={infoVisible}
-            onDismiss={hideInfoModal}
-            contentContainerStyle={styles.modalContainer}
+      <Portal>
+        <Modal
+          visible={infoVisible}
+          onDismiss={() => setInfoVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Text style={styles.modalTitle}>{labDisplayName} Department</Text>
+          <Text style={styles.modalDescription}>{departmentDescription}</Text>
+          <Button
+            mode="contained"
+            onPress={() => setInfoVisible(false)}
+            style={styles.modalButton}
+            buttonColor={colors.secondary}
           >
-            <Text style={styles.modalTitle}>{labDisplayName} Department</Text>
-            <Text style={styles.modalDescription}>
-              {departmentDescription}
-            </Text>
-            <Button
-              mode="contained"
-              onPress={hideInfoModal}
-              style={styles.modalButton}
-              buttonColor={colors.secondary}
-            >
-              Close
-            </Button>
-          </Modal>
-        </Portal>
-      </View>
-    </Provider>
+            Close
+          </Button>
+        </Modal>
+      </Portal>
+    </View>
   );
 };
 
@@ -366,12 +340,6 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
     backgroundColor: colors.primary,
   },
-  noDataText: {
-    fontSize: sizes.body,
-    color: colors.secondary,
-    textAlign: 'center',
-    marginTop: spacing.m,
-  },
   topicContainer: {
     backgroundColor: 'white',
     marginHorizontal: spacing.m,
@@ -399,6 +367,19 @@ const styles = StyleSheet.create({
     width: RFValue(48),
     height: RFValue(48),
   },
+  exploreButton: {
+    marginTop: spacing.m,
+    marginHorizontal: spacing.xs,
+    borderRadius: sizes.buttonRadius,
+  },
+  exploreButtonContent: {
+    flexDirection: 'row-reverse',
+  },
+  exploreButtonLabel: {
+    fontSize: sizes.h3,
+    fontFamily: 'Montserrat',
+    textAlign: 'center',
+  },
   modalContainer: {
     backgroundColor: 'white',
     padding: 18,
@@ -423,16 +404,6 @@ const styles = StyleSheet.create({
   modalButton: {
     marginTop: spacing.m,
     alignSelf: 'stretch',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
-  },
-  lottie: {
-    width: 200,
-    height: 200,
   },
 });
 
