@@ -6,7 +6,7 @@ by department and explore research papers through the [OpenAlex](https://openale
 
 - iOS bundle id: `com.brightmindsresearch` (App Store)
 - Android package: `com.ccarnus3.brightminds` (Google Play)
-- Backend: `https://api.brightmindsresearch.com` (configured in `src/shared/config/APIConfig.js`)
+- Backend: `https://api.greenlights.us` (configured in `src/shared/config/APIConfig.js`)
 
 ---
 
