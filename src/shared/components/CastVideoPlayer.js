@@ -17,10 +17,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeepAwake } from 'expo-keep-awake';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { api, getUniversityLogo } from '@shared/api/client';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { api, getUniversityLogo, notFoundError } from '@shared/api/client';
+import { colors, fonts, sizes, spacing } from '@shared/config/theme';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
 import { parseSRT, findCaptionAt, formatMillis } from '@shared/utils/media';
+import ErrorState from '@shared/components/ErrorState';
 
 const WATCHED_THRESHOLD = 0.85;
 const captionOnIcon = require('@assets/Cast_screen_icons/caption_on.png');
@@ -40,9 +41,14 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   const watchedRef = useRef(false);
   const prevProgress = useRef(0);
   const isSeeking = useRef(false);
+  const mountedRef = useRef(true);
+  // Playback position (seconds) to restore after reloading a failed stream.
+  const resumeAtRef = useRef(0);
 
   const [video, setVideo] = useState(null);
-  const [loadError, setLoadError] = useState(false);
+  const [universityLogo, setUniversityLogo] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+  const [playbackError, setPlaybackError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isBuffering, setIsBuffering] = useState(true);
   const [position, setPosition] = useState(0);
@@ -57,25 +63,42 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   });
 
   useEffect(() => {
+    mountedRef.current = true;
     getUser().then(({ userId }) => {
       userIdRef.current = userId;
     });
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const loadVideo = useCallback(async () => {
-    setLoadError(false);
+    setLoadError(null);
     try {
-      const { data } = await api.get(`/cast/${castId}`);
-      const universityLogo = await getUniversityLogo(data.university);
-      setVideo({ ...data, universityLogo });
+      const { data } = await api.get(`/cast/${encodeURIComponent(castId)}`);
+      if (!data?.casturl) throw notFoundError();
+      if (mountedRef.current) setVideo(data);
     } catch (error) {
-      setLoadError(true);
+      console.error('Error fetching cast:', error);
+      if (mountedRef.current) setLoadError(error);
     }
   }, [castId]);
 
   useEffect(() => {
     if (castId) loadVideo();
   }, [castId, loadVideo]);
+
+  // The logo is decoration: it loads alongside playback instead of delaying it.
+  useEffect(() => {
+    if (!video?.university) return undefined;
+    let active = true;
+    getUniversityLogo(video.university).then((logo) => {
+      if (active) setUniversityLogo(logo);
+    });
+    return () => {
+      active = false;
+    };
+  }, [video?.university]);
 
   useEffect(() => {
     if (!video?.subtitleurl) {
@@ -125,9 +148,34 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
     else player.pause();
   }, [player, video, isPlaying]);
 
-  useEventListener(player, 'statusChange', ({ status }) => {
+  useEventListener(player, 'statusChange', ({ status, error }) => {
     setIsBuffering(status === 'loading');
+    if (status === 'error') {
+      console.error('Cast playback error:', error?.message);
+      setPlaybackError(error || { message: 'Playback failed' });
+    } else if (status === 'readyToPlay') {
+      setPlaybackError(null);
+      if (resumeAtRef.current > 0) {
+        player.currentTime = resumeAtRef.current;
+        resumeAtRef.current = 0;
+      }
+    }
   });
+
+  // Reloads the stream after a playback failure (e.g. lost connection) and resumes where it stopped.
+  const retryPlayback = useCallback(async () => {
+    if (!video?.casturl) return;
+    resumeAtRef.current = position / 1000;
+    setPlaybackError(null);
+    setIsBuffering(true);
+    try {
+      await player.replaceAsync(video.casturl);
+      if (mountedRef.current && isPlaying) player.play();
+    } catch (error) {
+      console.error('Error reloading cast:', error);
+      if (mountedRef.current) setPlaybackError(error);
+    }
+  }, [player, video?.casturl, position, isPlaying]);
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     const positionMillis = currentTime * 1000;
@@ -185,14 +233,18 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
     return (
       <View style={styles.centered}>
         {loadError ? (
-          <>
-            <Text style={styles.message}>We couldn't load this cast.</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={loadVideo}>
-              <Text style={styles.retryText}>Try again</Text>
-            </TouchableOpacity>
-          </>
+          <ErrorState
+            dark
+            error={loadError}
+            onRetry={loadVideo}
+            fallbackMessage="We couldn't load this cast."
+            notFoundTitle="Cast not available"
+            notFoundMessage="This cast may have been removed."
+            secondaryActionLabel="Close"
+            onSecondaryAction={exit}
+          />
         ) : (
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Loading cast" />
         )}
         {closeButton}
       </View>
@@ -219,20 +271,32 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
         />
       </Pressable>
 
-      {isBuffering && isPlaying && (
+      {isBuffering && isPlaying && !playbackError && (
         <ActivityIndicator style={styles.centerOverlay} size="large" color={colors.primary} pointerEvents="none" />
       )}
-      {!isPlaying && (
+      {!isPlaying && !playbackError && (
         <View style={styles.centerOverlay} pointerEvents="none">
           <Ionicons name="play" size={72} color="rgba(255,255,255,0.85)" />
+        </View>
+      )}
+      {!!playbackError && (
+        <View style={styles.errorOverlay}>
+          <ErrorState
+            dark
+            compact
+            error={playbackError}
+            onRetry={retryPlayback}
+            fallbackTitle="Playback problem"
+            fallbackMessage="We couldn't play this cast. Please try again."
+          />
         </View>
       )}
 
       {closeButton}
 
-      {!!video.universityLogo && (
+      {!!universityLogo && (
         <Image
-          source={{ uri: video.universityLogo }}
+          source={{ uri: universityLogo }}
           style={[styles.universityIcon, { top: insets.top + spacing.s, width: width / 6, height: width / 6 }]}
           resizeMode="contain"
         />
@@ -295,22 +359,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.l,
   },
-  message: {
-    color: colors.primary,
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h3,
-    textAlign: 'center',
-  },
-  retryButton: {
-    marginTop: spacing.m,
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.s,
-    borderRadius: sizes.buttonRadius,
-    backgroundColor: colors.primary,
-  },
-  retryText: {
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
+  errorOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
   },
   closeButton: {
     position: 'absolute',
@@ -341,7 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    fontFamily: 'Montserrat',
+    fontFamily: fonts.regular,
   },
   controls: {
     position: 'absolute',
@@ -364,7 +416,7 @@ const styles = StyleSheet.create({
   },
   duration: {
     color: colors.primary,
-    fontFamily: 'Montserrat',
+    fontFamily: fonts.regular,
   },
 });
 

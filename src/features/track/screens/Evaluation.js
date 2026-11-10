@@ -1,45 +1,89 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Animated, View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
-import { Button } from 'react-native-paper';
-import Gauge from '@features/track/components/Gauge';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { api, getErrorMessage } from '@shared/api/client';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import Animated, { FadeInRight, FadeOut, ZoomIn } from 'react-native-reanimated';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, contentWidth, fonts, rewardColors, sizes, spacing, typography } from '@shared/config/theme';
+import { api } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+import haptics from '@shared/utils/haptics';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import ConfirmDialog from '@shared/components/ConfirmDialog';
+import ConfettiBurst from '@shared/components/ConfettiBurst';
+import QuizTopBar from '@features/track/components/quiz/QuizTopBar';
+import AnswerOption from '@features/track/components/quiz/AnswerOption';
+import FeedbackPanel from '@features/track/components/quiz/FeedbackPanel';
+import FloatingXp from '@features/track/components/quiz/FloatingXp';
+import { praiseFor, xpForAnswer } from '@features/track/utils/rewards';
+import { submitQuiz } from '@features/track/utils/quizApi';
 
-const { width } = Dimensions.get('window');
-const INCORRECT_COLOR = '#F44336';
+const COMBO_TOAST_MS = 1300;
 
 const isValidQuestion = (question) =>
-  !!question && typeof question.question === 'string' && Array.isArray(question.responses);
+  !!question &&
+  typeof question.question === 'string' &&
+  Array.isArray(question.responses) &&
+  question.responses.length > 0;
+
+// Combos worth a celebration: 3, 5, then every 5.
+const isComboMilestone = (combo) => combo === 3 || (combo >= 5 && combo % 5 === 0);
+
+const ComboToast = ({ combo }) => (
+  <View pointerEvents="none" style={styles.toastLayer}>
+    <Animated.View entering={ZoomIn.springify().damping(8)} exiting={FadeOut.duration(250)} style={styles.toast}>
+      <MaterialCommunityIcons name="fire" size={40} color={rewardColors.streak} />
+      <Text style={styles.toastTitle}>Combo x{combo}!</Text>
+      <Text style={styles.toastText}>Bonus XP on every right answer</Text>
+    </Animated.View>
+  </View>
+);
 
 const TakeTest = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const evaluations = route.params?.evaluations || [];
-  // Each entry pairs a question with the evaluation it belongs to, so marking as answered
-  // stays correct even when some content could not be loaded and was skipped.
+  // Each entry pairs a question with the evaluation it belongs to, so answers stay attached to
+  // the right content even when some content could not be loaded and was skipped.
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [isCorrect, setIsCorrect] = useState(null);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const shakeAnim = useRef(new Animated.Value(0)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [index, setIndex] = useState(0);
+  const [selected, setSelected] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [combo, setCombo] = useState(0);
+  const [xp, setXp] = useState(0);
+  const [praise, setPraise] = useState('');
+  const [xpPop, setXpPop] = useState({ amount: 0, trigger: 0 });
+  const [confetti, setConfetti] = useState(0);
+  const [comboToast, setComboToast] = useState(null);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const userIdRef = useRef(null);
-  const correctCountRef = useRef(0);
+  const answersRef = useRef([]);
   // Refs (not state) so rapid double taps are rejected before the next render.
-  const answerLockedRef = useRef(false);
-  const advancingRef = useRef(false);
+  const lockedRef = useRef(false);
+  const handedOffRef = useRef(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      // Answers given before leaving mid-quiz still earn XP and count as answered.
+      const userId = userIdRef.current;
+      if (!handedOffRef.current && userId && !isGuestUser(userId) && answersRef.current.length > 0) {
+        submitQuiz(userId, answersRef.current).catch((submitError) =>
+          console.warn('Could not save the quiz answers:', submitError?.message)
+        );
+      }
     };
   }, []);
+
+  useEffect(() => {
+    if (!comboToast) return undefined;
+    const timer = setTimeout(() => setComboToast(null), COMBO_TOAST_MS);
+    return () => clearTimeout(timer);
+  }, [comboToast]);
 
   const fetchQuestions = useCallback(async () => {
     setIsLoading(true);
@@ -62,19 +106,18 @@ const TakeTest = ({ route, navigation }) => {
         throw results.find((r) => r.itemError).itemError;
       }
       if (mountedRef.current) {
-        correctCountRef.current = 0;
-        answerLockedRef.current = false;
-        advancingRef.current = false;
+        answersRef.current = [];
+        lockedRef.current = false;
         setItems(loaded);
-        setCurrentQuestionIndex(0);
-        setSelectedAnswer(null);
-        setIsCorrect(null);
+        setIndex(0);
+        setSelected(null);
+        setAnswers([]);
+        setCombo(0);
+        setXp(0);
       }
     } catch (fetchError) {
       console.error('Error fetching questions:', fetchError);
-      if (mountedRef.current) {
-        setError(getErrorMessage(fetchError, "We couldn't load your questions."));
-      }
+      if (mountedRef.current) setError(fetchError);
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
@@ -86,102 +129,94 @@ const TakeTest = ({ route, navigation }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!items[currentQuestionIndex]) return;
-    fadeAnim.setValue(0);
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 400,
-      useNativeDriver: true,
-    }).start();
-  }, [currentQuestionIndex, items, fadeAnim]);
-
   const goToTrack = () => navigation.popTo('BottomNav', { screen: 'Track' });
 
-  const markAsAnswered = async (evaluation) => {
-    const userId = userIdRef.current;
-    if (!userId || isGuestUser(userId)) return;
-    try {
-      await api.post(`/user/mark/content/as/answered/${userId}`, {
-        contentId: evaluation.contentid,
-      });
-    } catch (markError) {
-      console.error(`Error marking content ${evaluation.contentid} as answered:`, markError);
-    }
-  };
+  const current = items[index];
+  const lastAnswer = answers[answers.length - 1];
+  const answeredCurrent = selected !== null;
 
-  const animateCorrectAnswer = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 1.6, duration: 600, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-    ]).start();
-  };
+  const handleAnswer = (response) => {
+    if (!current || lockedRef.current) return;
+    lockedRef.current = true;
 
-  const animateIncorrectAnswer = () => {
-    const step = (toValue) =>
-      Animated.timing(shakeAnim, { toValue, duration: 100, useNativeDriver: true });
-    Animated.sequence([step(10), step(-10), step(10), step(-10), step(10), step(0)]).start();
-  };
+    const correct = response === current.question.correct;
+    const nextCombo = correct ? combo + 1 : 0;
+    const earned = xpForAnswer(correct, nextCombo);
+    answersRef.current = [
+      ...answersRef.current,
+      { contentId: current.evaluation.contentid, response, correct, xp: earned },
+    ];
 
-  const handleAnswerSelection = (selectedResponse) => {
-    const current = items[currentQuestionIndex];
-    if (!current || answerLockedRef.current) return;
-    answerLockedRef.current = true;
+    setAnswers(answersRef.current);
+    setSelected(response);
+    setCombo(nextCombo);
+    setXp((total) => total + earned);
+    setPraise(praiseFor(correct, nextCombo));
+    setXpPop({ amount: earned, trigger: Date.now() });
 
-    const isAnswerCorrect = selectedResponse === current.question.correct;
-    setSelectedAnswer(selectedResponse);
-    setIsCorrect(isAnswerCorrect);
-
-    if (isAnswerCorrect) {
-      correctCountRef.current += 1;
-      animateCorrectAnswer();
-      markAsAnswered(current.evaluation);
+    if (correct) {
+      if (isComboMilestone(nextCombo)) {
+        haptics.celebrate();
+        setConfetti(Date.now());
+        setComboToast({ combo: nextCombo, key: Date.now() });
+      } else {
+        haptics.success();
+      }
     } else {
-      animateIncorrectAnswer();
+      haptics.error();
     }
   };
 
-  const handleNextQuestion = () => {
-    if (!answerLockedRef.current || advancingRef.current) return;
-
-    if (currentQuestionIndex < items.length - 1) {
-      answerLockedRef.current = false;
-      setSelectedAnswer(null);
-      setIsCorrect(null);
-      setCurrentQuestionIndex((index) => index + 1);
-    } else {
-      advancingRef.current = true;
-      navigation.navigate('Finish', {
-        totalQuestions: items.length,
-        correctAnswers: correctCountRef.current,
-      });
+  const handleNext = () => {
+    if (!lockedRef.current || handedOffRef.current) return;
+    if (index < items.length - 1) {
+      haptics.tap();
+      lockedRef.current = false;
+      setSelected(null);
+      setIndex((value) => value + 1);
+      return;
     }
+    // Finish grades and saves the quiz.
+    handedOffRef.current = true;
+    navigation.navigate('Finish', { answers: answersRef.current, total: items.length });
+  };
+
+  const handleClose = () => {
+    if (answersRef.current.length === 0) {
+      goToTrack();
+    } else {
+      setConfirmLeave(true);
+    }
+  };
+
+  const optionState = (response) => {
+    if (!answeredCurrent) return 'idle';
+    if (response === selected) return lastAnswer?.correct ? 'correct' : 'wrong';
+    if (!lastAnswer?.correct && response === current.question.correct) return 'reveal';
+    return 'dimmed';
   };
 
   if (isLoading) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (error) {
     return (
-      <View style={styles.stateContainer}>
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Something went wrong"
-          message={error}
-          actionLabel="Try again"
-          onAction={fetchQuestions}
+      <View style={[styles.stateContainer, { paddingTop: insets.top }]}>
+        <ErrorState
+          error={error}
+          onRetry={fetchQuestions}
+          fallbackMessage="We couldn't load your questions."
+          secondaryActionLabel="Back to Track"
+          onSecondaryAction={goToTrack}
         />
-        <Button mode="text" textColor={colors.secondary} onPress={goToTrack} style={styles.backButton}>
-          Back to Track
-        </Button>
       </View>
     );
   }
 
   if (items.length === 0) {
     return (
-      <View style={styles.stateContainer}>
+      <View style={[styles.stateContainer, { paddingTop: insets.top }]}>
         <StateMessage
           icon="help-circle-outline"
           title="No questions available"
@@ -193,71 +228,86 @@ const TakeTest = ({ route, navigation }) => {
     );
   }
 
-  const currentQuestion = items[currentQuestionIndex].question;
+  const isArticle = current.evaluation.type === 'article';
 
   return (
-    <View style={styles.container}>
-      <Gauge total={items.length} current={currentQuestionIndex} />
-
-      <View style={styles.questionContainer}>
-        <Animated.Text
-          style={[styles.questionText, { opacity: fadeAnim }]}
-          numberOfLines={5}
-          adjustsFontSizeToFit
-          minimumFontScale={0.5}
-          accessibilityRole="header"
-        >
-          {currentQuestion.question}
-        </Animated.Text>
-      </View>
+    <View style={[styles.container, { paddingTop: insets.top + spacing.s }]}>
+      <QuizTopBar
+        total={items.length}
+        results={answers.map((answer) => answer.correct)}
+        current={index}
+        xp={xp}
+        combo={combo}
+        onClose={handleClose}
+      />
 
       <ScrollView
-        style={styles.answersContainer}
-        contentContainerStyle={styles.answersContentContainer}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: spacing.l + (answeredCurrent ? 0 : insets.bottom) },
+        ]}
       >
-        {currentQuestion.responses.map((response, index) => {
-          const isSelected = selectedAnswer === response;
-          let backgroundColor = colors.primary;
-          if (isSelected) backgroundColor = isCorrect ? colors.darkGreen : INCORRECT_COLOR;
-          return (
-            <Animated.View
-              key={`${currentQuestionIndex}-${index}`}
-              style={{
-                transform: [
-                  { scale: isSelected && isCorrect ? scaleAnim : 1 },
-                  { translateX: isSelected && isCorrect === false ? shakeAnim : 0 },
-                ],
-              }}
-            >
-              <TouchableOpacity
-                style={[styles.answerButton, { backgroundColor }]}
-                onPress={() => handleAnswerSelection(response)}
-                disabled={selectedAnswer !== null}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: selectedAnswer !== null, selected: isSelected }}
-              >
-                <Text style={styles.answerButtonText}>{response}</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          );
-        })}
+        <Animated.View key={`question-${index}`} entering={FadeInRight.springify().damping(18)} style={styles.questionCard}>
+          <View style={styles.source}>
+            <MaterialCommunityIcons
+              name={isArticle ? 'file-document' : 'play-circle'}
+              size={16}
+              color={colors.accent}
+            />
+            <Text style={styles.sourceText}>
+              {isArticle ? 'From an article you read' : 'From a cast you watched'}
+            </Text>
+          </View>
+          <Text style={styles.questionText} accessibilityRole="header">
+            {current.question.question}
+          </Text>
+        </Animated.View>
+
+        <View key={`answers-${index}`}>
+          {current.question.responses.map((response, responseIndex) => (
+            <AnswerOption
+              key={`${index}-${responseIndex}`}
+              index={responseIndex}
+              text={response}
+              state={optionState(response)}
+              disabled={answeredCurrent}
+              onPress={() => handleAnswer(response)}
+            />
+          ))}
+        </View>
       </ScrollView>
 
-      {selectedAnswer !== null && (
-        <View style={styles.fixedButtonContainer}>
-          <Button
-            mode="contained"
-            onPress={handleNextQuestion}
-            buttonColor={colors.darkGreen}
-            icon={require('@assets/Track_icons/go.png')}
-            contentStyle={styles.nextButtonContent}
-            labelStyle={styles.nextButtonLabel}
-            style={styles.nextButton}
-          >
-            {currentQuestionIndex < items.length - 1 ? 'Next' : 'Finish'}
-          </Button>
-        </View>
+      {answeredCurrent && lastAnswer && (
+        <FeedbackPanel
+          key={`feedback-${index}`}
+          correct={lastAnswer.correct}
+          praise={praise}
+          xp={lastAnswer.xp}
+          isLast={index === items.length - 1}
+          onNext={handleNext}
+          bottomInset={insets.bottom}
+        />
       )}
+
+      <View pointerEvents="none" style={styles.floatingLayer}>
+        <FloatingXp amount={xpPop.amount} trigger={xpPop.trigger} style={styles.floatingXp} />
+      </View>
+      {comboToast && <ComboToast key={comboToast.key} combo={comboToast.combo} />}
+      <ConfettiBurst trigger={confetti} count={32} origin={{ x: 0.5, y: 0.35 }} power={0.8} />
+
+      <ConfirmDialog
+        visible={confirmLeave}
+        title="Leave the quiz?"
+        message="Don't worry: the answers you've given so far still earn XP."
+        confirmLabel="Leave"
+        cancelLabel="Keep playing"
+        onConfirm={() => {
+          setConfirmLeave(false);
+          goToTrack();
+        }}
+        onDismiss={() => setConfirmLeave(false)}
+      />
     </View>
   );
 };
@@ -265,76 +315,72 @@ const TakeTest = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
-    alignItems: 'center',
-    paddingTop: spacing.l,
+    backgroundColor: colors.background,
   },
   stateContainer: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
-    paddingBottom: spacing.xl,
+    backgroundColor: colors.background,
   },
-  backButton: {
-    alignSelf: 'center',
+  scroll: {
+    flex: 1,
   },
-  questionContainer: {
-    justifyContent: 'center',
+  content: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.s,
+  },
+  questionCard: {
+    padding: spacing.m,
+    marginBottom: spacing.l,
+    borderRadius: sizes.radius + 4,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  source: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.s,
+    gap: spacing.xs,
     marginBottom: spacing.s,
-    marginHorizontal: spacing.s,
-    height: '30%',
+  },
+  sourceText: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.accent,
   },
   questionText: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    color: colors.secondary,
+    ...typography.h2,
   },
-  answersContainer: {
-    width: '100%',
-    marginBottom: spacing.m,
-  },
-  answersContentContainer: {
+  floatingLayer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
-    paddingBottom: spacing.xl * 3,
   },
-  answerButton: {
-    width: width * 0.9,
-    borderRadius: sizes.radius,
-    marginBottom: spacing.l,
-    padding: spacing.m,
-    elevation: 5,
+  floatingXp: {
+    top: '42%',
   },
-  answerButtonText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
+  toastLayer: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  fixedButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-    padding: spacing.m,
+  toast: {
+    alignItems: 'center',
+    paddingHorizontal: spacing.l,
+    paddingVertical: spacing.m,
+    borderRadius: sizes.radius + 4,
+    backgroundColor: colors.surface,
+    shadowColor: colors.black,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
   },
-  nextButton: {
-    marginLeft: spacing.xl,
-    marginRight: spacing.xl,
-    marginBottom: spacing.l,
-    marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
+  toastTitle: {
+    ...typography.h1,
+    color: rewardColors.streak,
   },
-  nextButtonContent: {
-    flexDirection: 'row-reverse',
-  },
-  nextButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
+  toastText: {
+    ...typography.caption,
   },
 });
 

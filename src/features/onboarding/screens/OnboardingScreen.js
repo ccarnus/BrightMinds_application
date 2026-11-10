@@ -1,57 +1,45 @@
 import React, { useRef } from 'react';
-import { View, StyleSheet, Dimensions, Image } from 'react-native';
+import { View, StyleSheet, Image, Platform } from 'react-native';
 import Onboarding from 'react-native-onboarding-swiper';
-import { Button } from 'react-native-paper';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppButton from '@shared/components/AppButton';
+import { colors, layout, sizes, spacing, typography } from '@shared/config/theme';
 import { setOnboardingCompleted } from '@shared/utils/UserStorage';
 
-const { width, height } = Dimensions.get('window');
+const IMAGE_SIZE = Math.min(sizes.width * 0.8, sizes.height * 0.4, 420);
+const BOTTOM_BAR_HEIGHT = 96;
 
 const DoneButton = ({ onPress }) => (
-  <View style={styles.ButtonContainer}>
-    <Button
-      mode="contained"
-      onPress={onPress}
-      style={styles.GoButton}
-      labelStyle={styles.GoButtonLabel}
-      buttonColor={colors.primary}
-    >
+  <View style={styles.buttonContainer}>
+    <AppButton size="medium" onPress={onPress}>
       Let's Go!
-    </Button>
+    </AppButton>
   </View>
 );
 
 const SkipButton = ({ onPress }) => (
-  <View style={styles.ButtonContainer}>
-    <Button
-      mode="contained"
-      onPress={onPress}
-      style={styles.skipButton}
-      labelStyle={styles.skipButtonLabel}
-      buttonColor={colors.primary}
-    >
+  <View style={styles.buttonContainer}>
+    <AppButton variant="link" size="medium" onPress={onPress}>
       Skip
-    </Button>
+    </AppButton>
   </View>
 );
 
 const NextButton = ({ onPress }) => (
-  <View style={styles.ButtonContainer}>
-    <Button
-      onPress={onPress}
-      style={styles.Button}
-      labelStyle={styles.ButtonLabel}
-      mode="contained"
-      buttonColor={colors.darkGreen}
+  <View style={styles.buttonContainer}>
+    <AppButton
+      size="medium"
+      iconPosition="right"
       icon={require('@assets/Discover_icons/next.png')}
-      contentStyle={styles.nextButtonContent}
+      onPress={onPress}
     >
       Next
-    </Button>
+    </AppButton>
   </View>
 );
 
 const OnboardingScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const completedRef = useRef(false);
 
   const handleOnboardingComplete = async () => {
@@ -72,11 +60,13 @@ const OnboardingScreen = ({ navigation }) => {
       showNext={true}
       showDone={true}
       bottomBarHighlight={false}
-      bottomBarHeight={120}
+      // The library's bottom bar only reserves the iOS home indicator area; on Android
+      // (edge-to-edge) the navigation bar inset is added here so the buttons stay above it.
+      bottomBarHeight={BOTTOM_BAR_HEIGHT + (Platform.OS === 'android' ? insets.bottom : 0)}
       containerStyles={styles.onboardingContainer}
       pages={[
         {
-          backgroundColor: colors.primaryBis,
+          backgroundColor: colors.background,
           image: (
             <Image
               source={require('@assets/Onboarding/latest.png')}
@@ -87,10 +77,10 @@ const OnboardingScreen = ({ navigation }) => {
           title: 'Find out the latest from the research world',
           subtitle: '',
           titleStyles: styles.title,
-          subtitleStyles: styles.subtitle,
+          subTitleStyles: styles.subtitle,
         },
         {
-          backgroundColor: colors.primaryBis,
+          backgroundColor: colors.background,
           image: (
             <Image
               source={require('@assets/Onboarding/topublic.png')}
@@ -101,7 +91,7 @@ const OnboardingScreen = ({ navigation }) => {
           title: 'Explained in the most simple way',
           subtitle: '',
           titleStyles: styles.title,
-          subtitleStyles: styles.subtitle,
+          subTitleStyles: styles.subtitle,
         },
       ]}
     />
@@ -113,74 +103,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   image: {
-    width: width * 0.8,
-    height: height * 0.4,
+    width: IMAGE_SIZE,
+    height: IMAGE_SIZE,
     marginBottom: spacing.l,
   },
   title: {
-    fontSize: sizes.title,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.title,
     textAlign: 'center',
+    maxWidth: layout.maxContentWidth,
+    paddingHorizontal: spacing.m,
   },
   subtitle: {
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.bodySmall,
     textAlign: 'center',
+    maxWidth: layout.maxContentWidth,
     paddingHorizontal: spacing.m,
     marginTop: spacing.s,
   },
-  ButtonContainer: {
+  buttonContainer: {
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  GoButton: {
-    backgroundColor: colors.primary,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    paddingBottom: spacing.s,
-    borderRadius: sizes.buttonRadius,
-  },
-  Button: {
-    backgroundColor: colors.secondary,
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    paddingBottom: spacing.s,
-    borderRadius: sizes.buttonRadius,
-  },
-  nextButtonContent: {
-    flexDirection: 'row-reverse',
-    paddingTop: spacing.xs,
-  },
-  ButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.xs,
-    color: colors.primaryBis,
-  },
-  GoButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
-    color: colors.secondary,
-  },
-  skipButton: {
-    backgroundColor: 'transparent',
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    paddingBottom: spacing.s,
-    borderRadius: sizes.buttonRadius,
-  },
-  skipButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
-    color: colors.secondary,
+    marginHorizontal: spacing.m,
   },
 });
 

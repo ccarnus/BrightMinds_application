@@ -14,16 +14,19 @@ import {
   FlatList,
   Keyboard,
 } from 'react-native';
-import { Button, TextInput, Portal, HelperText, Modal as PaperModal } from 'react-native-paper';
+import { TextInput, Portal, HelperText, Modal as PaperModal } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Asset } from 'expo-asset';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, fonts, scale, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
+import AppButton from '@shared/components/AppButton';
 import Loader from '@shared/components/Loader';
+import SearchField from '@shared/components/SearchField';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
 import { isValidEmail } from '@features/auth/utils/validation';
 
 const SIGNUP_TIMEOUT_MS = 60000;
@@ -36,6 +39,10 @@ const CATEGORY_OPTIONS = [
 ];
 const ROLES_WITH_UNIVERSITY = ['Professor', 'Researcher', 'PhD Student'];
 const DEFAULT_IMAGE_NAME = 'user_image_default.png';
+const PROFILE_IMAGE_SIZE = Math.min(scale(120), 150);
+const UNIVERSITY_ICON_SIZE = 40;
+
+const OptionSeparator = () => <View style={styles.separator} />;
 
 const SignupScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -77,7 +84,8 @@ const SignupScreen = ({ navigation }) => {
       const { data } = await api.get('/university');
       if (isActive()) setUniversities(Array.isArray(data) ? data : []);
     } catch (error) {
-      if (isActive()) setUniversitiesError(getErrorMessage(error, 'Could not load universities.'));
+      console.error('Error fetching universities:', error);
+      if (isActive()) setUniversitiesError(error);
     } finally {
       if (isActive()) setUniversitiesLoading(false);
     }
@@ -233,32 +241,37 @@ const SignupScreen = ({ navigation }) => {
     setSearchQuery('');
   };
 
-  const renderUniversityItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.universityItemWrapper}
-      onPress={() => {
-        setSelectedUniversity(item);
-        closeUniversityModal();
-      }}
-      accessibilityRole="button"
-    >
-      <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
-      <Text style={styles.universityText}>{item.displayedName || item.name}</Text>
-    </TouchableOpacity>
-  );
+  const renderUniversityItem = ({ item }) => {
+    const selected = !!selectedUniversity && selectedUniversity._id === item._id;
+    return (
+      <TouchableOpacity
+        style={[styles.universityRow, selected && styles.optionRowSelected]}
+        onPress={() => {
+          setSelectedUniversity(item);
+          closeUniversityModal();
+        }}
+        accessibilityRole="button"
+      >
+        <Image source={{ uri: item.iconurl }} style={styles.universityIcon} />
+        <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+          {item.displayedName || item.name}
+        </Text>
+        {selected && <MaterialCommunityIcons name="check" size={20} color={colors.accent} />}
+      </TouchableOpacity>
+    );
+  };
 
   const renderUniversityList = () => {
     if (universitiesLoading) {
-      return <Loader backgroundColor={colors.primary} />;
+      return <Loader backgroundColor={colors.surface} />;
     }
     if (universitiesError) {
       return (
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Couldn't load universities"
-          message={universitiesError}
-          actionLabel="Try again"
-          onAction={() => fetchUniversities()}
+        <ErrorState
+          compact
+          error={universitiesError}
+          onRetry={() => fetchUniversities()}
+          fallbackMessage="We couldn't load the universities."
         />
       );
     }
@@ -267,10 +280,11 @@ const SignupScreen = ({ navigation }) => {
         data={filteredUniversities}
         keyExtractor={(item) => item._id}
         renderItem={renderUniversityItem}
+        ItemSeparatorComponent={OptionSeparator}
         contentContainerStyle={styles.flatListContainer}
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
-          <StateMessage icon="school-outline" title="No university found" message="Try another search." />
+          <StateMessage compact icon="school-outline" title="No university found" message="Try another search." />
         }
       />
     );
@@ -282,129 +296,142 @@ const SignupScreen = ({ navigation }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}
+        contentContainerStyle={[styles.container, { paddingTop: insets.top + spacing.l }]}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Sign Up</Text>
+        <View style={styles.form}>
+          <Text style={styles.title}>Sign Up</Text>
 
-        <TextInput
-          label="Email"
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          mode="outlined"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          autoComplete="email"
-          textContentType="emailAddress"
-          activeOutlineColor={colors.darkGreen}
-        />
+          <TextInput
+            label="Email"
+            style={styles.input}
+            outlineStyle={styles.inputOutline}
+            value={email}
+            onChangeText={setEmail}
+            mode="outlined"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+          />
 
-        <TextInput
-          label="Username"
-          style={styles.input}
-          value={username}
-          onChangeText={setUsername}
-          mode="outlined"
-          autoCapitalize="none"
-          autoCorrect={false}
-          activeOutlineColor={colors.darkGreen}
-        />
+          <TextInput
+            label="Username"
+            style={styles.input}
+            outlineStyle={styles.inputOutline}
+            value={username}
+            onChangeText={setUsername}
+            mode="outlined"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
 
-        <TextInput
-          label="Password"
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          mode="outlined"
-          autoCapitalize="none"
-          textContentType="newPassword"
-          activeOutlineColor={colors.darkGreen}
-        />
+          <TextInput
+            label="Password"
+            style={styles.input}
+            outlineStyle={styles.inputOutline}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            mode="outlined"
+            autoCapitalize="none"
+            textContentType="newPassword"
+          />
 
-        <TextInput
-          label="Confirm Password"
-          style={styles.input}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry
-          mode="outlined"
-          autoCapitalize="none"
-          textContentType="newPassword"
-          error={!passwordsMatch}
-          activeOutlineColor={colors.darkGreen}
-        />
-        {!passwordsMatch && (
-          <HelperText type="error" visible>
-            Passwords do not match
-          </HelperText>
-        )}
+          <TextInput
+            label="Confirm Password"
+            style={[styles.input, !passwordsMatch && styles.inputWithHelper]}
+            outlineStyle={styles.inputOutline}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            mode="outlined"
+            autoCapitalize="none"
+            textContentType="newPassword"
+            error={!passwordsMatch}
+          />
+          {!passwordsMatch && (
+            <HelperText type="error" visible style={styles.helperText}>
+              Passwords do not match
+            </HelperText>
+          )}
 
-        <Text style={styles.pickerTitle}>Category:</Text>
-        <TouchableOpacity
-          style={styles.selectorContainer}
-          onPress={() => setCategoryModalVisible(true)}
-          accessibilityRole="button"
-        >
-          <Text style={styles.selectorText}>{role || 'Select Category'}</Text>
-        </TouchableOpacity>
-
-        {needsUniversity && (
+          <Text style={styles.fieldLabel}>Category:</Text>
           <TouchableOpacity
-            style={styles.universitySelector}
-            onPress={() => setUniversityModalVisible(true)}
+            style={styles.selector}
+            onPress={() => setCategoryModalVisible(true)}
             accessibilityRole="button"
           >
-            {selectedUniversity ? (
-              <View style={styles.universitySelectedWrapper}>
-                <Image source={{ uri: selectedUniversity.iconurl }} style={styles.universityIcon} />
-                <Text style={styles.universityText}>
-                  {selectedUniversity.displayedName || selectedUniversity.name}
-                </Text>
-              </View>
+            <Text style={[styles.selectorText, !role && styles.selectorPlaceholder]}>
+              {role || 'Select Category'}
+            </Text>
+            <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          {needsUniversity && (
+            <TouchableOpacity
+              style={styles.selector}
+              onPress={() => setUniversityModalVisible(true)}
+              accessibilityRole="button"
+            >
+              {selectedUniversity ? (
+                <>
+                  <Image source={{ uri: selectedUniversity.iconurl }} style={styles.selectorIcon} />
+                  <Text style={styles.selectorText}>
+                    {selectedUniversity.displayedName || selectedUniversity.name}
+                  </Text>
+                </>
+              ) : (
+                <Text style={[styles.selectorText, styles.selectorPlaceholder]}>Select University</Text>
+              )}
+              <MaterialCommunityIcons name="chevron-down" size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            onPress={() => setImagePickerModalVisible(true)}
+            style={styles.imagePicker}
+            accessibilityRole="button"
+            accessibilityLabel="Select profile picture"
+          >
+            {profilePicture ? (
+              <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
             ) : (
-              <Text style={styles.universityPlaceholder}>Select University</Text>
+              <>
+                <View style={[styles.profileImage, styles.profilePlaceholder]}>
+                  <MaterialCommunityIcons name="camera-plus-outline" size={36} color={colors.textSecondary} />
+                </View>
+                <Text style={styles.imagePickerText}>Select Profile Picture</Text>
+              </>
             )}
           </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          onPress={() => setImagePickerModalVisible(true)}
-          style={styles.imagePicker}
-          accessibilityRole="button"
-          accessibilityLabel="Select profile picture"
-        >
-          {profilePicture ? (
-            <Image source={{ uri: profilePicture.uri }} style={styles.profileImage} />
-          ) : (
-            <Text style={styles.imagePickerText}>Select Profile Picture</Text>
-          )}
-        </TouchableOpacity>
+        </View>
       </ScrollView>
 
       {!isKeyboardVisible && (
-        <View style={[styles.footerContainer, { paddingBottom: spacing.l + insets.bottom }]}>
-          <Button
-            mode="contained"
-            onPress={handleSignup}
-            loading={loading}
-            disabled={!isFormComplete || loading}
-            buttonColor={colors.darkGreen}
-            icon={require('@assets/Login_icons/sign-up.png')}
-            contentStyle={styles.signupButtonContent}
-            labelStyle={styles.signupButtonLabel}
-            style={styles.signupButton}
-          >
-            Sign Up
-          </Button>
-          <TouchableOpacity
-            onPress={() => navigation.popTo('LoginScreen')}
-            accessibilityRole="button"
-          >
-            <Text style={styles.signupText}>Already have an account? Login</Text>
-          </TouchableOpacity>
+        <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.s }]}>
+          <View style={styles.footerContent}>
+            <AppButton
+              fullWidth
+              iconPosition="right"
+              icon={require('@assets/Login_icons/sign-up.png')}
+              onPress={handleSignup}
+              loading={loading}
+              disabled={!isFormComplete || loading}
+            >
+              Sign Up
+            </AppButton>
+            <TouchableOpacity
+              onPress={() => navigation.popTo('LoginScreen')}
+              style={styles.loginLink}
+              accessibilityRole="button"
+            >
+              <Text style={styles.loginLinkText}>
+                Already have an account? <Text style={styles.linkText}>Login</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -412,21 +439,28 @@ const SignupScreen = ({ navigation }) => {
         <PaperModal
           visible={categoryModalVisible}
           onDismiss={() => setCategoryModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}
+          contentContainerStyle={styles.optionsModal}
         >
-          {CATEGORY_OPTIONS.map((item) => (
-            <Button
-              key={item}
-              onPress={() => {
-                setRole(item);
-                setCategoryModalVisible(false);
-              }}
-              style={styles.modalItem}
-              labelStyle={styles.modalItemLabel}
-            >
-              {item}
-            </Button>
-          ))}
+          <Text style={styles.optionsTitle}>Select a category</Text>
+          {CATEGORY_OPTIONS.map((item, index) => {
+            const selected = item === role;
+            return (
+              <React.Fragment key={item}>
+                {index > 0 && <OptionSeparator />}
+                <TouchableOpacity
+                  style={[styles.optionRow, selected && styles.optionRowSelected]}
+                  onPress={() => {
+                    setRole(item);
+                    setCategoryModalVisible(false);
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{item}</Text>
+                  {selected && <MaterialCommunityIcons name="check" size={20} color={colors.accent} />}
+                </TouchableOpacity>
+              </React.Fragment>
+            );
+          })}
         </PaperModal>
       </Portal>
 
@@ -445,17 +479,14 @@ const SignupScreen = ({ navigation }) => {
               accessibilityRole="button"
               accessibilityLabel="Close"
             >
-              <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
+              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
-          <TextInput
-            label="Search University"
-            mode="outlined"
+          <SearchField
+            placeholder="Search University"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={styles.searchInput}
-            autoCorrect={false}
-            activeOutlineColor={colors.darkGreen}
+            style={styles.searchField}
           />
           {renderUniversityList()}
         </SafeAreaView>
@@ -473,22 +504,22 @@ const SignupScreen = ({ navigation }) => {
           activeOpacity={1}
           onPressOut={() => setImagePickerModalVisible(false)}
         >
-          <View style={styles.modalContent}>
+          <View style={styles.sourceCard}>
             <TouchableOpacity
-              style={styles.optionButton}
+              style={styles.sourceOption}
               onPress={() => chooseImageSource('gallery')}
               accessibilityRole="button"
             >
-              <MaterialCommunityIcons name="image-multiple" size={40} color={colors.darkblue} />
-              <Text style={styles.optionText}>Gallery</Text>
+              <MaterialCommunityIcons name="image-multiple" size={40} color={colors.accent} />
+              <Text style={styles.sourceOptionText}>Gallery</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.optionButton}
+              style={styles.sourceOption}
               onPress={() => chooseImageSource('default')}
               accessibilityRole="button"
             >
-              <MaterialCommunityIcons name="account" size={40} color={colors.darkblue} />
-              <Text style={styles.optionText}>Default</Text>
+              <MaterialCommunityIcons name="account" size={40} color={colors.accent} />
+              <Text style={styles.sourceOptionText}>Default</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -500,190 +531,214 @@ const SignupScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
-    padding: 20,
-    backgroundColor: colors.primaryBis,
-    paddingBottom: 150,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.l,
+    paddingBottom: spacing.l,
+  },
+  form: {
+    ...contentWidth,
   },
   title: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
     marginBottom: spacing.l,
-    marginTop: spacing.xl,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: spacing.m,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
+    backgroundColor: colors.surface,
+  },
+  inputOutline: {
     borderRadius: sizes.radius,
   },
-  pickerTitle: {
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h4,
+  inputWithHelper: {
+    marginBottom: 0,
+  },
+  helperText: {
+    marginBottom: spacing.s,
+  },
+  fieldLabel: {
+    ...typography.bodySmall,
     marginBottom: spacing.xs,
-    color: colors.secondary,
   },
-  // New styles for modal-based picker (similar to PostCast)
-  selectorContainer: {
+  // Same height and outline as the outlined Paper TextInputs above it.
+  selector: {
+    minHeight: 56,
     marginBottom: spacing.m,
+    paddingHorizontal: 16,
+    paddingVertical: spacing.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
     borderWidth: 1,
-    borderColor: 'gray',
+    borderColor: colors.outline,
     borderRadius: sizes.radius,
-    backgroundColor: 'white',
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.m,
-    justifyContent: 'center',
+    backgroundColor: colors.surface,
   },
   selectorText: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.body,
+    flex: 1,
   },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
+  selectorPlaceholder: {
+    color: colors.textSecondary,
   },
-  modalItem: {
-    marginVertical: spacing.s,
-  },
-  modalItemLabel: {
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  universitySelector: {
-    marginBottom: spacing.m,
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.m,
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: sizes.radius,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-  },
-  universitySelectedWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  universityPlaceholder: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-  },
-  universityItemWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.m,
-  },
-  universityIcon: {
-    width: 40,
-    height: 40,
-    marginRight: spacing.m,
+  selectorIcon: {
+    width: 32,
+    height: 32,
     resizeMode: 'contain',
   },
-  universityText: {
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h4,
-  },
   imagePicker: {
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'gray',
-    padding: 10,
+    gap: spacing.s,
+    marginTop: spacing.s,
+    padding: spacing.m,
     borderRadius: sizes.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: PROFILE_IMAGE_SIZE,
+    height: PROFILE_IMAGE_SIZE,
+    borderRadius: PROFILE_IMAGE_SIZE / 2,
+  },
+  profilePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.placeholder,
   },
   imagePickerText: {
-    color: 'gray',
-    fontFamily: 'Montserrat',
+    ...typography.bodySmall,
   },
-  signupText: {
-    marginTop: spacing.l,
+  footer: {
+    paddingTop: spacing.m,
+    paddingHorizontal: spacing.l,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  footerContent: {
+    ...contentWidth,
+  },
+  loginLink: {
+    minHeight: 44,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  loginLinkText: {
+    ...typography.bodySmall,
     textAlign: 'center',
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+  },
+  linkText: {
+    fontFamily: fonts.bold,
+    color: colors.accent,
+  },
+  optionsModal: {
+    width: '88%',
+    maxWidth: 448,
+    alignSelf: 'center',
+    padding: spacing.m,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
+  },
+  optionsTitle: {
+    ...typography.h2,
+    textAlign: 'center',
+    marginBottom: spacing.s,
+  },
+  optionRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.s,
+    borderRadius: spacing.s,
+  },
+  optionRowSelected: {
+    backgroundColor: colors.accentSoft,
+  },
+  optionText: {
+    ...typography.body,
+    flex: 1,
+  },
+  optionTextSelected: {
+    fontFamily: fonts.bold,
+    color: colors.accent,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  universityModal: {
+    flex: 1,
+    backgroundColor: colors.surface,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.l,
+    gap: spacing.m,
+    marginTop: spacing.m,
     marginHorizontal: spacing.m,
   },
   modalTitle: {
-    fontSize: sizes.h1,
-    fontFamily: 'Montserrat',
+    ...typography.h1,
+    flex: 1,
+  },
+  searchField: {
+    marginHorizontal: spacing.m,
+    marginVertical: spacing.m,
   },
   flatListContainer: {
     flexGrow: 1,
-    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.s,
+    paddingBottom: spacing.m,
   },
-  universityModal: {
-    flex: 1,
-    backgroundColor: colors.primary,
+  universityRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.m,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.s,
+    borderRadius: spacing.s,
   },
-  signupButtonContent: {
-    flexDirection: 'row-reverse',
-  },
-  signupButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
-  },
-  signupButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
-  },
-  footerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingVertical: spacing.l,
-    backgroundColor: 'transparent',
+  universityIcon: {
+    width: UNIVERSITY_ICON_SIZE,
+    height: UNIVERSITY_ICON_SIZE,
+    resizeMode: 'contain',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.overlay,
   },
-  modalContent: {
-    width: 250,
-    backgroundColor: 'white',
-    borderRadius: sizes.radius,
-    paddingVertical: spacing.l,
+  sourceCard: {
+    width: '80%',
+    maxWidth: 320,
     flexDirection: 'row',
     justifyContent: 'space-around',
+    paddingVertical: spacing.l,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
   },
-  optionButton: {
+  sourceOption: {
+    minWidth: 88,
     alignItems: 'center',
-    paddingHorizontal: spacing.m,
+    padding: spacing.s,
+    borderRadius: sizes.radius,
   },
-  optionText: {
+  sourceOptionText: {
+    ...typography.body,
     marginTop: spacing.xs,
-    fontFamily: 'Montserrat',
-    color: colors.darkblue,
-  },
-  searchInput: {
-    marginHorizontal: spacing.m,
-    marginVertical: spacing.m,
-    backgroundColor: 'white',
+    fontFamily: fonts.bold,
+    color: colors.accent,
   },
 });
 

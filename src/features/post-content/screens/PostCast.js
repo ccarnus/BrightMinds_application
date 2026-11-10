@@ -11,16 +11,18 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Button, TextInput } from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import categories from '@shared/data/categories';
 import departments from '@shared/data/departments';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
+import AppButton from '@shared/components/AppButton';
+import BackButton from '@shared/components/BackButton';
 import {
-  BackButton,
   OptionsModal,
   SelectorField,
   TopicPickerModal,
@@ -34,12 +36,6 @@ import {
 } from '@features/post-content/components/PostFormFields';
 
 const UPLOAD_TIMEOUT_MS = 300000;
-
-const SourceButton = ({ title, onPress, style }) => (
-  <TouchableOpacity onPress={onPress} style={[styles.button, style]} accessibilityRole="button">
-    <Text style={styles.buttonText}>{title}</Text>
-  </TouchableOpacity>
-);
 
 const requestPermission = async (source) => {
   const { granted } =
@@ -171,7 +167,7 @@ const PostCast = ({ navigation }) => {
       navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
       console.error('Error sending cast:', error);
-      Alert.alert('Error', getErrorMessage(error, 'An error occurred while sending the cast.'));
+      Alert.alert("Couldn't post your cast", getErrorMessage(error, 'Please try again.'));
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -185,21 +181,23 @@ const PostCast = ({ navigation }) => {
     >
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + spacing.s }]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
-          <BackButton onPress={() => navigation.goBack()} style={postFormStyles.backButton} />
-          <Text style={postFormStyles.Maintitle}>Post a Cast</Text>
+        <View style={postFormStyles.header}>
+          <BackButton floating={false} onPress={() => navigation.goBack()} style={postFormStyles.headerBackButton} />
+          <Text style={postFormStyles.title}>Post a Cast</Text>
+        </View>
 
+        <View style={postFormStyles.form}>
           <TextInput
             label="Title"
             style={postFormStyles.input}
+            outlineStyle={postFormStyles.inputOutline}
             value={title}
             onChangeText={setTitle}
             mode="outlined"
             autoCapitalize="none"
-            activeOutlineColor={colors.darkGreen}
             maxLength={85}
           />
 
@@ -207,13 +205,13 @@ const PostCast = ({ navigation }) => {
             <TextInput
               label="Link"
               style={postFormStyles.input}
+              outlineStyle={postFormStyles.inputOutline}
               value={link}
               onChangeText={setLink}
               mode="outlined"
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              activeOutlineColor={colors.darkGreen}
             />
           )}
 
@@ -241,54 +239,54 @@ const PostCast = ({ navigation }) => {
           {isNonEmpty(topic) && (
             <>
               <VisibilitySlider value={visibility} onChange={setVisibility} />
-              <View style={styles.videoPicker}>
-                <TouchableOpacity
-                  onPress={() => setSourceModalVisible(true)}
-                  style={styles.imagePicker}
-                  accessibilityRole="button"
-                >
-                  <Text style={styles.imagePickerText}>
-                    {video ? 'Change Video' : 'Select Video'}
-                  </Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSourceModalVisible(true)}
+                style={styles.videoPicker}
+                accessibilityRole="button"
+              >
+                <Ionicons name="videocam-outline" size={22} color={colors.textSecondary} />
+                <Text style={styles.videoPickerText}>
+                  {video ? 'Change Video' : 'Select Video'}
+                </Text>
+              </TouchableOpacity>
 
-                {video && (
-                  <View style={styles.previewContainer}>
-                    <VideoView
-                      player={previewPlayer}
-                      style={styles.preview}
-                      contentFit="contain"
-                      nativeControls
-                    />
-                  </View>
-                )}
-              </View>
+              {video && (
+                <View style={styles.previewContainer}>
+                  <VideoView
+                    player={previewPlayer}
+                    style={styles.preview}
+                    contentFit="contain"
+                    nativeControls
+                  />
+                </View>
+              )}
             </>
           )}
         </View>
       </ScrollView>
 
-      <View style={[styles.footerContainer, { paddingBottom: insets.bottom }]}>
-        <Button
-          onPress={sendCast}
-          loading={loading}
-          disabled={loading}
-          mode="contained"
-          buttonColor={colors.darkGreen}
-          icon={require('@assets/Postcontent_icons/send.png')}
-          labelStyle={postFormStyles.postButtonLabel}
-          style={postFormStyles.postButton}
-        >
-          POST
-        </Button>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.s }]}>
+        <View style={styles.footerContent}>
+          <AppButton
+            fullWidth
+            onPress={sendCast}
+            loading={loading}
+            disabled={loading}
+            icon={require('@assets/Postcontent_icons/send.png')}
+          >
+            POST
+          </AppButton>
+        </View>
       </View>
 
       <OptionsModal
         visible={isCategoryModalVisible}
         onDismiss={() => setCategoryModalVisible(false)}
+        title="Select a category"
         options={categories}
         getKey={(item) => item}
         getLabel={(item) => item}
+        selectedKey={category}
         onSelect={(item) => {
           setCategory(item);
           setCategoryModalVisible(false);
@@ -297,18 +295,22 @@ const PostCast = ({ navigation }) => {
       <OptionsModal
         visible={isDepartmentModalVisible}
         onDismiss={() => setDepartmentModalVisible(false)}
+        title="Select a department"
         options={departments}
         getKey={(item) => item.name}
         getLabel={(item) => item.display}
+        selectedKey={department}
         onSelect={selectDepartment}
       />
       <TopicPickerModal
         visible={isTopicModalVisible}
         onDismiss={() => setTopicModalVisible(false)}
+        title="Select a topic"
         topics={topicsState.topics}
         loading={topicsState.loading}
         error={topicsState.error}
         onRetry={topicsState.reload}
+        selected={topic}
         onSelect={(name) => {
           setTopic(name);
           setTopicModalVisible(false);
@@ -316,30 +318,24 @@ const PostCast = ({ navigation }) => {
       />
 
       <ModalReact
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={isSourceModalVisible}
         onRequestClose={() => setSourceModalVisible(false)}
         onDismiss={launchPendingSource}
       >
-        <View style={styles.centeredView}>
-          <View style={styles.modalView}>
-            <Text style={styles.modalText}>Choose Video Source</Text>
-            <SourceButton
-              title="Record Video"
-              onPress={() => chooseSource('camera')}
-              style={styles.sourceButton}
-            />
-            <SourceButton
-              title="Choose from Gallery"
-              onPress={() => chooseSource('library')}
-              style={styles.sourceButton}
-            />
-            <SourceButton
-              title="Cancel"
-              onPress={() => setSourceModalVisible(false)}
-              style={styles.cancelButton}
-            />
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Choose Video Source</Text>
+            <AppButton fullWidth icon="camera" onPress={() => chooseSource('camera')}>
+              Record Video
+            </AppButton>
+            <AppButton fullWidth icon="image-multiple" onPress={() => chooseSource('library')}>
+              Choose from Gallery
+            </AppButton>
+            <AppButton fullWidth variant="secondary" onPress={() => setSourceModalVisible(false)}>
+              Cancel
+            </AppButton>
           </View>
         </View>
       </ModalReact>
@@ -352,27 +348,44 @@ const PostCast = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: spacing.l,
   },
-  content: {
-    flex: 1,
-    padding: 20,
+  footer: {
+    paddingTop: spacing.s,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  footerContainer: {
-    backgroundColor: colors.primaryBis,
-    borderTopWidth: 1,
-    borderColor: colors.lightGray,
+  footerContent: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+  },
+  videoPicker: {
+    minHeight: 56,
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
+    paddingHorizontal: spacing.m,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.s,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
+  },
+  videoPickerText: {
+    ...typography.body,
   },
   previewContainer: {
-    width: '70%',
-    height: 200,
-    alignSelf: 'center',
-    marginTop: spacing.m,
-    marginBottom: spacing.xl,
-    borderRadius: 10,
+    width: '100%',
+    aspectRatio: 4 / 3,
+    marginBottom: spacing.l,
+    borderRadius: sizes.radius,
     overflow: 'hidden',
     backgroundColor: colors.black,
   },
@@ -380,63 +393,25 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  videoPicker: {
-    marginTop: spacing.l,
-    width: '100%',
-  },
-  imagePicker: {
-    marginBottom: spacing.m,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'gray',
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-    backgroundColor: 'white',
-  },
-  imagePickerText: {
-    color: 'gray',
-    fontFamily: 'Montserrat',
-  },
-  centeredView: {
+  modalOverlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 22,
+    padding: spacing.l,
+    backgroundColor: colors.overlay,
   },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    gap: spacing.s,
+    padding: spacing.l,
     borderRadius: sizes.radius,
-    padding: 35,
-    alignItems: 'center',
-    elevation: 5,
+    backgroundColor: colors.surface,
   },
-  modalText: {
-    marginBottom: spacing.m,
+  modalTitle: {
+    ...typography.h2,
     textAlign: 'center',
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-    fontSize: sizes.h2,
-  },
-  button: {
-    borderRadius: sizes.radius,
-    padding: spacing.m,
-    elevation: 2,
-    width: '90%',
-    marginTop: spacing.s,
-  },
-  buttonText: {
-    color: colors.primaryBis,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    fontSize: sizes.h3,
-  },
-  sourceButton: {
-    backgroundColor: colors.darkblue,
-  },
-  cancelButton: {
-    backgroundColor: colors.secondary,
+    marginBottom: spacing.s,
   },
 });
 

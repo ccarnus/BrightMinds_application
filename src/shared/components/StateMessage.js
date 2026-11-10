@@ -1,25 +1,76 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import AppButton from '@shared/components/AppButton';
+import { colors, layout, spacing, typography } from '@shared/config/theme';
 
 /**
- * Empty / error placeholder with an optional retry action.
+ * Empty / error placeholder: illustration (or icon), title, message, a primary action and an
+ * optional secondary link. Errors should go through `ErrorState`, which builds on this.
  * Use instead of leaving the user on a blank screen or an endless loader.
  */
-const StateMessage = ({ icon = 'alert-circle-outline', title, message, actionLabel, onAction, style }) => (
-  <View style={[styles.container, style]}>
-    <Ionicons name={icon} size={48} color={colors.lightGray} />
-    {!!title && <Text style={styles.title}>{title}</Text>}
-    {!!message && <Text style={styles.message}>{message}</Text>}
-    {!!onAction && (
-      <TouchableOpacity style={styles.button} onPress={onAction} accessibilityRole="button">
-        <Text style={styles.buttonText}>{actionLabel || 'Try again'}</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-);
+const StateMessage = ({
+  icon = 'alert-circle-outline',
+  image,
+  title,
+  message,
+  actionLabel,
+  onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  compact = false,
+  dark = false,
+  style,
+}) => {
+  const { width } = useWindowDimensions();
+  const imageSize = compact ? Math.min(width * 0.3, 120) : Math.min(width * 0.5, 220);
+
+  return (
+    <View style={[styles.container, compact && styles.compactContainer, style]}>
+      <View style={styles.content}>
+        {image ? (
+          <Image
+            source={image}
+            style={{ width: imageSize, height: imageSize }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+        ) : (
+          <View style={[styles.iconCircle, compact && styles.iconCircleCompact, dark && styles.iconCircleDark]}>
+            <Ionicons name={icon} size={compact ? 30 : 36} color={dark ? colors.textOnColor : colors.accent} />
+          </View>
+        )}
+        {!!title && (
+          <Text style={[styles.title, dark && styles.textOnDark]} accessibilityRole="header">
+            {title}
+          </Text>
+        )}
+        {!!message && <Text style={[styles.message, dark && styles.messageDark]}>{message}</Text>}
+        {!!onAction && (
+          <AppButton
+            variant={dark ? 'light' : 'primary'}
+            size="medium"
+            onPress={onAction}
+            style={styles.action}
+          >
+            {actionLabel || 'Try again'}
+          </AppButton>
+        )}
+        {!!onSecondaryAction && (
+          <AppButton
+            variant="link"
+            size="medium"
+            onDark={dark}
+            onPress={onSecondaryAction}
+            style={styles.secondaryAction}
+          >
+            {secondaryActionLabel || 'Go back'}
+          </AppButton>
+        )}
+      </View>
+    </View>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -28,30 +79,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.l,
   },
+  compactContainer: {
+    padding: spacing.m,
+  },
+  content: {
+    width: '100%',
+    maxWidth: layout.maxContentWidth * 0.75,
+    alignItems: 'center',
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.accentSoft,
+  },
+  iconCircleCompact: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  iconCircleDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  },
   title: {
-    marginTop: spacing.s,
-    fontFamily: 'MontserratBold',
-    fontSize: RFValue(16),
-    color: colors.secondary,
+    ...typography.h3,
+    marginTop: spacing.m,
     textAlign: 'center',
+  },
+  textOnDark: {
+    color: colors.textOnColor,
   },
   message: {
+    ...typography.bodySmall,
     marginTop: spacing.xs,
-    fontFamily: 'Montserrat',
-    fontSize: RFValue(13),
-    color: colors.darkGray,
     textAlign: 'center',
   },
-  button: {
-    marginTop: spacing.m,
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.s,
-    borderRadius: sizes.buttonRadius,
-    backgroundColor: colors.darkblue,
+  messageDark: {
+    color: colors.lightGray,
   },
-  buttonText: {
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
+  action: {
+    marginTop: spacing.l,
+    minWidth: 160,
+  },
+  secondaryAction: {
+    marginTop: spacing.xs,
   },
 });
 

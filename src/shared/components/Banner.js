@@ -41,11 +41,12 @@ const Banner = () => {
   );
 
   return (
-    <View style={[styles.bannerContainer, { paddingTop: Math.max(insets.top, spacing.l) }]}>
+    <View style={[styles.bannerContainer, { paddingTop: Math.max(insets.top, spacing.m) }]}>
       <Image source={logo} style={styles.logoImage} accessibilityLabel="BrightMinds" />
       {!isGuest && (
         <TouchableOpacity
           onPress={() => navigation.navigate('ProfileScreen')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
           accessibilityLabel="Open profile"
         >
@@ -61,22 +62,24 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: spacing.m,
     paddingBottom: spacing.s,
-    backgroundColor: colors.primary,
-    elevation: 5,
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   logoImage: {
-    width: 48,
-    height: 48,
-    marginLeft: 5,
+    width: 44,
+    height: 44,
     resizeMode: 'contain',
   },
   profileImage: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: colors.primaryBis,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: colors.accentSoft,
+    backgroundColor: colors.placeholder,
   },
 });
 

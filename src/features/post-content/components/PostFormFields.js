@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from 'react-native';
-import { Button, TextInput, Portal, Modal } from 'react-native-paper';
+import { TextInput, Portal, Modal } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 import { Slider } from '@miblanchard/react-native-slider';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { api, getErrorMessage } from '@shared/api/client';
+import { colors, contentWidth, fonts, sizes, spacing, typography } from '@shared/config/theme';
+import { api } from '@shared/api/client';
 import { clearUser, getUser, isGuestUser } from '@shared/utils/UserStorage';
 import { resetToAuthChoice } from '@navigation/navigationHelpers';
 import visibilityCategories from '@shared/data/visibilityCategories';
 import Loader from '@shared/components/Loader';
-import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import AppButton from '@shared/components/AppButton';
+import { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
 
 export const isNonEmpty = (value) => !!value && value.trim().length > 0;
 
@@ -66,7 +68,8 @@ export const useDepartmentTopics = (department) => {
         if (active) setTopics(Array.isArray(data) ? data : []);
       })
       .catch((err) => {
-        if (active) setError(getErrorMessage(err, 'Failed to load topics. Please try again later.'));
+        console.error('Error fetching topics:', err);
+        if (active) setError(err);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -87,32 +90,56 @@ export const SelectorField = ({ label, onPress, disabled }) => (
     accessibilityRole="button"
   >
     <Text style={styles.selectorText}>{label}</Text>
-    <Ionicons name="chevron-down" size={18} color={colors.darkGray} />
+    <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
   </TouchableOpacity>
 );
 
-export const OptionsModal = ({ visible, onDismiss, options, getKey, getLabel, onSelect }) => (
+// One row of a picker modal; the current value is highlighted in the accent color.
+const OptionRow = ({ label, selected, onPress }) => (
+  <TouchableOpacity
+    style={[styles.optionRow, selected && styles.optionRowSelected]}
+    onPress={onPress}
+    accessibilityRole="button"
+  >
+    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>{label}</Text>
+    {selected && <Ionicons name="checkmark" size={20} color={colors.accent} />}
+  </TouchableOpacity>
+);
+
+const OptionSeparator = () => <View style={styles.separator} />;
+
+export const OptionsModal = ({ visible, onDismiss, title, options, getKey, getLabel, selectedKey, onSelect }) => (
   <Portal>
     <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
+      {!!title && <Text style={styles.modalTitle}>{title}</Text>}
       <FlatList
         data={options}
         style={styles.modalList}
         keyExtractor={getKey}
+        ItemSeparatorComponent={OptionSeparator}
         renderItem={({ item }) => (
-          <Button
+          <OptionRow
+            label={getLabel(item)}
+            selected={!!selectedKey && getKey(item) === selectedKey}
             onPress={() => onSelect(item)}
-            style={styles.modalItem}
-            labelStyle={styles.modalItemLabel}
-          >
-            {getLabel(item)}
-          </Button>
+          />
         )}
       />
     </Modal>
   </Portal>
 );
 
-export const TopicPickerModal = ({ visible, onDismiss, topics, loading, error, onRetry, onSelect }) => {
+export const TopicPickerModal = ({
+  visible,
+  onDismiss,
+  title,
+  topics,
+  loading,
+  error,
+  onRetry,
+  selected,
+  onSelect,
+}) => {
   const [isManualEntry, setManualEntry] = useState(false);
   const [manualTopic, setManualTopic] = useState('');
 
@@ -133,17 +160,20 @@ export const TopicPickerModal = ({ visible, onDismiss, topics, loading, error, o
 
   const renderBody = () => {
     if (loading) {
-      return <Loader fullScreen={false} size={100} />;
+      return (
+        <View style={styles.modalLoader}>
+          <Loader fullScreen={false} size={100} />
+        </View>
+      );
     }
     return (
       <>
         {error ? (
-          <StateMessage
-            icon="cloud-offline-outline"
-            title="Couldn't load topics"
-            message={error}
-            actionLabel="Try again"
-            onAction={onRetry}
+          <ErrorState
+            compact
+            error={error}
+            onRetry={onRetry}
+            fallbackMessage="We couldn't load the topics. You can still enter a custom topic."
             style={styles.stateMessage}
           />
         ) : (
@@ -151,14 +181,13 @@ export const TopicPickerModal = ({ visible, onDismiss, topics, loading, error, o
             data={topics}
             style={styles.modalList}
             keyExtractor={(item) => item._id || item.name}
+            ItemSeparatorComponent={OptionSeparator}
             renderItem={({ item }) => (
-              <Button
+              <OptionRow
+                label={item.name}
+                selected={!!selected && item.name === selected}
                 onPress={() => onSelect(item.name)}
-                style={styles.modalItem}
-                labelStyle={styles.modalItemLabel}
-              >
-                {item.name}
-              </Button>
+              />
             )}
             ListEmptyComponent={
               <Text style={styles.emptyText}>No topics yet for this department.</Text>
@@ -166,34 +195,32 @@ export const TopicPickerModal = ({ visible, onDismiss, topics, loading, error, o
           />
         )}
         {isManualEntry ? (
-          <View>
+          <View style={styles.manualEntry}>
             <TextInput
               label="Custom Topic"
               value={manualTopic}
               onChangeText={setManualTopic}
               mode="outlined"
               style={styles.input}
+              outlineStyle={styles.inputOutline}
               autoFocus
               returnKeyType="done"
               onSubmitEditing={saveManualTopic}
-              activeOutlineColor={colors.darkGreen}
             />
-            <Button
-              onPress={saveManualTopic}
-              style={styles.modalItem}
-              labelStyle={styles.modalItemLabel}
-            >
+            <AppButton size="medium" fullWidth onPress={saveManualTopic}>
               Save Topic
-            </Button>
+            </AppButton>
           </View>
         ) : (
-          <Button
+          <AppButton
+            variant="link"
+            size="medium"
+            icon="pencil-outline"
             onPress={() => setManualEntry(true)}
-            style={[styles.modalItem, styles.manualTopicButton]}
-            labelStyle={styles.modalItemLabel}
+            style={styles.manualTopicButton}
           >
             Enter Custom Topic
-          </Button>
+          </AppButton>
         )}
       </>
     );
@@ -202,14 +229,17 @@ export const TopicPickerModal = ({ visible, onDismiss, topics, loading, error, o
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modalContainer}>
+        {!!title && <Text style={styles.modalTitle}>{title}</Text>}
         {renderBody()}
       </Modal>
     </Portal>
   );
 };
 
+const THUMB_TOUCH_SIZE = { width: 48, height: 48 };
+
 export const VisibilitySlider = ({ value, onChange }) => (
-  <>
+  <View style={styles.visibility}>
     <Text style={styles.visibilityLabel}>{visibilityCategories[value - 1]?.label}</Text>
     <Slider
       value={value}
@@ -218,11 +248,14 @@ export const VisibilitySlider = ({ value, onChange }) => (
       minimumValue={1}
       maximumValue={visibilityCategories.length}
       step={1}
+      minimumTrackTintColor={colors.action}
+      maximumTrackTintColor={colors.lightGray}
+      thumbTouchSize={THUMB_TOUCH_SIZE}
       containerStyle={styles.sliderContainer}
       trackStyle={styles.sliderTrack}
       thumbStyle={styles.sliderThumb}
     />
-  </>
+  </View>
 );
 
 export const UploadingOverlay = ({ visible, message }) => {
@@ -235,139 +268,157 @@ export const UploadingOverlay = ({ visible, message }) => {
   );
 };
 
-export const BackButton = ({ onPress, style }) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={[styles.backButton, style]}
-    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-    accessibilityRole="button"
-    accessibilityLabel="Go back"
-  >
-    <Ionicons name="chevron-back" size={28} color={colors.secondary} />
-  </TouchableOpacity>
-);
-
 export const postFormStyles = StyleSheet.create({
-  Maintitle: {
-    fontSize: sizes.title,
-    textAlign: 'center',
+  // Header row: back button on the left, title centered (padded so it never runs under the button).
+  header: {
+    minHeight: BACK_BUTTON_SIZE,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.s + BACK_BUTTON_SIZE + spacing.s,
     marginBottom: spacing.l,
-    marginTop: spacing.xl,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+  },
+  headerBackButton: {
+    position: 'absolute',
+    left: spacing.s,
+    top: 0,
+  },
+  title: {
+    ...typography.title,
+    textAlign: 'center',
+  },
+  form: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
   },
   input: {
     marginBottom: spacing.m,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
+    backgroundColor: colors.surface,
+  },
+  inputOutline: {
+    borderRadius: sizes.radius,
   },
   postButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.l,
     marginTop: spacing.l,
-    paddingHorizontal: spacing.s,
-  },
-  postButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-  },
-  // Aligns the back button with Maintitle inside a container padded by 20.
-  backButton: {
-    top: 20 + spacing.xl + spacing.xs,
   },
 });
 
 const styles = StyleSheet.create({
   input: postFormStyles.input,
+  inputOutline: postFormStyles.inputOutline,
+  // Same height and outline as the outlined Paper TextInputs above it.
   selectorContainer: {
+    minHeight: 56,
     marginBottom: spacing.m,
-    borderWidth: 1,
-    borderColor: 'gray',
-    borderRadius: sizes.radius,
-    backgroundColor: 'white',
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.m,
+    paddingHorizontal: 16,
+    paddingVertical: spacing.s,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.s,
+    borderWidth: 1,
+    borderColor: colors.outline,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
   },
   selectorText: {
+    ...typography.body,
     flex: 1,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
   },
   modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
+    width: '88%',
+    maxWidth: 448,
     maxHeight: '80%',
+    alignSelf: 'center',
+    padding: spacing.m,
     borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
+  },
+  modalTitle: {
+    ...typography.h2,
+    textAlign: 'center',
+    marginBottom: spacing.s,
   },
   modalList: {
     flexGrow: 0,
     flexShrink: 1,
   },
-  modalItem: {
-    marginVertical: 2,
+  modalLoader: {
+    alignItems: 'center',
+    paddingVertical: spacing.m,
   },
-  modalItemLabel: {
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+  optionRow: {
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    paddingVertical: spacing.m,
+    paddingHorizontal: spacing.s,
+    borderRadius: spacing.s,
+  },
+  optionRowSelected: {
+    backgroundColor: colors.accentSoft,
+  },
+  optionText: {
+    ...typography.body,
+    flex: 1,
+  },
+  optionTextSelected: {
+    fontFamily: fonts.bold,
+    color: colors.accent,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+  },
+  manualEntry: {
+    paddingTop: spacing.m,
   },
   manualTopicButton: {
-    marginTop: 10,
+    alignSelf: 'center',
+    marginTop: spacing.s,
   },
   stateMessage: {
     flex: 0,
   },
   emptyText: {
+    ...typography.bodySmall,
     textAlign: 'center',
-    fontFamily: 'Montserrat',
-    color: colors.darkGray,
     paddingVertical: spacing.m,
   },
+  visibility: {
+    marginTop: spacing.s,
+  },
   visibilityLabel: {
-    fontSize: sizes.h3,
+    ...typography.h3,
+    color: colors.accent,
     textAlign: 'center',
-    marginTop: spacing.l,
-    color: colors.darkblue,
-    fontFamily: 'Montserrat',
   },
   sliderContainer: {
     width: '100%',
-    marginTop: 8,
-    marginBottom: 20,
+    marginTop: spacing.s,
+    marginBottom: spacing.m,
   },
   sliderTrack: {
     height: 4,
-    backgroundColor: colors.lightGray,
+    borderRadius: 2,
   },
   sliderThumb: {
-    height: 20,
-    width: 20,
-    backgroundColor: colors.darkGreen,
-    borderRadius: 10,
+    height: 22,
+    width: 22,
+    borderRadius: 11,
+    backgroundColor: colors.action,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 1000,
     elevation: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: colors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
+    ...typography.body,
     marginTop: spacing.s,
-    color: colors.primary,
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h3,
+    color: colors.textOnColor,
     textAlign: 'center',
     paddingHorizontal: spacing.l,
-  },
-  backButton: {
-    position: 'absolute',
-    left: spacing.m,
-    zIndex: 10,
   },
 });

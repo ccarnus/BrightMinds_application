@@ -6,22 +6,23 @@ import {
   ScrollView,
   StyleSheet,
   Linking,
-  Dimensions,
   TouchableOpacity,
   Alert,
+  useWindowDimensions,
 } from 'react-native';
-import { Button } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, fonts, spacing, typography } from '@shared/config/theme';
 import departments from '@shared/data/departments';
-import { api, getErrorMessage } from '@shared/api/client';
+import { api, getErrorMessage, notFoundError, OPTIONAL_REQUEST_TIMEOUT_MS } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
 import { resetToAuthChoice } from '@navigation/navigationHelpers';
 import Loader from '@shared/components/Loader';
-import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import AppButton from '@shared/components/AppButton';
+import BackButton from '@shared/components/BackButton';
 
-const { height } = Dimensions.get('window');
+const BUTTON_HEIGHT = 52;
+const MAX_HERO_HEIGHT = 320;
 
 const getTimeSincePosted = (dateString) => {
   const diffInDays = Math.floor((Date.now() - new Date(dateString).getTime()) / (1000 * 3600 * 24));
@@ -37,6 +38,7 @@ const getTimeSincePosted = (dateString) => {
 const ArticleDetailsScreen = ({ route, navigation }) => {
   const { selectedArticleId } = route.params;
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [article, setArticle] = useState(null);
   const [university, setUniversity] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -60,26 +62,29 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
     setLoadError(null);
     try {
       const { data } = await api.get(`/article/${encodeURIComponent(selectedArticleId)}`);
+      if (!data?._id) throw notFoundError();
       if (!mountedRef.current) return;
-      setArticle(data || null);
+      setArticle(data);
       setIsLoading(false);
 
-      if (data?.university) {
+      if (data.university) {
         try {
+          // The university logo is optional and must not hold the article back.
           const { data: universityData } = await api.get(
-            `/university/by/name/${encodeURIComponent(data.university)}`
+            `/university/by/name/${encodeURIComponent(data.university)}`,
+            { timeout: OPTIONAL_REQUEST_TIMEOUT_MS, retries: 0 }
           );
           if (mountedRef.current && universityData?.iconurl) {
             setUniversity({ logo: universityData.iconurl, name: universityData.displayedName });
           }
         } catch (error) {
-          console.error('Error fetching university logo:', error);
+          console.warn('Could not load the university logo:', error?.message);
         }
       }
     } catch (error) {
       console.error('Error fetching article:', error);
       if (mountedRef.current) {
-        setLoadError(getErrorMessage(error, 'We could not load this article.'));
+        setLoadError(error);
         setIsLoading(false);
       }
     }
@@ -111,7 +116,7 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
       });
     } catch (error) {
       console.error('Error adding article to list:', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to add article to your list.'));
+      Alert.alert("Couldn't save this article", getErrorMessage(error, 'Please try again.'));
     } finally {
       if (mountedRef.current) setIsSubmitting(false);
     }
@@ -128,31 +133,23 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
     });
   };
 
-  const backButton = (
-    <TouchableOpacity
-      style={[styles.backButton, { top: insets.top + spacing.s }]}
-      onPress={() => navigation.goBack()}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Ionicons name="chevron-back" size={24} color={colors.primary} />
-    </TouchableOpacity>
-  );
+  const backButton = <BackButton tone="overlay" onPress={() => navigation.goBack()} />;
 
   if (isLoading) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (loadError || !article) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StateMessage
-          icon={loadError ? 'cloud-offline-outline' : 'document-text-outline'}
-          title={loadError ? 'Something went wrong' : 'Article not found'}
-          message={loadError || 'This article may have been removed.'}
-          actionLabel={loadError ? 'Try again' : 'Go back'}
-          onAction={loadError ? fetchArticle : () => navigation.goBack()}
+        <ErrorState
+          error={loadError || notFoundError()}
+          onRetry={fetchArticle}
+          fallbackMessage="We couldn't load this article."
+          notFoundTitle="Article not found"
+          notFoundMessage="This article may have been removed."
+          secondaryActionLabel="Go back"
+          onSecondaryAction={() => navigation.goBack()}
         />
         {backButton}
       </View>
@@ -160,70 +157,73 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
   }
 
   const departmentDetails = departments.find((dept) => dept.name === article.department);
+  const bottomBarPadding = Math.max(insets.bottom, spacing.m);
+  // Keeps the end of the article above the pinned "Access Full Research" bar.
+  const scrollBottomPadding = BUTTON_HEIGHT + spacing.s + bottomBarPadding + spacing.l;
 
   return (
     <View style={styles.container}>
-      <ScrollView style={styles.containerScroll}>
-        <Image source={{ uri: article.articleimageurl }} style={styles.image} />
-
-        {!!university && (
-          <View style={styles.topIconContainer}>
-            <Image source={{ uri: university.logo }} style={styles.icon} />
-            <Text style={styles.iconText}>{university.name}</Text>
-          </View>
-        )}
-
-        {!!departmentDetails && (
-          <TouchableOpacity
-            style={styles.topIconContainer}
-            onPress={() =>
-              navigation.navigate('VirtualLab', {
-                labId: departmentDetails.name,
-                labDisplayName: departmentDetails.display,
-              })
-            }
-            accessibilityRole="button"
-          >
-            <Image source={departmentDetails.image} style={styles.icon} />
-            <Text style={styles.iconTextDepartment}>{departmentDetails.display}</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.dateContainer}>
-          <Text style={styles.dateText}>{getTimeSincePosted(article.dateadded)}</Text>
-        </View>
+      <ScrollView style={styles.scroll} contentContainerStyle={{ paddingBottom: scrollBottomPadding }}>
+        <Image
+          source={{ uri: article.articleimageurl }}
+          style={[styles.image, { height: Math.min(windowHeight * 0.3, MAX_HERO_HEIGHT) }]}
+        />
 
         <View style={styles.content}>
+          {(!!university || !!departmentDetails) && (
+            <View style={styles.metaGroup}>
+              {!!university && (
+                <View style={styles.metaRow}>
+                  <Image source={{ uri: university.logo }} style={styles.metaIcon} />
+                  <Text style={styles.metaText}>{university.name}</Text>
+                </View>
+              )}
+
+              {!!departmentDetails && (
+                <TouchableOpacity
+                  style={styles.metaRow}
+                  onPress={() =>
+                    navigation.navigate('VirtualLab', {
+                      labId: departmentDetails.name,
+                      labDisplayName: departmentDetails.display,
+                    })
+                  }
+                  accessibilityRole="button"
+                >
+                  <Image source={departmentDetails.image} style={styles.metaIcon} />
+                  <Text style={styles.metaText}>{departmentDetails.display}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <Text style={styles.dateText}>{getTimeSincePosted(article.dateadded)}</Text>
           <Text style={styles.title}>{article.title}</Text>
           <Text style={styles.description}>{article.description}</Text>
-        </View>
 
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
+          <AppButton
+            variant="primary"
             onPress={handleAddToCastList}
             loading={isSubmitting}
             disabled={isSubmitting}
-            buttonColor={colors.darkGreen}
             icon={require('@assets/Cast_screen_icons/like.png')}
-            labelStyle={styles.gotItLabel}
             style={styles.gotItButton}
           >
             Got it!
-          </Button>
+          </AppButton>
         </View>
       </ScrollView>
-      <View style={[styles.fixedButtonContainer, { paddingBottom: spacing.m + insets.bottom }]}>
-        <Button
-          mode="contained"
+
+      <View style={[styles.bottomBar, { paddingBottom: bottomBarPadding }]}>
+        <AppButton
+          variant="accent"
+          fullWidth
           onPress={handleAccessFullResearch}
-          buttonColor={colors.darkblue}
           icon={require('@assets/Cast_screen_icons/link.png')}
-          labelStyle={styles.researchLabel}
-          style={styles.researchButton}
+          style={styles.bottomButton}
         >
           Access Full Research
-        </Button>
+        </AppButton>
       </View>
       {backButton}
     </View>
@@ -233,116 +233,75 @@ const ArticleDetailsScreen = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
-  containerScroll: {
-    backgroundColor: colors.primaryBis,
-  },
-  backButton: {
-    position: 'absolute',
-    left: spacing.m,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
+  scroll: {
+    flex: 1,
   },
   image: {
     width: '100%',
-    height: height * 0.3,
     resizeMode: 'cover',
-    marginBottom: spacing.s,
+    backgroundColor: colors.placeholder,
   },
   content: {
-    padding: spacing.m,
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.l,
+    gap: spacing.m,
   },
-  title: {
-    fontSize: sizes.h1,
-    marginBottom: spacing.l,
-    fontFamily: 'MontserratBold',
-    textAlign: 'center',
-  },
-  description: {
-    fontSize: sizes.h3,
-    color: colors.black,
-    textAlign: 'left',
-    fontFamily: 'Montserrat',
-  },
-  topIconContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  metaGroup: {
     alignItems: 'center',
-    alignSelf: 'center',
-    marginVertical: spacing.s,
+    gap: spacing.s,
   },
-  icon: {
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.s,
+    minHeight: 44,
+    maxWidth: '100%',
+  },
+  metaIcon: {
     width: 40,
     height: 40,
     resizeMode: 'contain',
-    marginRight: spacing.s,
   },
-  iconText: {
-    fontSize: sizes.h3,
-    color: colors.black,
-    fontFamily: 'Montserrat',
+  metaText: {
+    ...typography.body,
+    color: colors.textSecondary,
     flexShrink: 1,
-    flexWrap: 'wrap',
     textAlign: 'center',
-    width: '70%',
-  },
-  iconTextDepartment: {
-    fontSize: sizes.h3,
-    color: colors.black,
-    fontFamily: 'Montserrat',
-    flexShrink: 1,
-    flexWrap: 'wrap',
-    textAlign: 'center',
-  },
-  dateContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.s,
-    marginTop: spacing.s,
   },
   dateText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-  },
-  buttonContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.l * 2,
-  },
-  gotItLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
+    ...typography.caption,
+    fontFamily: fonts.bold,
     textAlign: 'center',
-    paddingTop: spacing.s,
+  },
+  title: {
+    ...typography.h1,
+    textAlign: 'center',
+  },
+  description: {
+    ...typography.body,
   },
   gotItButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: height * 0.08,
-    marginTop: spacing.l,
-    paddingHorizontal: spacing.m,
-    borderRadius: sizes.buttonRadius,
+    alignSelf: 'center',
+    minWidth: 200,
+    marginTop: spacing.s,
   },
-  fixedButtonContainer: {
+  bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'transparent',
-    padding: spacing.m,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.s,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  researchLabel: { fontSize: sizes.h3, fontFamily: 'Montserrat' },
-  researchButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    paddingHorizontal: spacing.s,
+  bottomButton: {
+    ...contentWidth,
   },
 });
 

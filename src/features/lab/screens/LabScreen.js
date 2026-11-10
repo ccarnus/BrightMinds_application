@@ -8,7 +8,6 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { Searchbar } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -18,15 +17,17 @@ import Animated, {
   withDelay,
   withSpring,
 } from 'react-native-reanimated';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, fonts, sizes, spacing, contentWidth } from '@shared/config/theme';
 import departmentsList from '@shared/data/departments';
 import { api } from '@shared/api/client';
+import { useTabBarSpace } from '@navigation/FloatingTabBar';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import SearchField from '@shared/components/SearchField';
 import departmentImages from '@features/lab/data/departmentImages';
 
 const { width, height } = Dimensions.get('window');
-const serverError = require('@assets/Cast_screen_icons/server_error.png');
 
 const CANVAS_WIDTH = width * 2.4;
 const CANVAS_HEIGHT = height * 2.2;
@@ -43,10 +44,11 @@ const BUBBLE_COLORS = [
   colors.darkOrange,
 ];
 
+// Proportional to the screen on phones, capped so bubbles stay reasonable on tablets.
 const BUBBLE_SIZES = {
-  large:  { circleSize: width * 0.32, iconSize: 52 },
-  medium: { circleSize: width * 0.26, iconSize: 42 },
-  small:  { circleSize: width * 0.21, iconSize: 34 },
+  large:  { circleSize: Math.min(width * 0.32, 140), iconSize: 52 },
+  medium: { circleSize: Math.min(width * 0.26, 115), iconSize: 42 },
+  small:  { circleSize: Math.min(width * 0.21, 95), iconSize: 34 },
 };
 
 const getColorForIndex = (i) => BUBBLE_COLORS[i % BUBBLE_COLORS.length];
@@ -221,7 +223,10 @@ const LabScreen = () => {
   const [positions, setPositions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [apiError, setApiError] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [canvasSize, setCanvasSize] = useState(null);
+  const hasCenteredRef = useRef(false);
+  const tabBarSpace = useTabBarSpace();
 
   // Gesture shared values
   const translateX = useSharedValue(0);
@@ -235,7 +240,7 @@ const LabScreen = () => {
   useEffect(() => () => { isMounted.current = false; }, []);
 
   const fetchDepartments = useCallback(async () => {
-    setApiError(false);
+    setLoadError(null);
     setIsLoading(true);
     try {
       const { data } = await api.get('/cast/popular/department');
@@ -250,7 +255,7 @@ const LabScreen = () => {
       setLabs(departments);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
-      if (isMounted.current) setApiError(true);
+      if (isMounted.current) setLoadError(error);
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -267,19 +272,21 @@ const LabScreen = () => {
         delay: i * 40,
       }));
       setProcessedLabs(processed);
-
-      const pos = generatePositions(processed);
-      setPositions(pos);
-
-      // Center the canvas so the cluster is in the middle of the screen
-      const searchBarHeight = 70;
-      const viewHeight = height - searchBarHeight;
-      translateX.value = -(CANVAS_WIDTH / 2 - width / 2);
-      translateY.value = -(CANVAS_HEIGHT / 2 - viewHeight / 2);
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      setPositions(generatePositions(processed));
     }
   }, [labs]);
+
+  // Center the cluster once in the visible part of the canvas (measured, above the floating tab
+  // bar), so it is centered on every screen size. Later resizes (keyboard) keep the user's view.
+  useEffect(() => {
+    if (hasCenteredRef.current || !canvasSize || positions.length === 0) return;
+    hasCenteredRef.current = true;
+    const visibleHeight = Math.max(canvasSize.height - tabBarSpace, canvasSize.height / 2);
+    translateX.value = -(CANVAS_WIDTH / 2 - canvasSize.width / 2);
+    translateY.value = -(CANVAS_HEIGHT / 2 - visibleHeight / 2);
+    savedTranslateX.value = translateX.value;
+    savedTranslateY.value = translateY.value;
+  }, [positions, canvasSize, tabBarSpace]);
 
   // Search: determine which labs are dimmed
   const matchingNames = useMemo(() => {
@@ -331,32 +338,25 @@ const LabScreen = () => {
     });
   }, [navigation]);
 
-  if (apiError) {
+  if (isLoading) {
+    return <Loader backgroundColor={colors.background} style={{ paddingBottom: tabBarSpace }} />;
+  }
+
+  if (loadError) {
     return (
-      <View style={styles.errorContainer}>
-        <Image source={serverError} style={styles.errorImage} />
-        <Text style={styles.errorText}>Whoops!</Text>
-        <Text style={styles.errorDetail}>
-          Please try refreshing or come back later!
-        </Text>
-        <TouchableOpacity
-          style={styles.refreshButton}
-          onPress={fetchDepartments}
-          accessibilityRole="button"
-        >
-          <Text style={styles.refreshButtonText}>Try Again</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
+        <ErrorState
+          error={loadError}
+          onRetry={fetchDepartments}
+          fallbackMessage="We couldn't load the virtual labs."
+        />
       </View>
     );
   }
 
-  if (isLoading) {
-    return <Loader size={200} backgroundColor={colors.primaryBis} />;
-  }
-
   if (labs.length === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
         <StateMessage
           icon="flask-outline"
           title="No labs yet"
@@ -372,19 +372,16 @@ const LabScreen = () => {
     <View style={styles.container}>
       {/* Fixed search bar */}
       <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search labs..."
-          onChangeText={setSearchQuery}
-          value={searchQuery}
-          style={styles.searchBar}
-          inputStyle={styles.searchInput}
-          iconColor={colors.lightGray}
-          placeholderTextColor={colors.lightGray}
-        />
+        <SearchField placeholder="Search labs" onChangeText={setSearchQuery} value={searchQuery} />
       </View>
 
       {/* Pannable / zoomable canvas */}
-      <View style={styles.canvasClip}>
+      <View
+        style={styles.canvasClip}
+        onLayout={({ nativeEvent }) =>
+          setCanvasSize({ width: nativeEvent.layout.width, height: nativeEvent.layout.height })
+        }
+      >
         <GestureDetector gesture={composedGesture}>
           <Animated.View style={[styles.canvas, canvasStyle]}>
             {processedLabs.map((lab, index) => {
@@ -410,26 +407,14 @@ const LabScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   searchContainer: {
+    ...contentWidth,
     paddingHorizontal: spacing.m,
     paddingTop: spacing.m,
     paddingBottom: spacing.s,
     zIndex: 10,
-  },
-  searchBar: {
-    borderRadius: sizes.buttonRadius,
-    backgroundColor: colors.primary,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-  },
-  searchInput: {
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h4,
   },
   canvasClip: {
     flex: 1,
@@ -451,7 +436,7 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: colors.black,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.15,
         shadowRadius: 6,
@@ -474,50 +459,12 @@ const styles = StyleSheet.create({
     }),
   },
   bubbleLabel: {
-    fontFamily: 'Montserrat',
-    fontSize: 11,
+    fontFamily: fonts.regular,
+    fontSize: sizes.small,
     textAlign: 'center',
-    color: colors.secondary,
+    color: colors.text,
     marginTop: 3,
     width: '120%',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.m,
-    backgroundColor: colors.primaryBis,
-  },
-  errorImage: {
-    width: width * 0.5,
-    height: width * 0.5,
-    marginBottom: spacing.m,
-    resizeMode: 'contain',
-  },
-  errorText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'MontserratBold',
-  },
-  errorDetail: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'Montserrat',
-    marginTop: spacing.s,
-    marginBottom: spacing.m,
-  },
-  refreshButton: {
-    backgroundColor: colors.secondary,
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-  },
-  refreshButtonText: {
-    color: colors.primary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
   },
 });
 

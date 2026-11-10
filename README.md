@@ -122,15 +122,42 @@ npx expo export --platform ios
 
 ### Suggested manual test checklist
 
-- First launch: onboarding → "Continue as guest" and sign up / log in / forgot password.
+- First launch: onboarding → "Continue as guest" and sign up / log in / forgot password. A first login goes through
+  field preferences → learning path picker (try Deep Learner: it asks for a focus field; "Decide later" skips) →
+  welcome screen.
 - Cast tab: feed loads, search (topics, papers, casts), play a cast to the end (it is marked as watched at 85%),
   captions toggle, share, Discover.
-- Track tab: progress, start a quiz (Ready → Evaluation → Finish), back button during a quiz returns to Track.
+- Track tab: rewards card (level, XP bar, streak, badges — tap one for details), progress, start a quiz
+  (Ready → Evaluation → Finish): answer right and wrong (animations, haptics, combo toast at 3 in a row), leave with
+  the ✕ (answers given so far still count), finish and check XP / level-up / new badges, then the Track tab updates.
+  With no pending question, Ready shows "All caught up!" and links to the Cast tab.
 - Lab tab: departments → virtual lab → topic → casts / works (OpenAlex papers).
 - Library tab (Professor / Researcher / PhD Student roles only): publish a cast (camera & gallery permissions)
   and an article, then delete them.
-- Profile: edit profile picture, objective, log out (back gesture must not return into the app).
-- Airplane mode: screens should show an error with a "Try again" button instead of loading forever.
+- Learning path: on Track (or Profile), the path card shows the milestone trail and the next goals; tap it for the
+  path screen (milestones timeline, stats, top fields, previous paths), then "Change learning path": switching keeps
+  every past activity, and milestones the new path already covers unlock at once (confetti). Watching casts, reading
+  articles, quizzes and opening research papers (Researcher) move the goals forward.
+- Profile: edit profile picture, learning path card, log out (back gesture must not return into the app).
+- Airplane mode / no data (see below): screens must show the shared error screen instead of loading forever.
+
+### Testing connection loss and error states
+
+`expo-network` and `expo-haptics` are native modules: rebuild the dev build once after pulling these changes
+(`npm run android` / `npm run ios`, or a new EAS development build).
+
+- **Offline on launch**: enable airplane mode, open each tab → "You're offline" screen with the illustration; the
+  "No internet connection" pill appears at the top. Disable airplane mode → the pill turns into "Back online" and
+  the screen reloads by itself.
+- **Connection lost while browsing**: load a tab, go offline, pull to refresh → content stays and a snackbar
+  explains the refresh failed.
+- **Connection lost during a cast**: start a cast, go offline until playback stops → "You're offline" overlay;
+  reconnect → playback resumes where it stopped.
+- **Slow network** (Android emulator: *Extended controls → Cellular → Network type: GSM/EDGE*; iOS: Network Link
+  Conditioner "Very Bad Network"): after a few seconds the loader says it is taking longer than usual; after 15 s
+  the "This is taking too long" screen appears with "Try again".
+- **No data**: a new account shows the empty states (no publications, no learnings, no questions) instead of blank
+  screens.
 
 ### Troubleshooting
 

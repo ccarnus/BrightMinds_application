@@ -13,19 +13,25 @@ import {
   FlatList,
   Linking,
 } from 'react-native';
-import { Button, TextInput } from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
 import { getUser, setUser, isGuestUser, canAccessLibrary } from '@shared/utils/UserStorage';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import AppButton from '@shared/components/AppButton';
+import SearchField from '@shared/components/SearchField';
 
 const ROLES = ['College Student', 'Professor', 'Researcher', 'Learning Enthusiast', 'PhD Student'];
 const UPLOAD_TIMEOUT_MS = 120000;
+const PROFILE_PICTURE_SIZE = 150;
+
+const UniversitySeparator = () => <View style={styles.separator} />;
 
 const EditProfileScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -74,9 +80,7 @@ const EditProfileScreen = ({ navigation }) => {
       setSelectedUniversity(userData.university ? { name: userData.university } : null);
     } catch (error) {
       console.error('Error fetching user data:', error);
-      if (mountedRef.current) {
-        setLoadError(getErrorMessage(error, "We couldn't load your profile."));
-      }
+      if (mountedRef.current) setLoadError(error);
     } finally {
       if (mountedRef.current) setIsLoadingUser(false);
     }
@@ -90,9 +94,7 @@ const EditProfileScreen = ({ navigation }) => {
       if (mountedRef.current) setUniversities(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching universities:', error);
-      if (mountedRef.current) {
-        setUniversitiesError(getErrorMessage(error, "We couldn't load the universities."));
-      }
+      if (mountedRef.current) setUniversitiesError(error);
     } finally {
       if (mountedRef.current) setIsLoadingUniversities(false);
     }
@@ -190,7 +192,7 @@ const EditProfileScreen = ({ navigation }) => {
       navigation.goBack();
     } catch (error) {
       console.error('Error updating profile:', error);
-      Alert.alert('Error updating profile.', getErrorMessage(error, 'Please try again.'));
+      Alert.alert("Couldn't update your profile", getErrorMessage(error, 'Please try again.'));
     } finally {
       if (mountedRef.current) setSaving(false);
     }
@@ -212,16 +214,15 @@ const EditProfileScreen = ({ navigation }) => {
 
   const renderUniversityList = () => {
     if (isLoadingUniversities) {
-      return <Loader backgroundColor={colors.primary} />;
+      return <Loader backgroundColor={colors.surface} />;
     }
     if (universitiesError) {
       return (
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Something went wrong"
-          message={universitiesError}
-          actionLabel="Try again"
-          onAction={fetchUniversities}
+        <ErrorState
+          compact
+          error={universitiesError}
+          onRetry={fetchUniversities}
+          fallbackMessage="We couldn't load the universities."
         />
       );
     }
@@ -230,31 +231,31 @@ const EditProfileScreen = ({ navigation }) => {
         data={filteredUniversities}
         keyExtractor={(item, index) => String(item._id || item.name || index)}
         renderItem={renderUniversityItem}
+        ItemSeparatorComponent={UniversitySeparator}
         contentContainerStyle={styles.flatListContainer}
         keyboardShouldPersistTaps="handled"
         initialNumToRender={20}
-        ListEmptyComponent={<Text style={styles.emptyText}>No universities found.</Text>}
+        ListEmptyComponent={
+          <StateMessage compact icon="school-outline" title="No university found" message="Try another search." />
+        }
       />
     );
   };
 
   if (isLoadingUser) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (loadError) {
     return (
-      <View style={[styles.stateContainer, { paddingTop: insets.top }]}>
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Something went wrong"
-          message={loadError}
-          actionLabel="Try again"
-          onAction={fetchUserData}
+      <View style={[styles.stateContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+        <ErrorState
+          error={loadError}
+          onRetry={fetchUserData}
+          fallbackMessage="We couldn't load your profile."
+          secondaryActionLabel="Go back"
+          onSecondaryAction={() => navigation.goBack()}
         />
-        <Button mode="text" textColor={colors.secondary} onPress={() => navigation.goBack()} style={styles.backButton}>
-          Go back
-        </Button>
       </View>
     );
   }
@@ -269,7 +270,7 @@ const EditProfileScreen = ({ navigation }) => {
       <ScrollView
         contentContainerStyle={[
           styles.container,
-          { paddingTop: 20 + insets.top, paddingBottom: 20 + insets.bottom },
+          { paddingTop: spacing.l + insets.top, paddingBottom: spacing.l + insets.bottom },
         ]}
         keyboardShouldPersistTaps="handled"
       >
@@ -278,6 +279,7 @@ const EditProfileScreen = ({ navigation }) => {
         <TextInput
           label="Email"
           style={styles.input}
+          outlineStyle={styles.inputOutline}
           value={email}
           onChangeText={setEmail}
           mode="outlined"
@@ -291,6 +293,7 @@ const EditProfileScreen = ({ navigation }) => {
         <TextInput
           label="Username"
           style={styles.input}
+          outlineStyle={styles.inputOutline}
           value={username}
           onChangeText={setUsername}
           mode="outlined"
@@ -303,6 +306,7 @@ const EditProfileScreen = ({ navigation }) => {
           <Picker
             selectedValue={role}
             style={styles.picker}
+            dropdownIconColor={colors.textSecondary}
             onValueChange={(itemValue) => setRole(itemValue)}
             accessibilityLabel="Role"
           >
@@ -331,6 +335,7 @@ const EditProfileScreen = ({ navigation }) => {
             ) : (
               <Text style={styles.universityPlaceholder}>Select University</Text>
             )}
+            <MaterialCommunityIcons name="chevron-right" size={24} color={colors.textMuted} />
           </TouchableOpacity>
         )}
 
@@ -347,18 +352,16 @@ const EditProfileScreen = ({ navigation }) => {
           )}
         </TouchableOpacity>
 
-        <Button
-          mode="contained"
+        <AppButton
+          fullWidth
           onPress={handleSaveProfile}
           loading={saving}
           disabled={saving}
-          buttonColor={colors.darkGreen}
           icon={require('@assets/Profile_icons/save.png')}
-          labelStyle={styles.saveButtonLabel}
           style={styles.saveButton}
         >
           Save
-        </Button>
+        </AppButton>
       </ScrollView>
 
       <Modal
@@ -368,170 +371,176 @@ const EditProfileScreen = ({ navigation }) => {
         onRequestClose={closeUniversityModal}
       >
         <SafeAreaView style={styles.modalSafeArea}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Select a University</Text>
-            <TouchableOpacity
-              onPress={closeUniversityModal}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="Close"
-            >
-              <MaterialCommunityIcons name="close" size={24} color={colors.secondary} />
-            </TouchableOpacity>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select a University</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={closeUniversityModal}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+              >
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <SearchField
+              placeholder="Search University"
+              accessibilityLabel="Search University"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              style={styles.searchInput}
+            />
+            {renderUniversityList()}
           </View>
-          <TextInput
-            label="Search University"
-            mode="outlined"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={styles.searchInput}
-            autoCorrect={false}
-          />
-          {renderUniversityList()}
         </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>
   );
 };
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
+    ...contentWidth,
     flexGrow: 1,
-    padding: 20,
-    backgroundColor: colors.primaryBis,
+    paddingHorizontal: spacing.m,
   },
   title: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
+    marginTop: spacing.m,
     marginBottom: spacing.l,
-    marginTop: spacing.xl,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
   },
   input: {
     marginBottom: spacing.m,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
+    backgroundColor: colors.surface,
   },
-  // Picker styles
-  pickerContainer: {
-    borderWidth: 1,
-    borderColor: colors.secondary,
+  inputOutline: {
     borderRadius: sizes.radius,
-    marginBottom: spacing.l,
-    marginTop: spacing.m,
+  },
+  pickerContainer: {
+    marginBottom: spacing.m,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    borderRadius: sizes.radius,
     overflow: 'hidden',
   },
   picker: {
-    height: 60,
+    height: 56,
     width: '100%',
+    color: colors.text,
   },
   universitySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    minHeight: 56,
     marginBottom: spacing.m,
-    paddingVertical: spacing.m,
+    paddingVertical: spacing.s,
     paddingHorizontal: spacing.m,
-    borderWidth: 1,
-    borderColor: 'gray',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     borderRadius: sizes.radius,
-    backgroundColor: 'white',
-    justifyContent: 'center',
   },
   universitySelectedWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
   universityPlaceholder: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.body,
+    flex: 1,
+    color: colors.textSecondary,
   },
   universityItemWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.m,
+    minHeight: 56,
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
   },
   universityIcon: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     marginRight: spacing.m,
     resizeMode: 'contain',
   },
   universityText: {
-    fontFamily: 'Montserrat',
-    fontSize: sizes.h4,
+    ...typography.body,
+    flex: 1,
+  },
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: spacing.m,
+    backgroundColor: colors.border,
   },
   imagePicker: {
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'gray',
-    padding: 10,
+    minHeight: 120,
+    marginBottom: spacing.m,
+    padding: spacing.m,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     borderRadius: sizes.radius,
   },
   profileImage: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: PROFILE_PICTURE_SIZE,
+    height: PROFILE_PICTURE_SIZE,
+    borderRadius: PROFILE_PICTURE_SIZE / 2,
+    backgroundColor: colors.placeholder,
   },
   imagePickerText: {
-    color: 'gray',
-    fontFamily: 'Montserrat',
+    ...typography.body,
+    color: colors.textSecondary,
   },
   saveButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
-  },
-  saveButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.xs,
-  },
-  flex: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
+    marginTop: spacing.m,
   },
   stateContainer: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
-    paddingBottom: spacing.xl,
-  },
-  backButton: {
-    alignSelf: 'center',
+    backgroundColor: colors.background,
   },
   modalSafeArea: {
     flex: 1,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
   },
-  emptyText: {
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    textAlign: 'center',
-    marginTop: spacing.l,
+  modalContent: {
+    ...contentWidth,
+    flex: 1,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: spacing.l,
-    marginHorizontal: spacing.m,
+    gap: spacing.s,
+    paddingTop: spacing.m,
+    paddingLeft: spacing.m,
+    paddingRight: spacing.xs,
   },
   modalTitle: {
-    fontSize: sizes.h1,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.h1,
     flexShrink: 1,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   searchInput: {
     marginHorizontal: spacing.m,
     marginVertical: spacing.m,
-    backgroundColor: 'white'
   },
   flatListContainer: {
-    paddingVertical: spacing.m,
+    flexGrow: 1,
+    paddingBottom: spacing.m,
   },
 });
 

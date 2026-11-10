@@ -8,20 +8,24 @@ import {
   FlatList,
   Image,
   RefreshControl,
-  Dimensions,
   Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { Searchbar } from 'react-native-paper';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { api, openAlex, getErrorMessage } from '@shared/api/client';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, fonts, sizes, spacing, typography, contentWidth, scale } from '@shared/config/theme';
+import { api, openAlex } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+import { useOnReconnect } from '@shared/utils/connectivity';
 import { resetToAuthChoice } from '@navigation/navigationHelpers';
+import { useTabBarSpace } from '@navigation/FloatingTabBar';
 import Loader from '@shared/components/Loader';
+import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import ErrorSnackbar from '@shared/components/ErrorSnackbar';
+import AppButton from '@shared/components/AppButton';
+import SearchField from '@shared/components/SearchField';
 import Carousel from '@features/cast/components/Carousel';
-
-const { width } = Dimensions.get('window');
+import { feedTitle } from '@features/learning/utils/pathStyles';
 
 const SEARCH_DEBOUNCE_MS = 400;
 const SEARCH_CATEGORIES = ['Article', 'Topic', 'Video'];
@@ -33,7 +37,6 @@ const CATEGORY_ICONS = {
 const forYouIcon = require('@assets/Cast_screen_icons/foryou_icon.png');
 const trendingIcon = require('@assets/Cast_screen_icons/trending_icon.png');
 const articleIcon = require('@assets/Cast_screen_icons/article_icon.png');
-const serverErrorImage = require('@assets/Cast_screen_icons/server_error.png');
 const randomIcon = require('@assets/Cast_screen_icons/random.png');
 
 const toCastCard = (cast) => ({
@@ -58,6 +61,25 @@ const getWatchedIds = (evaluationList, type) =>
   );
 
 const lastPathSegment = (id = '') => id.split('/').pop();
+
+// Fulfilled responses yield a list (empty when the payload is unexpected); failures yield null.
+const listFromResult = (result) => {
+  if (result.status !== 'fulfilled') return null;
+  return Array.isArray(result.value?.data) ? result.value.data : [];
+};
+
+const SectionError = ({ message, onRetry }) => (
+  <View style={styles.sectionError}>
+    <Text style={styles.sectionErrorText}>{message}</Text>
+    <TouchableOpacity
+      onPress={onRetry}
+      accessibilityRole="button"
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+    >
+      <Text style={styles.sectionErrorAction}>Try again</Text>
+    </TouchableOpacity>
+  </View>
+);
 
 const searchContent = async (category, query, castCacheRef) => {
   if (category === 'Video') {
@@ -99,13 +121,17 @@ const CastScreen = () => {
 
   const [userId, setUserId] = useState(null);
   const [suggestedCastData, setSuggestedCastData] = useState([]);
+  // The backend shapes the suggestions by learning path; the title says how.
+  const [suggestedTitle, setSuggestedTitle] = useState('For You');
   const [trendingCastData, setTrendingCastData] = useState([]);
   const [articleData, setArticleData] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
   const [finishedArticles, setFinishedArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [apiError, setApiError] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [refreshError, setRefreshError] = useState(null);
+  const [sectionErrors, setSectionErrors] = useState({});
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,10 +139,12 @@ const CastScreen = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
+  const [searchAttempt, setSearchAttempt] = useState(0);
 
   const castSearchCacheRef = useRef(null);
   const searchRequestRef = useRef(0);
   const mountedRef = useRef(true);
+  const tabBarSpace = useTabBarSpace();
 
   useEffect(() => {
     mountedRef.current = true;
@@ -159,69 +187,97 @@ const CastScreen = () => {
     }, [navigation])
   );
 
-  const loadContent = useCallback(async (currentUserId) => {
+  // Each section loads independently, so one failing endpoint only affects its own section.
+  // Throws when no section could be loaded; otherwise returns the first section error (or null).
+  const fetchFeed = useCallback(async (currentUserId) => {
     const guest = isGuestUser(currentUserId);
-    try {
-      const [userResponse, suggestedResponse, trendingResponse, articleResponse] = await Promise.all([
-        guest ? null : api.get(`/user/${currentUserId}`),
-        // Suggestions are optional; their failure should not take the whole feed down.
-        guest
-          ? null
-          : api.get(`/user/${currentUserId}/suggested/for/you`).catch((error) => {
-              console.error('Error fetching suggestions:', error);
-              return null;
-            }),
-        api.get('/cast/trending/right/now'),
-        api.get('/article'),
-      ]);
-      if (!mountedRef.current) return;
+    const [userResult, suggestedResult, trendingResult, articleResult] = await Promise.allSettled([
+      guest ? null : api.get(`/user/${currentUserId}`),
+      guest ? null : api.get(`/user/${currentUserId}/suggested/for/you`),
+      api.get('/cast/trending/right/now'),
+      api.get('/article'),
+    ]);
+    if (!mountedRef.current) return null;
 
-      const evaluationList = userResponse?.data?.evaluation_list;
-      const watchedCasts = getWatchedIds(evaluationList, 'cast');
-      const watchedArticles = getWatchedIds(evaluationList, 'article');
-      const toList = (data) => (Array.isArray(data) ? data : []);
-
-      setSuggestedCastData(
-        toList(suggestedResponse?.data).filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard)
-      );
-      setTrendingCastData(
-        toList(trendingResponse.data).filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard)
-      );
-      setArticleData(
-        toList(articleResponse.data)
-          .filter((article) => !watchedArticles.has(article._id))
-          .map(toArticleCard)
-      );
-      setApiError(false);
-    } catch (error) {
-      console.error('Error fetching cast content:', error);
-      if (mountedRef.current) setApiError(true);
-    } finally {
-      if (mountedRef.current) setIsLoading(false);
+    const results = { suggested: suggestedResult, trending: trendingResult, articles: articleResult };
+    const sectionNames = guest ? ['trending', 'articles'] : ['suggested', 'trending', 'articles'];
+    const failedSections = sectionNames.filter((name) => results[name].status === 'rejected');
+    failedSections.forEach((name) => console.error(`Error fetching ${name}:`, results[name].reason));
+    if (failedSections.length === sectionNames.length) {
+      throw results[failedSections[0]].reason;
     }
+
+    // Without the profile, already-watched content is simply not filtered out.
+    if (userResult.status === 'rejected') {
+      console.warn('Could not load watched content:', userResult.reason?.message);
+    }
+    const evaluationList = userResult.status === 'fulfilled' ? userResult.value?.data?.evaluation_list : [];
+    if (userResult.status === 'fulfilled') {
+      setSuggestedTitle(feedTitle(userResult.value?.data?.learning));
+    }
+    const watchedCasts = getWatchedIds(evaluationList, 'cast');
+    const watchedArticles = getWatchedIds(evaluationList, 'article');
+
+    // A failed section keeps what it already shows (e.g. on refresh).
+    const suggested = listFromResult(suggestedResult);
+    const trending = listFromResult(trendingResult);
+    const articles = listFromResult(articleResult);
+    if (suggested) {
+      setSuggestedCastData(suggested.filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard));
+    }
+    if (trending) {
+      setTrendingCastData(trending.filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard));
+    }
+    if (articles) {
+      setArticleData(
+        articles.filter((article) => !watchedArticles.has(article._id)).map(toArticleCard)
+      );
+    }
+    setSectionErrors({ suggested: !suggested, trending: !trending, articles: !articles });
+    return failedSections.length > 0 ? results[failedSections[0]].reason : null;
   }, []);
 
-  useEffect(() => {
-    if (userId) {
+  const loadFeed = useCallback(
+    async (currentUserId) => {
       setIsLoading(true);
-      loadContent(userId);
-    }
-  }, [userId, loadContent]);
+      setLoadError(null);
+      try {
+        await fetchFeed(currentUserId);
+      } catch (error) {
+        if (mountedRef.current) setLoadError(error);
+      } finally {
+        if (mountedRef.current) setIsLoading(false);
+      }
+    },
+    [fetchFeed]
+  );
 
+  useEffect(() => {
+    if (userId) loadFeed(userId);
+  }, [userId, loadFeed]);
+
+  const retry = useCallback(() => {
+    if (userId) loadFeed(userId);
+  }, [userId, loadFeed]);
+
+  // Content already on screen is kept when a refresh fails; a snackbar explains why.
   const onRefresh = useCallback(async () => {
     if (!userId) return;
     setRefreshing(true);
+    setRefreshError(null);
     castSearchCacheRef.current = null;
-    await loadContent(userId);
-    if (mountedRef.current) setRefreshing(false);
-  }, [userId, loadContent]);
+    try {
+      const sectionError = await fetchFeed(userId);
+      if (mountedRef.current && sectionError) setRefreshError(sectionError);
+    } catch (error) {
+      if (mountedRef.current) setRefreshError(error);
+    } finally {
+      if (mountedRef.current) setRefreshing(false);
+    }
+  }, [userId, fetchFeed]);
 
-  const retry = useCallback(() => {
-    if (!userId) return;
-    setApiError(false);
-    setIsLoading(true);
-    loadContent(userId);
-  }, [userId, loadContent]);
+  const hasSectionError = Object.values(sectionErrors).some(Boolean);
+  useOnReconnect(onRefresh, hasSectionError && !refreshing);
 
   useEffect(() => {
     const query = searchQuery.trim();
@@ -245,7 +301,7 @@ const CastScreen = () => {
         console.error(`Error searching ${selectedCategory}:`, error);
         if (isLatest()) {
           setSearchResults([]);
-          setSearchError(getErrorMessage(error, 'Search failed. Please try again.'));
+          setSearchError(error);
         }
       } finally {
         if (isLatest()) setSearchLoading(false);
@@ -257,7 +313,9 @@ const CastScreen = () => {
       // Invalidate any in-flight request so stale results never overwrite newer ones.
       searchRequestRef.current += 1;
     };
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, selectedCategory, searchAttempt]);
+
+  const retrySearch = useCallback(() => setSearchAttempt((attempt) => attempt + 1), []);
 
   const closeSearch = () => {
     setIsSearching(false);
@@ -287,23 +345,23 @@ const CastScreen = () => {
     setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
   }, []);
 
-  const renderCategoryRow = (rowStyle) => (
-    <View style={rowStyle}>
+  const renderCategoryRow = () => (
+    <View style={styles.categoryRow} accessibilityRole="radiogroup">
       {SEARCH_CATEGORIES.map((category) => {
         const selected = selectedCategory === category;
         return (
           <TouchableOpacity
             key={category}
-            style={[styles.categoryButton, selected && styles.selectedCategoryButton]}
+            style={[styles.categoryChip, selected && styles.categoryChipSelected]}
             onPress={() => setSelectedCategory(category)}
-            accessibilityRole="button"
+            accessibilityRole="radio"
             accessibilityState={{ selected }}
           >
             <Image
               source={CATEGORY_ICONS[category]}
-              style={[styles.categoryIcon, selected && { tintColor: colors.primary }]}
+              style={[styles.categoryIcon, selected && styles.categoryIconSelected]}
             />
-            <Text style={[styles.categoryButtonText, selected && styles.selectedCategoryButtonText]}>
+            <Text style={[styles.categoryChipText, selected && styles.categoryChipTextSelected]}>
               {category}
             </Text>
           </TouchableOpacity>
@@ -316,12 +374,20 @@ const CastScreen = () => {
     if (searchLoading) {
       return (
         <View style={styles.searchLoaderContainer}>
-          <Loader fullScreen={false} size={150} />
+          <Loader fullScreen={false} size={120} />
         </View>
       );
     }
     if (searchError) {
-      return <Text style={styles.noResultsText}>{searchError}</Text>;
+      return (
+        <ErrorState
+          compact
+          error={searchError}
+          onRetry={retrySearch}
+          fallbackMessage="Search failed. Please try again."
+          style={styles.searchState}
+        />
+      );
     }
     if (searchResults.length > 0) {
       return (
@@ -330,48 +396,78 @@ const CastScreen = () => {
           keyExtractor={(item, index) => `${item.id}-${index}`}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
+          contentContainerStyle={{ paddingBottom: tabBarSpace }}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handleSearchResultPress(item)} accessibilityRole="button">
-              <Text style={styles.searchResultItem}>{item.label}</Text>
+            <TouchableOpacity
+              style={styles.searchResultRow}
+              onPress={() => handleSearchResultPress(item)}
+              accessibilityRole="button"
+            >
+              <Text style={styles.searchResultItem} numberOfLines={2}>
+                {item.label}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
             </TouchableOpacity>
           )}
         />
       );
     }
-    if (searchQuery.trim().length > 0) {
-      return <Text style={styles.noResultsText}>No results found.</Text>;
+    const query = searchQuery.trim();
+    if (query.length > 0) {
+      return (
+        <StateMessage
+          compact
+          icon="search-outline"
+          title="No results"
+          message={`No ${selectedCategory.toLowerCase()} matches "${query}".`}
+          style={styles.searchState}
+        />
+      );
     }
     return null;
   };
 
-  if (apiError) {
-    return (
-      <View style={styles.errorContainer}>
-        <Image source={serverErrorImage} style={styles.errorImage} />
-        <Text style={styles.errorText}>Whoops!</Text>
-        <Text style={styles.errorDetail}>Please try refreshing or come back later!</Text>
-        <TouchableOpacity style={styles.refreshButton} onPress={retry} accessibilityRole="button">
-          <Text style={styles.refreshButtonText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  // Shows the carousel, else an inline error when the section failed to load, else an empty note.
+  const renderSection = ({ list, failed, errorMessage, emptyMessage, variant, finishedIds, onAnimationFinish }) => {
+    if (list.length > 0) {
+      return (
+        <Carousel
+          list={list}
+          variant={variant}
+          finishedIds={finishedIds}
+          onAnimationFinish={onAnimationFinish}
+        />
+      );
+    }
+    if (failed) {
+      return <SectionError message={errorMessage} onRetry={onRefresh} />;
+    }
+    return <Text style={styles.noDataText}>{emptyMessage}</Text>;
+  };
 
   if (isLoading) {
     return <Loader backgroundColor={colors.primaryBis} />;
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
+        <ErrorState error={loadError} onRetry={retry} fallbackMessage="We couldn't load your feed." />
+      </View>
+    );
   }
 
   if (isSearching) {
     return (
       <View style={styles.container}>
         <View style={styles.searchHeader}>
-          <Searchbar
-            placeholder="Type your search..."
+          <SearchField
+            placeholder="Search articles, topics, videos"
             onChangeText={setSearchQuery}
             value={searchQuery}
-            style={styles.searchBar}
+            style={styles.searchHeaderField}
             autoFocus
-            autoCorrect={false}
             returnKeyType="search"
           />
           <TouchableOpacity
@@ -382,7 +478,7 @@ const CastScreen = () => {
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
         </View>
-        {renderCategoryRow(styles.categoryRowExpanded)}
+        {renderCategoryRow()}
         <View style={styles.searchResultsWrapper}>{renderSearchResults()}</View>
       </View>
     );
@@ -390,43 +486,44 @@ const CastScreen = () => {
 
   return (
     <View style={styles.container}>
-      <ScrollView refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+      >
         <View style={styles.searchSection}>
-          <Text style={styles.titleText}>I want to learn about..</Text>
-          <Searchbar
-            placeholder="Type your search..."
+          <Text style={styles.titleText}>I want to learn about...</Text>
+          <SearchField
+            placeholder="Search articles, topics, videos"
             onChangeText={setSearchQuery}
             value={searchQuery}
-            style={styles.searchBar}
             onFocus={() => setIsSearching(true)}
           />
-          {renderCategoryRow(styles.categoryRow)}
-          <TouchableOpacity
-            style={styles.randomButton}
+          {renderCategoryRow()}
+          <AppButton
+            icon={randomIcon}
             onPress={() => navigation.navigate('DiscoverScreen')}
-            accessibilityRole="button"
             accessibilityLabel="Discover a random cast"
+            style={styles.discoverButton}
           >
-            <Image source={randomIcon} style={styles.randomButtonIcon} />
-          </TouchableOpacity>
+            Discover
+          </AppButton>
         </View>
 
         {!isGuestUser(userId) && (
           <>
             <View style={styles.sectionHeader}>
               <Image source={forYouIcon} style={styles.sectionIcon} />
-              <Text style={styles.sectionTitle}>For You</Text>
+              <Text style={styles.sectionTitle}>{suggestedTitle}</Text>
             </View>
-            {suggestedCastData.length > 0 ? (
-              <Carousel
-                list={suggestedCastData}
-                variant="cast"
-                finishedIds={finishedVideos}
-                onAnimationFinish={removeFinishedVideo}
-              />
-            ) : (
-              <Text style={styles.noDataText}>No suggestions available.</Text>
-            )}
+            {renderSection({
+              list: suggestedCastData,
+              failed: sectionErrors.suggested,
+              errorMessage: "Couldn't load your suggestions.",
+              emptyMessage: 'No suggestions available.',
+              variant: 'cast',
+              finishedIds: finishedVideos,
+              onAnimationFinish: removeFinishedVideo,
+            })}
           </>
         )}
 
@@ -434,196 +531,167 @@ const CastScreen = () => {
           <Image source={trendingIcon} style={styles.sectionIcon} />
           <Text style={styles.sectionTitle}>Trending Now</Text>
         </View>
-        {trendingCastData.length > 0 ? (
-          <Carousel
-            list={trendingCastData}
-            variant="cast"
-            finishedIds={finishedVideos}
-            onAnimationFinish={removeFinishedVideo}
-          />
-        ) : (
-          <Text style={styles.noDataText}>No trending casts available.</Text>
-        )}
+        {renderSection({
+          list: trendingCastData,
+          failed: sectionErrors.trending,
+          errorMessage: "Couldn't load trending casts.",
+          emptyMessage: 'No trending casts available.',
+          variant: 'cast',
+          finishedIds: finishedVideos,
+          onAnimationFinish: removeFinishedVideo,
+        })}
 
         <View style={styles.sectionHeader}>
           <Image source={articleIcon} style={styles.sectionIcon} />
           <Text style={styles.sectionTitle}>Articles</Text>
         </View>
-        {articleData.length > 0 ? (
-          <Carousel
-            list={articleData}
-            variant="article"
-            finishedIds={finishedArticles}
-            onAnimationFinish={removeFinishedArticle}
-          />
-        ) : (
-          <Text style={styles.noDataText}>No articles available.</Text>
-        )}
+        {renderSection({
+          list: articleData,
+          failed: sectionErrors.articles,
+          errorMessage: "Couldn't load articles.",
+          emptyMessage: 'No articles available.',
+          variant: 'article',
+          finishedIds: finishedArticles,
+          onAnimationFinish: removeFinishedArticle,
+        })}
       </ScrollView>
+      <ErrorSnackbar
+        error={refreshError}
+        onDismiss={() => setRefreshError(null)}
+        onRetry={onRefresh}
+        wrapperStyle={{ bottom: tabBarSpace - spacing.m }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primaryBis },
+  container: { flex: 1, backgroundColor: colors.background },
   searchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.s,
     paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
-    backgroundColor: colors.primaryBis,
+    paddingTop: spacing.m,
   },
-  searchBar: { flex: 1, backgroundColor: colors.primary },
+  searchHeaderField: { flex: 1 },
   cancelText: {
-    marginLeft: spacing.s,
-    color: colors.secondary,
-    fontSize: RFValue(sizes.h4),
-    fontFamily: 'Montserrat',
+    ...typography.bodySmall,
+    fontFamily: fonts.bold,
+    color: colors.accent,
   },
   searchResultsWrapper: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
     paddingHorizontal: spacing.m,
-    paddingTop: spacing.m,
+  },
+  searchResultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    paddingVertical: spacing.m,
   },
   searchResultItem: {
-    paddingVertical: spacing.m,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    color: colors.black,
+    ...typography.body,
+    flex: 1,
   },
-  noResultsText: {
-    textAlign: 'center',
-    color: colors.secondary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    marginTop: spacing.l,
+  separator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
   },
   searchSection: {
+    ...contentWidth,
     paddingHorizontal: spacing.m,
-    paddingTop: spacing.m,
-    paddingBottom: spacing.l,
-    backgroundColor: colors.primaryBis,
+    paddingTop: spacing.l,
+    paddingBottom: spacing.m,
   },
   titleText: {
-    fontSize: RFValue(sizes.title),
-    fontFamily: 'Montserrat',
-    color: colors.black,
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: spacing.xl,
-    marginTop: spacing.m,
+    marginBottom: spacing.l,
   },
   categoryRow: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.l,
-    marginTop: spacing.m,
-  },
-  categoryRowExpanded: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginHorizontal: spacing.m,
-  },
-  categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.s,
-    paddingHorizontal: spacing.m,
-    borderRadius: sizes.radius,
-    backgroundColor: colors.primaryBis,
-  },
-  selectedCategoryButton: { backgroundColor: colors.darkTeal },
-  categoryButtonText: {
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    fontSize: RFValue(sizes.h4),
-  },
-  selectedCategoryButtonText: { color: colors.primary },
-  categoryIcon: {
-    width: RFValue(20),
-    height: RFValue(20),
-    marginRight: spacing.s,
-    tintColor: colors.secondary,
-  },
-  randomButton: {
-    flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginTop: spacing.m,
-    backgroundColor: colors.darkGreen,
-    paddingVertical: spacing.m,
-    paddingHorizontal: spacing.m,
-    borderRadius: 50,
+    gap: spacing.s,
+    marginVertical: spacing.m,
   },
-  randomButtonIcon: {
-    width: RFValue(24),
-    height: RFValue(24),
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: sizes.buttonRadius,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  categoryChipSelected: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  categoryChipText: {
+    ...typography.bodySmall,
+    color: colors.text,
+  },
+  categoryChipTextSelected: {
+    fontFamily: fonts.bold,
+    color: colors.textOnColor,
+  },
+  categoryIcon: {
+    width: scale(18),
+    height: scale(18),
     resizeMode: 'contain',
-    tintColor: colors.primaryBis,
+    tintColor: colors.text,
+  },
+  categoryIconSelected: {
+    tintColor: colors.textOnColor,
+  },
+  discoverButton: {
+    alignSelf: 'center',
+    minWidth: 180,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: spacing.s,
+    gap: spacing.s,
+    marginTop: spacing.l,
     marginBottom: spacing.s,
     paddingHorizontal: spacing.m,
   },
   sectionIcon: {
-    width: 24,
-    height: 24,
-    marginRight: spacing.s,
-    tintColor: colors.secondary,
+    width: 22,
+    height: 22,
+    resizeMode: 'contain',
+    tintColor: colors.text,
   },
   sectionTitle: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
-    fontFamily: 'MontserratBold',
+    ...typography.h3,
   },
   noDataText: {
+    ...typography.bodySmall,
     textAlign: 'center',
-    color: colors.secondary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
     marginVertical: spacing.l,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  sectionError: {
     alignItems: 'center',
-    padding: spacing.m,
-    backgroundColor: colors.primaryBis,
+    marginVertical: spacing.l,
+    paddingHorizontal: spacing.m,
   },
-  errorImage: {
-    width: width * 0.5,
-    height: width * 0.5,
-    marginBottom: spacing.m,
-    resizeMode: 'contain',
-  },
-  errorText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
+  sectionErrorText: {
+    ...typography.bodySmall,
     textAlign: 'center',
-    fontFamily: 'MontserratBold',
   },
-  errorDetail: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    textAlign: 'center',
-    fontFamily: 'Montserrat',
+  sectionErrorAction: {
+    ...typography.bodySmall,
     marginTop: spacing.s,
-    marginBottom: spacing.m,
+    fontFamily: fonts.bold,
+    color: colors.accent,
   },
-  refreshButton: {
-    backgroundColor: colors.secondary,
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-  },
-  refreshButtonText: {
-    color: colors.primary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
+  searchState: {
+    flex: 0,
+    paddingTop: spacing.l,
   },
   searchLoaderContainer: { alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.m },
 });

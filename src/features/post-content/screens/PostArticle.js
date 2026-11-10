@@ -8,14 +8,15 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { Button, TextInput } from 'react-native-paper';
+import { TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors } from '@shared/config/theme';
+import { colors, spacing } from '@shared/config/theme';
 import departments from '@shared/data/departments';
 import categories from '@shared/data/categories';
 import { api, getErrorMessage } from '@shared/api/client';
+import AppButton from '@shared/components/AppButton';
+import BackButton from '@shared/components/BackButton';
 import {
-  BackButton,
   OptionsModal,
   SelectorField,
   TopicPickerModal,
@@ -100,7 +101,7 @@ const PostArticle = ({ navigation }) => {
       navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
       console.error('Error posting article:', error);
-      Alert.alert('Error', getErrorMessage(error, 'Failed to post the article. Please try again.'));
+      Alert.alert("Couldn't post your article", getErrorMessage(error, 'Please try again.'));
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -114,21 +115,26 @@ const PostArticle = ({ navigation }) => {
     >
       <ScrollView
         style={styles.container}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top }]}
+        contentContainerStyle={{
+          paddingTop: insets.top + spacing.s,
+          paddingBottom: insets.bottom + spacing.xl,
+        }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.content}>
-          <BackButton onPress={() => navigation.goBack()} style={postFormStyles.backButton} />
-          <Text style={postFormStyles.Maintitle}>Post an Article</Text>
+        <View style={postFormStyles.header}>
+          <BackButton floating={false} onPress={() => navigation.goBack()} style={postFormStyles.headerBackButton} />
+          <Text style={postFormStyles.title}>Post an Article</Text>
+        </View>
 
+        <View style={postFormStyles.form}>
           <TextInput
             label="Title"
             value={title}
             onChangeText={setTitle}
             mode="outlined"
             style={postFormStyles.input}
+            outlineStyle={postFormStyles.inputOutline}
             autoCapitalize="none"
-            activeOutlineColor={colors.darkGreen}
             maxLength={85}
           />
 
@@ -140,8 +146,8 @@ const PostArticle = ({ navigation }) => {
               multiline
               mode="outlined"
               style={[postFormStyles.input, styles.multilineInput]}
+              outlineStyle={postFormStyles.inputOutline}
               autoCapitalize="none"
-              activeOutlineColor={colors.darkGreen}
             />
           )}
 
@@ -152,10 +158,10 @@ const PostArticle = ({ navigation }) => {
               onChangeText={setLink}
               mode="outlined"
               style={postFormStyles.input}
+              outlineStyle={postFormStyles.inputOutline}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
-              activeOutlineColor={colors.darkGreen}
             />
           )}
 
@@ -183,18 +189,16 @@ const PostArticle = ({ navigation }) => {
           {isNonEmpty(topic) && (
             <>
               <VisibilitySlider value={visibility} onChange={setVisibility} />
-              <Button
+              <AppButton
+                fullWidth
                 onPress={handlePostArticle}
                 loading={loading}
                 disabled={loading}
-                mode="contained"
-                buttonColor={colors.darkGreen}
                 icon={require('@assets/Postcontent_icons/send.png')}
-                labelStyle={postFormStyles.postButtonLabel}
                 style={postFormStyles.postButton}
               >
                 POST
-              </Button>
+              </AppButton>
             </>
           )}
         </View>
@@ -203,9 +207,11 @@ const PostArticle = ({ navigation }) => {
       <OptionsModal
         visible={isCategoryModalVisible}
         onDismiss={() => setCategoryModalVisible(false)}
+        title="Select a category"
         options={categories}
         getKey={(item) => item}
         getLabel={(item) => item}
+        selectedKey={category}
         onSelect={(item) => {
           setCategory(item);
           setCategoryModalVisible(false);
@@ -214,18 +220,22 @@ const PostArticle = ({ navigation }) => {
       <OptionsModal
         visible={isDepartmentModalVisible}
         onDismiss={() => setDepartmentModalVisible(false)}
+        title="Select a department"
         options={departments}
         getKey={(item) => item.name}
         getLabel={(item) => item.display}
+        selectedKey={department}
         onSelect={selectDepartment}
       />
       <TopicPickerModal
         visible={isTopicModalVisible}
         onDismiss={() => setTopicModalVisible(false)}
+        title="Select a topic"
         topics={topicsState.topics}
         loading={topicsState.loading}
         error={topicsState.error}
         onRetry={topicsState.reload}
+        selected={topic}
         onSelect={(name) => {
           setTopic(name);
           setTopicModalVisible(false);
@@ -240,13 +250,7 @@ const PostArticle = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
-  },
-  scrollContent: {
-    paddingBottom: 50,
-  },
-  content: {
-    padding: 20,
+    backgroundColor: colors.background,
   },
   multilineInput: {
     height: 150,

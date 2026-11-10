@@ -9,28 +9,35 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { api, getErrorMessage } from '@shared/api/client';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
+import { useTabBarSpace } from '@navigation/FloatingTabBar';
+import { api } from '@shared/api/client';
 import { getUser, canAccessLibrary, isGuestUser } from '@shared/utils/UserStorage';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import ErrorSnackbar from '@shared/components/ErrorSnackbar';
 
 const articleLogo = require('@assets/Cast_screen_icons/article_logo.png');
 const castLogo = require('@assets/Cast_screen_icons/cast_logo.png');
 
 const LibraryScreen = () => {
   const navigation = useNavigation();
+  const tabBarSpace = useTabBarSpace();
   const [userRole, setUserRole] = useState('');
   const [castCount, setCastCount] = useState(0);
   const [articleCount, setArticleCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [refreshError, setRefreshError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const hasLoaded = useRef(false);
   const isMounted = useRef(true);
   useEffect(() => () => { isMounted.current = false; }, []);
 
-  const fetchUserData = useCallback(async () => {
+  // `manual` marks a pull-to-refresh: its failure is reported, while a failed background
+  // reload (on focus) silently keeps the counts already on screen.
+  const fetchUserData = useCallback(async ({ manual = false } = {}) => {
     try {
       const { userId, userRole: role } = await getUser();
       if (!isMounted.current) return;
@@ -46,7 +53,9 @@ const LibraryScreen = () => {
       hasLoaded.current = true;
     } catch (err) {
       console.error('Error fetching user data:', err);
-      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load your publications.'));
+      if (!isMounted.current) return;
+      if (!hasLoaded.current) setError(err);
+      else if (manual) setRefreshError(err);
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -62,64 +71,62 @@ const LibraryScreen = () => {
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await fetchUserData();
+    setRefreshError(null);
+    await fetchUserData({ manual: true });
     if (isMounted.current) setRefreshing(false);
   }, [fetchUserData]);
 
   const retry = useCallback(() => {
+    setError(null);
     setIsLoading(true);
     fetchUserData();
   }, [fetchUserData]);
 
   if (isLoading) {
-    return <Loader size={200} backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} style={{ paddingBottom: tabBarSpace }} />;
   }
 
-  if (error && !hasLoaded.current) {
+  if (error) {
     return (
-      <View style={styles.container}>
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Whoops!"
-          message={error}
-          actionLabel="Try again"
-          onAction={retry}
+      <View style={[styles.container, { paddingBottom: tabBarSpace }]}>
+        <ErrorState
+          error={error}
+          onRetry={retry}
+          fallbackMessage="We couldn't load your publications."
         />
       </View>
     );
   }
 
+  const tiles = [
+    { label: 'Articles', count: articleCount, icon: articleLogo, route: 'ArticlePublicationsScreen' },
+    { label: 'Casts', count: castCount, icon: castLogo, route: 'CastPublicationsScreen' },
+  ];
+
   return (
     <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingBottom: tabBarSpace }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text style={styles.title}>Your Publications</Text>
 
         {canAccessLibrary(userRole) ? (
-          <View style={styles.publicationsContainer}>
-            <TouchableOpacity
-              style={styles.publicationColumn}
-              onPress={() => navigation.navigate('ArticlePublicationsScreen')}
-              accessibilityRole="button"
-              accessibilityLabel={`Your articles: ${articleCount}`}
-            >
-              <Image source={articleLogo} style={styles.publicationIcon} />
-              <Text style={styles.publicationCount}>{articleCount}</Text>
-              <Text style={styles.publicationLabel}>Articles</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.publicationColumn}
-              onPress={() => navigation.navigate('CastPublicationsScreen')}
-              accessibilityRole="button"
-              accessibilityLabel={`Your casts: ${castCount}`}
-            >
-              <Image source={castLogo} style={styles.publicationIcon} />
-              <Text style={styles.publicationCount}>{castCount}</Text>
-              <Text style={styles.publicationLabel}>Casts</Text>
-            </TouchableOpacity>
+          <View style={styles.tiles}>
+            {tiles.map((tile) => (
+              <TouchableOpacity
+                key={tile.route}
+                style={styles.tile}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(tile.route)}
+                accessibilityRole="button"
+                accessibilityLabel={`Your ${tile.label.toLowerCase()}: ${tile.count}`}
+              >
+                <Image source={tile.icon} style={styles.tileIcon} />
+                <Text style={styles.tileCount}>{tile.count}</Text>
+                <Text style={styles.tileLabel}>{tile.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         ) : (
           <StateMessage
@@ -129,6 +136,12 @@ const LibraryScreen = () => {
           />
         )}
       </ScrollView>
+      <ErrorSnackbar
+        error={refreshError}
+        onDismiss={() => setRefreshError(null)}
+        onRetry={onRefresh}
+        wrapperStyle={{ bottom: tabBarSpace - spacing.m }}
+      />
     </View>
   );
 };
@@ -138,42 +151,43 @@ export default LibraryScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   content: {
+    ...contentWidth,
     flexGrow: 1,
-    paddingVertical: spacing.l,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.l,
   },
   title: {
-    fontSize: sizes.title,
-    color: colors.secondary,
-    marginBottom: spacing.l,
-    fontFamily: 'Montserrat',
+    ...typography.title,
     textAlign: 'center',
+    marginBottom: spacing.l,
   },
-  publicationsContainer: {
+  tiles: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginHorizontal: spacing.m,
-    marginTop: spacing.m,
+    gap: spacing.m,
   },
-  publicationColumn: {
+  tile: {
+    flex: 1,
     alignItems: 'center',
+    paddingVertical: spacing.l,
+    paddingHorizontal: spacing.s,
+    borderRadius: sizes.radius,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  publicationIcon: {
-    width: 60,
-    height: 60,
-    marginBottom: spacing.xs,
+  tileIcon: {
+    width: 56,
+    height: 56,
     resizeMode: 'contain',
   },
-  publicationCount: {
-    fontSize: sizes.h2,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
+  tileCount: {
+    ...typography.h1,
+    marginTop: spacing.s,
   },
-  publicationLabel: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+  tileLabel: {
+    ...typography.bodySmall,
   },
 });

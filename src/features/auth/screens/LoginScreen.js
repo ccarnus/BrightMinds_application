@@ -1,17 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Text, StyleSheet, TouchableOpacity, ScrollView,
-  Platform, KeyboardAvoidingView, Image, Dimensions
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Platform, KeyboardAvoidingView, Image
 } from 'react-native';
-import { Button, TextInput, Portal, Modal } from 'react-native-paper';
+import { TextInput, Portal, Dialog } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, fonts, scale, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
+import AppButton from '@shared/components/AppButton';
 import { setUser } from '@shared/utils/UserStorage';
 import { resetToHome } from '@navigation/navigationHelpers';
 import { isValidEmail } from '@features/auth/utils/validation';
 
-const { width, height } = Dimensions.get('window');
+const LOGO_SIZE = Math.min(scale(140), 180);
 
 const LoginScreen = ({ navigation, route }) => {
   const insets = useSafeAreaInsets();
@@ -64,7 +65,8 @@ const LoginScreen = ({ navigation, route }) => {
         resetToHome(navigation);
       }
     } catch (error) {
-      showCustomAlert(error.response?.data?.error || getErrorMessage(error, 'Invalid credentials'));
+      // 4xx responses carry the reason (e.g. wrong password); connection issues get their own message.
+      showCustomAlert(getErrorMessage(error, 'Invalid email or password.'));
     } finally {
       submittingRef.current = false;
       setLoading(false);
@@ -77,105 +79,110 @@ const LoginScreen = ({ navigation, route }) => {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
-        contentContainerStyle={[styles.container, { paddingTop: insets.top + 20 }]}
+        contentContainerStyle={[
+          styles.container,
+          { paddingTop: insets.top + spacing.l, paddingBottom: insets.bottom + spacing.l },
+        ]}
         keyboardShouldPersistTaps="handled"
       >
-        <Image
-          source={require('@assets/BrightMinds/black_bear.png')}
-          style={styles.titleImage}
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>Log In</Text>
+        <View style={styles.form}>
+          <Image
+            source={require('@assets/BrightMinds/black_bear.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={styles.title}>Log In</Text>
 
-        <TextInput
-          label="Email"
-          style={styles.input}
-          value={email}
-          onChangeText={setEmail}
-          mode="outlined"
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          autoComplete="email"
-          textContentType="emailAddress"
-          returnKeyType="next"
-          onSubmitEditing={() => passwordInputRef.current?.focus()}
-          activeOutlineColor={colors.darkGreen}
-          outlineStyle={styles.inputOutline}
-        />
+          <TextInput
+            label="Email"
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            mode="outlined"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            autoComplete="email"
+            textContentType="emailAddress"
+            returnKeyType="next"
+            onSubmitEditing={() => passwordInputRef.current?.focus()}
+            outlineStyle={styles.inputOutline}
+          />
 
-        <TextInput
-          ref={passwordInputRef}
-          label="Password"
-          style={styles.input}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          mode="outlined"
-          autoCapitalize="none"
-          autoComplete="password"
-          textContentType="password"
-          returnKeyType="go"
-          onSubmitEditing={() => {
-            if (email && password) handleLogin();
-          }}
-          activeOutlineColor={colors.darkGreen}
-          outlineStyle={styles.inputOutline}
-          right={
-            <TextInput.Icon
-              icon={showPassword ? 'eye' : 'eye-off'}
-              onPress={() => setShowPassword((visible) => !visible)}
-              accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
-            />
-          }
-        />
+          <TextInput
+            ref={passwordInputRef}
+            label="Password"
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry={!showPassword}
+            mode="outlined"
+            autoCapitalize="none"
+            autoComplete="password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={() => {
+              if (email && password) handleLogin();
+            }}
+            outlineStyle={styles.inputOutline}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye' : 'eye-off'}
+                onPress={() => setShowPassword((visible) => !visible)}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+              />
+            }
+          />
 
-        <Button
-          mode="contained"
-          onPress={handleLogin}
-          loading={loading}
-          disabled={!email || !password || loading}
-          buttonColor={colors.darkGreen}
-          icon={require('@assets/Login_icons/log-in.png')}
-          contentStyle={styles.buttonContent}
-          labelStyle={styles.buttonLabel}
-          style={styles.button}
-        >
-          Login
-        </Button>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('ForgotPasswordScreen')}
-          style={styles.forgotLink}
-          accessibilityRole="button"
-        >
-          <Text style={styles.forgotText}>Forgot password?</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => navigation.navigate('SignupScreen')}
-          style={styles.signupLink}
-          accessibilityRole="button"
-        >
-          <Text style={styles.signupText}>
-            Don't have an account? <Text style={styles.underline}>Sign up</Text>
-          </Text>
-        </TouchableOpacity>
-
-        <Portal>
-          <Modal
-            visible={customAlertVisible}
-            onDismiss={() => setCustomAlertVisible(false)}
-            contentContainerStyle={styles.modalContainer}
+          <AppButton
+            fullWidth
+            iconPosition="right"
+            icon={require('@assets/Login_icons/log-in.png')}
+            onPress={handleLogin}
+            loading={loading}
+            disabled={!email || !password || loading}
+            style={styles.loginButton}
           >
-            <Text>{customAlertMessage}</Text>
-            <Button
-              onPress={() => setCustomAlertVisible(false)}
-              textColor={colors.darkGreen}
-            >OK</Button>
-          </Modal>
-        </Portal>
+            Login
+          </AppButton>
+
+          <AppButton
+            variant="link"
+            size="medium"
+            onPress={() => navigation.navigate('ForgotPasswordScreen')}
+            style={styles.forgotButton}
+          >
+            Forgot password?
+          </AppButton>
+
+          <TouchableOpacity
+            onPress={() => navigation.navigate('SignupScreen')}
+            style={styles.signupLink}
+            accessibilityRole="button"
+          >
+            <Text style={styles.signupText}>
+              Don't have an account? <Text style={styles.linkText}>Sign up</Text>
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
+
+      <Portal>
+        <Dialog
+          visible={customAlertVisible}
+          onDismiss={() => setCustomAlertVisible(false)}
+          style={styles.dialog}
+        >
+          <Dialog.Content>
+            <Text style={styles.dialogText}>{customAlertMessage}</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <AppButton variant="link" size="medium" onPress={() => setCustomAlertVisible(false)}>
+              OK
+            </AppButton>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
     </KeyboardAvoidingView>
   );
 };
@@ -183,74 +190,63 @@ const LoginScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   container: {
     flexGrow: 1,
-    padding: 20,
-    backgroundColor: colors.primaryBis,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.l,
   },
-  titleImage: {
-    height: height * 0.3,
-    width: width * 0.3,
+  form: {
+    ...contentWidth,
+  },
+  logo: {
+    width: LOGO_SIZE,
+    height: LOGO_SIZE,
     alignSelf: 'center',
+    marginBottom: spacing.m,
   },
   title: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: 20,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+    marginBottom: spacing.l,
   },
   input: {
-    marginBottom: 15,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
-  },
-  buttonContent: {
-    flexDirection: 'row-reverse',
-  },
-  buttonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
-  },
-  button: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
-  },
-  forgotLink: {
-    marginTop: 10,
-  },
-  forgotText: {
-    marginTop: 10,
-    textAlign: 'center',
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  signupLink: {
-    marginTop: 20,
-  },
-  signupText: {
-    textAlign: 'center',
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  underline: {
-    textDecorationLine: 'underline',
-  },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
+    marginBottom: spacing.m,
+    backgroundColor: colors.surface,
   },
   inputOutline: {
     borderRadius: sizes.radius,
+  },
+  loginButton: {
+    marginTop: spacing.s,
+  },
+  forgotButton: {
+    alignSelf: 'center',
+    marginTop: spacing.m,
+  },
+  signupLink: {
+    minHeight: 44,
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  signupText: {
+    ...typography.bodySmall,
+    textAlign: 'center',
+  },
+  linkText: {
+    fontFamily: fonts.bold,
+    color: colors.accent,
+  },
+  dialog: {
+    width: '88%',
+    maxWidth: 448,
+    marginHorizontal: 0,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+  },
+  dialogText: {
+    ...typography.body,
   },
 });
 

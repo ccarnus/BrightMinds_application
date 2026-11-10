@@ -1,13 +1,25 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Platform, KeyboardAvoidingView, ScrollView, Dimensions } from 'react-native';
-import { Button, TextInput, Portal, Modal } from 'react-native-paper';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
+import { TextInput, Portal, Dialog } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
+import AppButton from '@shared/components/AppButton';
+import BackButton from '@shared/components/BackButton';
 import { isValidEmail } from '@features/auth/utils/validation';
 
-const { height } = Dimensions.get('window');
+// Room kept above (and, for balance, below) the centered form for the floating back button.
+const BACK_BUTTON_SPACE = spacing.xl + spacing.s;
 
 const ForgotPasswordScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState(null);
@@ -48,12 +60,19 @@ const ForgotPasswordScreen = ({ navigation }) => {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-        <View style={styles.container}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingTop: insets.top + BACK_BUTTON_SPACE, paddingBottom: insets.bottom + BACK_BUTTON_SPACE },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.form}>
           <Text style={styles.title}>Reset Your Password</Text>
           <TextInput
             label="Email"
             style={styles.input}
+            outlineStyle={styles.inputOutline}
             value={email}
             onChangeText={setEmail}
             mode="outlined"
@@ -66,33 +85,33 @@ const ForgotPasswordScreen = ({ navigation }) => {
             onSubmitEditing={() => {
               if (email) handlePasswordResetRequest();
             }}
-            activeOutlineColor={colors.darkGreen}
           />
-          <Button
-            mode="contained"
+          <AppButton
+            fullWidth
             onPress={handlePasswordResetRequest}
             loading={loading}
             disabled={!email || loading}
-            buttonColor={colors.darkGreen}
             icon={require('@assets/Login_icons/reset-password.png')}
-            labelStyle={styles.buttonLabel}
             style={styles.button}
           >
             Send Link
-          </Button>
+          </AppButton>
         </View>
       </ScrollView>
+
+      <BackButton onPress={() => navigation.goBack()} />
+
       <Portal>
-        <Modal
-          visible={!!alert}
-          onDismiss={handleAlertDismiss}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <Text>{alert?.message}</Text>
-          <Button onPress={handleAlertDismiss} textColor={colors.darkGreen}>
-            OK
-          </Button>
-        </Modal>
+        <Dialog visible={!!alert} onDismiss={handleAlertDismiss} style={styles.dialog}>
+          <Dialog.Content>
+            <Text style={styles.dialogText}>{alert?.message}</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <AppButton variant="link" size="medium" onPress={handleAlertDismiss}>
+              OK
+            </AppButton>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </KeyboardAvoidingView>
   );
@@ -101,47 +120,40 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   scrollContent: {
     flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.l,
   },
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: colors.primaryBis,
-    marginTop: height * 0.3,
+  form: {
+    ...contentWidth,
   },
   title: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: 20,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+    marginBottom: spacing.l,
   },
   input: {
-    marginBottom: 15,
-    backgroundColor: 'transparent',
-    fontFamily: 'Montserrat',
+    marginBottom: spacing.m,
+    backgroundColor: colors.surface,
   },
-  buttonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.xs,
+  inputOutline: {
+    borderRadius: sizes.radius,
   },
   button: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
+    marginTop: spacing.s,
   },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
+  dialog: {
+    width: '88%',
+    maxWidth: 448,
+    marginHorizontal: 0,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+  },
+  dialogText: {
+    ...typography.body,
   },
 });
 

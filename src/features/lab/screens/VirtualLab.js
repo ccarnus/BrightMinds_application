@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   Dimensions,
 } from 'react-native';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, fonts, layout, scale, sizes, spacing, typography } from '@shared/config/theme';
 import InfoIcon from '@assets/Virtual_lab_icons/info_icon.png';
 import ActivityImage from '@assets/Virtual_lab_icons/activity.png';
 import ImpactImage from '@assets/Virtual_lab_icons/impact.png';
@@ -16,12 +16,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import departments from '@shared/data/departments';
-import { Modal, Portal, Button, Searchbar } from 'react-native-paper';
+import { Dialog, Portal } from 'react-native-paper';
 import { AnimatedCircularProgress } from 'react-native-circular-progress';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { api, getErrorMessage } from '@shared/api/client';
+import { api } from '@shared/api/client';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import BackButton, { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
+import AppButton from '@shared/components/AppButton';
+import SearchField from '@shared/components/SearchField';
 import departmentImages from '@features/lab/data/departmentImages';
 
 const { width, height } = Dimensions.get('window');
@@ -29,63 +32,60 @@ const { width, height } = Dimensions.get('window');
 // Fixed reference scales for the gauges (topic activity / impact).
 const MAX_ACTIVITY = 9000;
 const MAX_IMPACT = 2000;
-const GAUGE_SIZE = width * 0.35;
+const GAUGE_SIZE = Math.min(width * 0.35, 160);
+const INITIAL_HEADER_HEIGHT = Math.min(height / 4, 260);
+const MIN_HEADER_HEIGHT = Math.min(height / 9, 110);
+const INFO_ICON_SIZE = 26;
+const HEADER_BUTTON_SIZE = 44;
 const nextIcon = require('@assets/Discover_icons/next.png');
 
 const toFill = (value, max) => Math.min(100, Math.max(0, ((Number(value) || 0) / max) * 100));
 
-const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
-
 const TopicCard = React.memo(({ topic, onPress }) => {
   const handlePress = () => onPress(topic._id);
   return (
-    <View style={styles.topicContainer}>
+    <View style={styles.topicCard}>
       <TouchableOpacity onPress={handlePress} activeOpacity={0.8} accessibilityRole="button">
         <Text style={styles.topicName} numberOfLines={3} ellipsizeMode="tail">
           {topic.name}
         </Text>
         <View style={styles.gaugeRow}>
-          <View style={styles.gaugeContainer}>
-            <AnimatedCircularProgress
-              size={GAUGE_SIZE}
-              width={10}
-              fill={toFill(topic.activity, MAX_ACTIVITY)}
-              tintColor={colors.lightTeal}
-              backgroundColor={colors.primaryBis}
-              rotation={-115}
-              arcSweepAngle={230}
-              lineCap="round"
-            >
-              {() => <Image source={ActivityImage} style={styles.gaugeIcon} resizeMode="contain" />}
-            </AnimatedCircularProgress>
-          </View>
-          <View style={styles.gaugeContainer}>
-            <AnimatedCircularProgress
-              size={GAUGE_SIZE}
-              width={10}
-              fill={toFill(topic.impact, MAX_IMPACT)}
-              tintColor={colors.darkTeal}
-              backgroundColor={colors.primaryBis}
-              rotation={-115}
-              arcSweepAngle={230}
-              lineCap="round"
-            >
-              {() => <Image source={ImpactImage} style={styles.gaugeIcon} resizeMode="contain" />}
-            </AnimatedCircularProgress>
-          </View>
+          <AnimatedCircularProgress
+            size={GAUGE_SIZE}
+            width={10}
+            fill={toFill(topic.activity, MAX_ACTIVITY)}
+            tintColor={colors.lightTeal}
+            backgroundColor={colors.border}
+            rotation={-115}
+            arcSweepAngle={230}
+            lineCap="round"
+          >
+            {() => <Image source={ActivityImage} style={styles.gaugeIcon} resizeMode="contain" />}
+          </AnimatedCircularProgress>
+          <AnimatedCircularProgress
+            size={GAUGE_SIZE}
+            width={10}
+            fill={toFill(topic.impact, MAX_IMPACT)}
+            tintColor={colors.darkTeal}
+            backgroundColor={colors.border}
+            rotation={-115}
+            arcSweepAngle={230}
+            lineCap="round"
+          >
+            {() => <Image source={ImpactImage} style={styles.gaugeIcon} resizeMode="contain" />}
+          </AnimatedCircularProgress>
         </View>
       </TouchableOpacity>
-      <Button
-        mode="contained"
+      <AppButton
+        variant="primary"
+        iconPosition="right"
+        fullWidth
         onPress={handlePress}
-        buttonColor={colors.darkGreen}
-        contentStyle={styles.exploreButtonContent}
         icon={nextIcon}
-        labelStyle={styles.exploreButtonLabel}
         style={styles.exploreButton}
       >
         Explore
-      </Button>
+      </AppButton>
     </View>
   );
 });
@@ -103,8 +103,8 @@ const VirtualLab = ({ route }) => {
     departmentImages[labId] || departmentImages[labDisplayName] || null;
 
   const scrollY = useRef(new Animated.Value(0)).current;
-  const initialHeaderHeight = height / 4 + insets.top;
-  const minHeaderHeight = height / 9 + insets.top;
+  const initialHeaderHeight = INITIAL_HEADER_HEIGHT + insets.top;
+  const minHeaderHeight = MIN_HEADER_HEIGHT + insets.top;
   const headerShrinkRange = initialHeaderHeight - minHeaderHeight;
 
   const headerHeight = scrollY.interpolate({
@@ -114,17 +114,12 @@ const VirtualLab = ({ route }) => {
   });
   const imageSize = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
-    outputRange: [80, 40],
+    outputRange: [scale(80), scale(40)],
     extrapolate: 'clamp',
   });
   const titleFontSize = scrollY.interpolate({
     inputRange: [0, headerShrinkRange],
-    outputRange: [RFValue(sizes.h2), RFValue(sizes.h3)],
-    extrapolate: 'clamp',
-  });
-  const infoIconSize = scrollY.interpolate({
-    inputRange: [0, headerShrinkRange],
-    outputRange: [RFValue(30), RFValue(20)],
+    outputRange: [sizes.h2, sizes.h3],
     extrapolate: 'clamp',
   });
 
@@ -139,7 +134,7 @@ const VirtualLab = ({ route }) => {
       if (isMounted.current) setTopics(Array.isArray(data) ? data : []);
     } catch (err) {
       console.error('Error fetching topics:', err);
-      if (isMounted.current) setError(getErrorMessage(err, 'Unable to load the topics of this lab.'));
+      if (isMounted.current) setError(err);
     } finally {
       if (isMounted.current) setIsLoading(false);
     }
@@ -173,66 +168,71 @@ const VirtualLab = ({ route }) => {
     [handleTopicPress]
   );
 
+  const renderBackButton = (tone) => (
+    <BackButton tone={tone} onPress={() => navigation.goBack()} style={styles.backButton} />
+  );
+
   if (isLoading) {
-    return <Loader size={200} backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.bottomSection, { paddingTop: insets.top }]}>
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Couldn't load this lab"
-          message={error}
-          actionLabel="Try again"
-          onAction={fetchTopics}
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ErrorState
+          error={error}
+          onRetry={fetchTopics}
+          fallbackMessage="We couldn't load the topics of this lab."
+          secondaryActionLabel="Back to labs"
+          onSecondaryAction={() => navigation.popTo('BottomNav', { screen: 'Lab' })}
         />
+        {renderBackButton('default')}
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <AnimatedLinearGradient
-        colors={[colors.secondary, colors.primaryBis]}
-        style={[styles.topSection, { height: headerHeight, paddingTop: spacing.m + insets.top }]}
-      >
-        <View style={styles.headerContent}>
-          {departmentImageSource && (
-            <Animated.Image
-              source={departmentImageSource}
-              style={[styles.departmentImage, { width: imageSize, height: imageSize }]}
-              resizeMode="contain"
-            />
-          )}
-          <Animated.Text
-            style={[styles.labTitle, { fontSize: titleFontSize, flexShrink: 1 }]}
-            adjustsFontSizeToFit={true}
-            minimumFontScale={0.5}
-            numberOfLines={3}
-          >
-            {labDisplayName || 'Virtual Laboratory'}
-          </Animated.Text>
-        </View>
-        <View style={styles.topRightButtons}>
-          <TouchableOpacity
-            onPress={() => setInfoVisible(true)}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel="About this department"
-          >
-            <Animated.Image
-              source={InfoIcon}
-              style={[styles.topRightIcon, { width: infoIconSize, height: infoIconSize }]}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </View>
-      </AnimatedLinearGradient>
+      <Animated.View style={[styles.header, { height: headerHeight }]}>
+        <LinearGradient
+          colors={[colors.secondary, colors.primaryBis]}
+          style={[styles.headerGradient, { paddingTop: insets.top + spacing.s }]}
+        >
+          <View style={styles.headerContent}>
+            {departmentImageSource && (
+              <Animated.Image
+                source={departmentImageSource}
+                style={{ width: imageSize, height: imageSize }}
+                resizeMode="contain"
+              />
+            )}
+            <Animated.Text
+              style={[styles.labTitle, { fontSize: titleFontSize }]}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.5}
+              numberOfLines={3}
+            >
+              {labDisplayName || 'Virtual Laboratory'}
+            </Animated.Text>
+          </View>
+        </LinearGradient>
+        {renderBackButton('light')}
+        <TouchableOpacity
+          style={[styles.infoButton, { top: insets.top + spacing.s + (BACK_BUTTON_SIZE - HEADER_BUTTON_SIZE) / 2 }]}
+          onPress={() => setInfoVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="About this department"
+        >
+          <Image source={InfoIcon} style={styles.infoIcon} resizeMode="contain" />
+        </TouchableOpacity>
+      </Animated.View>
 
       <Animated.FlatList
-        style={styles.bottomSection}
-        contentContainerStyle={{ paddingTop: initialHeaderHeight, paddingBottom: spacing.l + insets.bottom }}
+        style={styles.list}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingTop: initialHeaderHeight + spacing.m, paddingBottom: spacing.l + insets.bottom },
+        ]}
         data={filteredTopics}
         keyExtractor={(item) => String(item._id)}
         renderItem={renderTopic}
@@ -246,7 +246,7 @@ const VirtualLab = ({ route }) => {
           { useNativeDriver: false }
         )}
         ListHeaderComponent={
-          <Searchbar
+          <SearchField
             placeholder="Search topics..."
             onChangeText={setSearchQuery}
             value={searchQuery}
@@ -273,22 +273,17 @@ const VirtualLab = ({ route }) => {
       />
 
       <Portal>
-        <Modal
-          visible={infoVisible}
-          onDismiss={() => setInfoVisible(false)}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <Text style={styles.modalTitle}>{labDisplayName} Department</Text>
-          <Text style={styles.modalDescription}>{departmentDescription}</Text>
-          <Button
-            mode="contained"
-            onPress={() => setInfoVisible(false)}
-            style={styles.modalButton}
-            buttonColor={colors.secondary}
-          >
-            Close
-          </Button>
-        </Modal>
+        <Dialog visible={infoVisible} onDismiss={() => setInfoVisible(false)} style={styles.dialog}>
+          <Dialog.Title style={styles.dialogTitle}>{labDisplayName} Department</Dialog.Title>
+          <Dialog.Content>
+            <Text style={styles.dialogText}>{departmentDescription}</Text>
+          </Dialog.Content>
+          <Dialog.Actions style={styles.dialogActions}>
+            <AppButton variant="link" size="medium" onPress={() => setInfoVisible(false)}>
+              Close
+            </AppButton>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );
@@ -297,113 +292,106 @@ const VirtualLab = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
   },
-  topSection: {
+  header: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: colors.secondary,
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
     zIndex: 1000,
+  },
+  headerGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    // Leaves room for the back and info buttons so the centered title never runs under them.
+    paddingHorizontal: spacing.s + BACK_BUTTON_SIZE + spacing.s,
+    paddingBottom: spacing.s,
   },
   headerContent: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center', // vertically centered
-    justifyContent: 'center', // centers the row horizontally
-  },
-  departmentImage: {
-    marginRight: spacing.m,
-  },
-  labTitle: {
-    color: colors.primary,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-  },
-  topRightButtons: {
-    position: 'absolute',
-    right: spacing.m,
-    bottom: spacing.m, // placed at the bottom right of the header
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.m,
   },
-  topRightIcon: {
-    tintColor: colors.primary,
+  labTitle: {
+    flexShrink: 1,
+    fontFamily: fonts.bold,
+    color: colors.textOnColor,
+    textAlign: 'center',
   },
-  bottomSection: {
-    backgroundColor: colors.primaryBis,
+  backButton: {
+    zIndex: 1001,
+  },
+  infoButton: {
+    position: 'absolute',
+    right: spacing.m - (HEADER_BUTTON_SIZE - INFO_ICON_SIZE) / 2,
+    width: HEADER_BUTTON_SIZE,
+    height: HEADER_BUTTON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1001,
+  },
+  infoIcon: {
+    width: INFO_ICON_SIZE,
+    height: INFO_ICON_SIZE,
+    tintColor: colors.textOnColor,
+  },
+  list: {
+    backgroundColor: colors.background,
+  },
+  listContent: {
+    ...contentWidth,
+    flexGrow: 1,
+    paddingHorizontal: spacing.m,
   },
   searchBar: {
-    marginHorizontal: spacing.m,
     marginBottom: spacing.m,
-    backgroundColor: colors.primary,
   },
-  topicContainer: {
-    backgroundColor: 'white',
-    marginHorizontal: spacing.m,
-    marginBottom: spacing.l,
-    padding: spacing.m,
+  topicCard: {
+    backgroundColor: colors.surface,
     borderRadius: sizes.radius,
-    elevation: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.m,
+    marginBottom: spacing.m,
   },
   topicName: {
-    fontSize: RFValue(20),
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    marginBottom: spacing.s,
+    ...typography.h3,
   },
   gaugeRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginTop: spacing.m,
+    // The open bottom of the arcs leaves empty space under the gauges.
     marginBottom: -spacing.l,
   },
-  gaugeContainer: {
-    alignItems: 'center',
-  },
   gaugeIcon: {
-    width: RFValue(48),
-    height: RFValue(48),
+    width: scale(48),
+    height: scale(48),
   },
   exploreButton: {
     marginTop: spacing.m,
-    marginHorizontal: spacing.xs,
-    borderRadius: sizes.buttonRadius,
   },
-  exploreButtonContent: {
-    flexDirection: 'row-reverse',
+  dialog: {
+    width: '88%',
+    maxWidth: layout.maxContentWidth * 0.8,
+    marginHorizontal: 0,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
   },
-  exploreButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
+  dialogTitle: {
+    ...typography.h2,
     textAlign: 'center',
   },
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 18,
-    margin: 18,
-    borderRadius: sizes.radius,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: RFValue(sizes.h1),
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
+  dialogText: {
+    ...typography.body,
     textAlign: 'center',
   },
-  modalDescription: {
-    fontSize: RFValue(16),
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-  },
-  modalButton: {
-    marginTop: spacing.m,
-    alignSelf: 'stretch',
+  dialogActions: {
+    justifyContent: 'center',
+    paddingBottom: spacing.m,
   },
 });
 

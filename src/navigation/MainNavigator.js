@@ -14,7 +14,8 @@ import ForgotPasswordScreen from '@features/auth/screens/ForgotPasswordScreen';
 import ProfileScreen from '@features/profile/screens/ProfileScreen';
 import EditProfileScreen from '@features/profile/screens/EditProfileScreen';
 import PreferencesScreen from '@features/profile/screens/PreferencesScreen';
-import Objective from '@features/profile/components/Objective';
+import LearningPathScreen from '@features/learning/screens/LearningPathScreen';
+import LearningPathPickerScreen from '@features/learning/screens/LearningPathPickerScreen';
 import Ready from '@features/track/screens/Ready';
 import Evaluation from '@features/track/screens/Evaluation';
 import Finish from '@features/track/screens/Finish';
@@ -87,6 +88,8 @@ const MainNavigator = () => {
         <Stack.Screen name="SignupScreen" component={SignupScreen} />
         <Stack.Screen name="ForgotPasswordScreen" component={ForgotPasswordScreen} />
         <Stack.Screen name="PreferencesScreen" component={PreferencesScreen} />
+        {/* `mode: 'onboarding'` after PreferencesScreen (no way back), `'change'` from LearningPath. */}
+        <Stack.Screen name="LearningPathPicker" component={LearningPathPickerScreen} />
         <Stack.Screen name="WelcomeScreen" component={WelcomeScreen} />
 
         {/* Main tabs */}
@@ -102,8 +105,9 @@ const MainNavigator = () => {
 
         {/* Track */}
         <Stack.Screen name="Ready" component={Ready} />
-        <Stack.Screen name="Evaluation" component={Evaluation} options={withBanner} listeners={redirectBackToTab('Track')} />
+        <Stack.Screen name="Evaluation" component={Evaluation} listeners={redirectBackToTab('Track')} />
         <Stack.Screen name="Finish" component={Finish} listeners={redirectBackToTab('Track')} />
+        <Stack.Screen name="LearningPath" component={LearningPathScreen} />
 
         {/* Lab */}
         <Stack.Screen name="VirtualLab" component={VirtualLab} listeners={redirectBackToTab('Lab')} />
@@ -122,7 +126,6 @@ const MainNavigator = () => {
         {/* Profile */}
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
-        <Stack.Screen name="Objective" component={Objective} />
       </Stack.Navigator>
     </NavigationContainer>
   );

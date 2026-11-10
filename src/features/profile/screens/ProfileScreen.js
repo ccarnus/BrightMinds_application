@@ -4,25 +4,28 @@ import {
   Text,
   Image,
   StyleSheet,
-  Dimensions,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
+  useWindowDimensions,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import PieChart from 'react-native-pie-chart';
-import { Modal, Portal, Button } from 'react-native-paper';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, fonts, sizes, spacing, typography } from '@shared/config/theme';
 import departments from '@shared/data/departments';
-import { api, getErrorMessage } from '@shared/api/client';
+import { api } from '@shared/api/client';
 import { getUser, clearUser, isGuestUser } from '@shared/utils/UserStorage';
 import { resetToAuthChoice } from '@navigation/navigationHelpers';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
-
-const { width } = Dimensions.get('window');
+import ErrorState from '@shared/components/ErrorState';
+import ErrorSnackbar from '@shared/components/ErrorSnackbar';
+import AppButton from '@shared/components/AppButton';
+import ConfirmDialog from '@shared/components/ConfirmDialog';
+import BackButton from '@shared/components/BackButton';
+import LearningPathCard from '@features/learning/components/LearningPathCard';
+import { fetchLearningProfile } from '@features/learning/utils/learningApi';
 
 const departmentMapping = departments.reduce((map, dept) => {
   map[dept.name] = dept.display;
@@ -32,18 +35,22 @@ const departmentMapping = departments.reduce((map, dept) => {
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   const [userData, setUserData] = useState(null);
   const [userPreferences, setUserPreferences] = useState([]);
-  const [trackingData, setTrackingData] = useState({ objective: '' });
+  const [learning, setLearning] = useState(null);
   const [isGuest, setIsGuest] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshError, setRefreshError] = useState(null);
   const [visible, setVisible] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const hasLoadedRef = useRef(false);
 
-  const loadProfile = useCallback(async ({ isActive = () => true } = {}) => {
+  // `manual` marks a pull-to-refresh: its failure is reported, while a failed background
+  // refresh (on focus) silently keeps the data already on screen.
+  const loadProfile = useCallback(async ({ isActive = () => true, manual = false } = {}) => {
     try {
       const { userId } = await getUser();
       if (!isActive()) return;
@@ -52,23 +59,22 @@ const ProfileScreen = () => {
         return;
       }
       setIsGuest(false);
-      const [userResponse, preferencesResponse, trackingResponse] = await Promise.all([
+      const [userResponse, preferencesResponse, learningProfile] = await Promise.all([
         api.get(`/user/${userId}`),
         api.get(`/user/${userId}/preferences`),
-        api.get(`/user/${userId}/tracking`),
+        fetchLearningProfile(userId),
       ]);
       if (!isActive()) return;
       setUserData(userResponse.data);
       setUserPreferences(preferencesResponse.data?.preferences || []);
-      setTrackingData(trackingResponse.data?.tracking || { objective: '' });
+      setLearning(learningProfile);
       setError(null);
       hasLoadedRef.current = true;
     } catch (loadError) {
       console.error('Error fetching profile data:', loadError);
-      // A failed background refresh keeps the data already on screen.
-      if (isActive() && !hasLoadedRef.current) {
-        setError(getErrorMessage(loadError, "We couldn't load your profile."));
-      }
+      if (!isActive()) return;
+      if (!hasLoadedRef.current) setError(loadError);
+      else if (manual) setRefreshError(loadError);
     } finally {
       if (isActive()) {
         setIsLoading(false);
@@ -77,7 +83,7 @@ const ProfileScreen = () => {
     }
   }, []);
 
-  // Refetch on focus so edits made in EditProfile / Objective are reflected.
+  // Refetch on focus so edits made in EditProfile / the learning path screens are reflected.
   useFocusEffect(
     useCallback(() => {
       let active = true;
@@ -96,7 +102,8 @@ const ProfileScreen = () => {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadProfile();
+    setRefreshError(null);
+    loadProfile({ manual: true });
   };
 
   const showModal = () => setVisible(true);
@@ -120,26 +127,16 @@ const ProfileScreen = () => {
     (_, index) => `hsl(${(index * 360) / chartedPreferences.length}, 70%, 50%)`
   );
 
-  const renderBackButton = (iconColor) =>
-    navigation.canGoBack() ? (
-      <TouchableOpacity
-        style={[styles.backButton, { top: insets.top + spacing.s }]}
-        onPress={() => navigation.goBack()}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        accessibilityRole="button"
-        accessibilityLabel="Go back"
-      >
-        <Ionicons name="chevron-back" size={28} color={iconColor} />
-      </TouchableOpacity>
-    ) : null;
+  const renderBackButton = (tone) =>
+    navigation.canGoBack() ? <BackButton tone={tone} onPress={() => navigation.goBack()} /> : null;
 
   if (isLoading) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (isGuest || error) {
     return (
-      <View style={[styles.stateContainer, { paddingTop: insets.top }]}>
+      <View style={[styles.stateContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         {isGuest ? (
           <StateMessage
             icon="person-circle-outline"
@@ -149,19 +146,22 @@ const ProfileScreen = () => {
             onAction={handleLogout}
           />
         ) : (
-          <StateMessage
-            icon="cloud-offline-outline"
-            title="Something went wrong"
-            message={error}
-            actionLabel="Try again"
-            onAction={retry}
+          <ErrorState
+            error={error}
+            onRetry={retry}
+            fallbackMessage="We couldn't load your profile."
+            secondaryActionLabel="Go back"
+            onSecondaryAction={navigation.canGoBack() ? () => navigation.goBack() : undefined}
           />
         )}
-        {renderBackButton(colors.secondary)}
-
+        {renderBackButton('default')}
       </View>
     );
   }
+
+  const pictureSize = Math.min(width * 0.36, 180);
+  const pictureStyle = { width: pictureSize, height: pictureSize, borderRadius: pictureSize / 2 };
+  const pieSize = Math.min(width * 0.6, 250);
 
   return (
     <View style={styles.screen}>
@@ -173,15 +173,20 @@ const ProfileScreen = () => {
         {/* UPPER SECTION */}
         {userData && (
           <View style={[styles.upperSection, { paddingTop: spacing.xl + insets.top }]}>
-            <View>
-              {userData.profilePictureUrl ? (
-                <Image source={{ uri: userData.profilePictureUrl }} style={styles.profileImage} />
-              ) : (
-                <View style={[styles.profileImage, styles.profilePlaceholder]}>
-                  <Ionicons name="person" size={width * 0.2} color={colors.lightGray} />
-                </View>
-              )}
-              <Text style={styles.overlayUsername}>{userData.username}</Text>
+            {userData.profilePictureUrl ? (
+              <Image
+                source={{ uri: userData.profilePictureUrl }}
+                style={[styles.profileImage, pictureStyle]}
+              />
+            ) : (
+              <View style={[styles.profileImage, styles.profilePlaceholder, pictureStyle]}>
+                <Ionicons name="person" size={pictureSize * 0.5} color={colors.textMuted} />
+              </View>
+            )}
+            <View style={styles.usernameChip}>
+              <Text style={styles.username} numberOfLines={1}>
+                {userData.username}
+              </Text>
             </View>
           </View>
         )}
@@ -189,7 +194,7 @@ const ProfileScreen = () => {
         {/* LOWER SECTION */}
         <View style={styles.lowerSection}>
           {userData && !userData.isVerified && (
-            <View style={[styles.lowerSectionContainer, styles.verificationContainer]}>
+            <View style={styles.verificationContainer}>
               <Image
                 source={require('@assets/Profile_icons/warning_icon.png')}
                 style={styles.warningIcon}
@@ -198,34 +203,26 @@ const ProfileScreen = () => {
             </View>
           )}
 
-          {/* Learning Path */}
-          <View style={[styles.lowerSectionContainer, styles.shadow]}>
-            <View style={styles.objectiveContainer}>
-              <Text style={styles.preferencesTitle}>My Learning Path</Text>
-              <TouchableOpacity
-                style={styles.buttonObjectiveContainer}
-                onPress={() => navigation.navigate('Objective', { objective: trackingData.objective })}
-                accessibilityRole="button"
-                accessibilityHint="Change your learning path"
-              >
-                <Text style={styles.objectiveText}>
-                  {trackingData.objective || 'Choose a learning path'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          {/* Learning Path (hidden on servers without learning paths) */}
+          {!!learning && (
+            <LearningPathCard
+              learning={learning}
+              onPress={() => navigation.navigate('LearningPath')}
+              onChoose={() => navigation.navigate('LearningPathPicker', { mode: 'change' })}
+            />
+          )}
 
           {/* Preferences Pie Chart */}
-          <View style={styles.lowerSectionContainer}>
-            <Text style={styles.preferencesTitle}>Preferences</Text>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Preferences</Text>
             {chartedPreferences.length > 0 ? (
               <View style={styles.pieContainer}>
                 <PieChart
-                  widthAndHeight={250}
+                  widthAndHeight={pieSize}
                   series={pieData}
                   sliceColor={pieColors}
                   coverRadius={0.6}
-                  coverFill={colors.primary}
+                  coverFill={colors.surface}
                 />
                 <View style={styles.legendContainer}>
                   {chartedPreferences.map((pref, index) => (
@@ -245,260 +242,166 @@ const ProfileScreen = () => {
 
           {/* Buttons (Edit / Logout) */}
           <View style={styles.buttonRow}>
-            <Button
-              mode="contained"
+            <AppButton
+              fullWidth
               onPress={() => navigation.navigate('EditProfileScreen')}
-              buttonColor={colors.darkGreen}
               icon={require('@assets/Profile_icons/edit_profile_icon.png')}
-              labelStyle={styles.buttonLabel}
-              style={[styles.fullWidthButton, styles.buttonMargin]}
             >
               Edit
-            </Button>
+            </AppButton>
 
-            <Button
-              mode="contained"
+            <AppButton
+              variant="secondary"
+              fullWidth
               onPress={showModal}
-              buttonColor={colors.darkGreen}
               icon={require('@assets/Profile_icons/logout_icon.png')}
-              labelStyle={styles.buttonLabel}
-              style={[styles.fullWidthButton, styles.buttonMargin]}
             >
               Log out
-            </Button>
+            </AppButton>
           </View>
         </View>
       </ScrollView>
 
-      {renderBackButton(colors.primary)}
+      {renderBackButton('light')}
 
-      {/* Modal for logging out */}
-      <Portal>
-        <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={styles.modalContainer}>
-          <Text style={styles.modalText}>Are you sure you want to log out?</Text>
-          <View style={styles.modalButtons}>
-            <Button
-              mode="outlined"
-              onPress={handleLogout}
-              loading={isLoggingOut}
-              disabled={isLoggingOut}
-              style={styles.modalButton}
-              textColor={colors.secondary}
-            >
-              Yes
-            </Button>
-            <Button
-              mode="contained"
-              onPress={hideModal}
-              disabled={isLoggingOut}
-              style={styles.modalButton}
-              buttonColor={colors.secondary}
-            >
-              No
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <ErrorSnackbar
+        error={refreshError}
+        onDismiss={() => setRefreshError(null)}
+        onRetry={onRefresh}
+        wrapperStyle={{ paddingBottom: insets.bottom }}
+      />
+
+      <ConfirmDialog
+        visible={visible}
+        title="Log out?"
+        message="Are you sure you want to log out?"
+        confirmLabel="Log out"
+        destructive
+        loading={isLoggingOut}
+        onConfirm={handleLogout}
+        onDismiss={hideModal}
+      />
     </View>
   );
 };
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   scrollContentContainer: {
     flexGrow: 1,
   },
   screen: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   stateContainer: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
-  backButton: {
-    position: 'absolute',
-    left: spacing.m,
+  upperSection: {
+    alignItems: 'center',
+    backgroundColor: colors.secondary,
+    paddingBottom: spacing.l,
+    paddingHorizontal: spacing.m,
+  },
+  profileImage: {
+    borderWidth: 4,
+    borderColor: colors.surface,
+    backgroundColor: colors.placeholder,
   },
   profilePlaceholder: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  upperSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    backgroundColor: colors.secondary,
-    elevation: 5,
-    paddingVertical: spacing.xl,
+  usernameChip: {
+    maxWidth: '85%',
+    marginTop: -spacing.m,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.m,
+    borderRadius: sizes.buttonRadius,
+    backgroundColor: colors.surface,
+  },
+  username: {
+    ...typography.h3,
+    textAlign: 'center',
   },
   lowerSection: {
-    backgroundColor: colors.primaryBis,
-    alignItems: 'center',
-    width: '100%',
-    marginTop: spacing.m,
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.l,
+    gap: spacing.l,
   },
-
-  lowerSectionContainer: {
-    width: '90%',
-    alignSelf: 'center',
+  card: {
     alignItems: 'center',
-    backgroundColor: colors.primary,
-    marginBottom: spacing.m,
-    marginTop: spacing.m,
-    borderRadius: sizes.radius,
-    overflow: 'visible',
-    elevation: 5,
     padding: spacing.m,
-  },
-
-  profileImage: {
-    width: width * 0.4,
-    height: width * 0.4,
-    borderRadius: width * 0.2,
-  },
-  overlayUsername: {
-    position: 'absolute',
-    bottom: -20,
-    alignSelf: 'center',
-    backgroundColor: colors.primary,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
+    backgroundColor: colors.surface,
     borderRadius: sizes.radius,
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-    elevation: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  cardTitle: {
+    ...typography.h2,
+    textAlign: 'center',
+    marginBottom: spacing.m,
   },
   pieContainer: {
     alignItems: 'center',
-    marginTop: spacing.m,
   },
   legendContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: spacing.m,
+    rowGap: spacing.s,
     marginTop: spacing.m,
-    alignItems: 'center',
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.s,
+    gap: spacing.s,
   },
   legendColor: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    marginRight: spacing.s,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   legendText: {
-    fontSize: sizes.h4,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-  },
-  preferencesTitle: {
-    fontSize: sizes.h2,
-    color: colors.secondary,
-    marginBottom: spacing.s,
-    marginTop: spacing.s,
-    fontFamily: 'MontserratBold',
-    textAlign: 'center',
+    ...typography.bodySmall,
+    color: colors.text,
   },
   noDataText: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
+    ...typography.body,
+    color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: spacing.l,
-    marginBottom: spacing.xl,
-  },
-  objectiveContainer: {
-    alignItems: 'center',
-  },
-  buttonObjectiveContainer: {
-    backgroundColor: colors.secondary,
-    borderRadius: sizes.radius,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    flexDirection: 'row',
-    marginBottom: spacing.m,
-  },
-  objectiveText: {
-    fontSize: sizes.h3,
-    color: colors.primary,
-    fontFamily: 'Montserrat',
+    marginVertical: spacing.m,
   },
   verificationContainer: {
-    borderColor: colors.red,
-    borderWidth: 1,
-    borderRadius: sizes.radius,
-    padding: spacing.s,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    gap: spacing.s,
+    padding: spacing.m,
+    backgroundColor: colors.surface,
+    borderRadius: sizes.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.danger,
   },
   warningIcon: {
-    width: 30,
-    height: 30,
+    width: 24,
+    height: 24,
+    resizeMode: 'contain',
   },
   verificationText: {
-    fontSize: sizes.h3,
-    color: colors.red,
-    fontFamily: 'Montserrat',
-    marginLeft: spacing.s,
+    ...typography.body,
+    fontFamily: fonts.bold,
+    color: colors.danger,
     textAlign: 'center',
   },
-
   buttonRow: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  fullWidthButton: {
-    width: '90%',
-    alignSelf: 'center',
-    borderRadius: sizes.buttonRadius,
-  },
-  buttonLabel: {
-    fontSize: sizes.h2,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
-  },
-  buttonMargin: {
-    marginVertical: spacing.s,
-  },
-
-  /* Modal styles */
-  modalContainer: {
-    backgroundColor: colors.primary,
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
-    alignItems: 'center',
-  },
-  modalText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  modalButton: {
-    margin: spacing.s,
-  },
-
-  shadow: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 5,
+    gap: spacing.s,
   },
 });
 

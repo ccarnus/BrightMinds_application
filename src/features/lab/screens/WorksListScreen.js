@@ -1,13 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, FlatList } from 'react-native';
-import { Button, IconButton, Dialog, Portal, Card } from 'react-native-paper';
+import { IconButton, Dialog, Portal } from 'react-native-paper';
 import { Slider } from '@miblanchard/react-native-slider';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { openAlex, getErrorMessage } from '@shared/api/client';
+import { colors, contentWidth, fonts, layout, sizes, spacing, typography } from '@shared/config/theme';
+import { openAlex, OPTIONAL_REQUEST_TIMEOUT_MS } from '@shared/api/client';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import AppButton from '@shared/components/AppButton';
+import BackButton, { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
 
 const PER_PAGE = 50;
 // OpenAlex basic paging only serves the first 10,000 results.
@@ -48,50 +51,49 @@ const describeFilters = (filters) => {
   return labels.length > 0 ? labels.join('\n') : 'No filters applied';
 };
 
+// Selected options are blue (accent); unselected ones are light outlined pills.
+const OptionButton = ({ selected, style, ...props }) => (
+  <AppButton
+    variant={selected ? 'accent' : 'secondary'}
+    size="medium"
+    style={[style, !selected && styles.optionUnselected]}
+    {...props}
+  />
+);
+
 const ToggleRow = ({ label, value, onToggle }) => (
   <View style={styles.filterRow}>
     <Text style={styles.filterLabel}>{label}</Text>
-    <Button
-      mode={value ? 'contained' : 'outlined'}
-      onPress={onToggle}
-      style={styles.toggleButton}
-      buttonColor={value ? colors.secondary : undefined}
-      textColor={value ? colors.primary : colors.secondary}
-    >
+    <OptionButton selected={value} onPress={onToggle} style={styles.toggleButton}>
       {value ? 'Yes' : 'No'}
-    </Button>
+    </OptionButton>
   </View>
 );
 
 const WorkCard = React.memo(({ work, onExplore }) => {
   const firstAuthor = work.authorships?.[0]?.author?.display_name;
   return (
-    <Card style={styles.workCard}>
-      <Card.Content>
-        <Text style={styles.cardTitle}>{work.display_name}</Text>
-        {!!firstAuthor && <Text style={styles.cardSubtitle}>{firstAuthor}</Text>}
-        <Text style={styles.workInfo}>Year: {work.publication_year}</Text>
-        <Text style={styles.workInfo}>
-          Cited: {Number(work.cited_by_count || 0).toLocaleString()}
-        </Text>
-        <Text style={styles.workInfo}>
-          Status: {work.open_access ? work.open_access.oa_status : 'closed'}
-        </Text>
-      </Card.Content>
-      <Card.Actions>
-        <Button
-          mode="contained"
-          onPress={() => onExplore(work.id)}
-          buttonColor={colors.lightOrange}
-          icon={nextIcon}
-          contentStyle={styles.exploreButtonContent}
-          labelStyle={styles.exploreButtonLabel}
-          style={styles.exploreButton}
-        >
-          Explore
-        </Button>
-      </Card.Actions>
-    </Card>
+    <View style={styles.workCard}>
+      <Text style={styles.cardTitle}>{work.display_name}</Text>
+      {!!firstAuthor && <Text style={styles.cardSubtitle}>{firstAuthor}</Text>}
+      <Text style={styles.workInfo}>Year: {work.publication_year}</Text>
+      <Text style={styles.workInfo}>
+        Cited: {Number(work.cited_by_count || 0).toLocaleString()}
+      </Text>
+      <Text style={styles.workInfo}>
+        Status: {work.open_access ? work.open_access.oa_status : 'closed'}
+      </Text>
+      <AppButton
+        variant="primary"
+        size="medium"
+        iconPosition="right"
+        onPress={() => onExplore(work.id)}
+        icon={nextIcon}
+        style={styles.exploreButton}
+      >
+        Explore
+      </AppButton>
+    </View>
   );
 });
 
@@ -114,8 +116,9 @@ const WorksListScreen = ({ route }) => {
 
   useEffect(() => {
     let active = true;
+    // The topic name is only a header label; the list falls back to "Works" without it.
     openAlex
-      .get(`/topics/${encodeURIComponent(topicId)}`)
+      .get(`/topics/${encodeURIComponent(topicId)}`, { timeout: OPTIONAL_REQUEST_TIMEOUT_MS })
       .then(({ data }) => {
         if (active) setTopicName(data?.display_name || '');
       })
@@ -142,7 +145,7 @@ const WorksListScreen = ({ route }) => {
       })
       .catch((err) => {
         console.error('Failed to fetch works:', err);
-        if (active) setError(getErrorMessage(err, 'Unable to load research works.'));
+        if (active) setError(err);
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -175,18 +178,18 @@ const WorksListScreen = ({ route }) => {
     [handleExplore]
   );
 
+  const retryWorks = useCallback(() => setReloadKey(key => key + 1), []);
+
   const renderBody = () => {
     if (loading) {
-      return <Loader size={150} backgroundColor={colors.primaryBis} />;
+      return <Loader backgroundColor={colors.background} />;
     }
     if (error) {
       return (
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Couldn't load works"
-          message={error}
-          actionLabel="Try again"
-          onAction={() => setReloadKey(key => key + 1)}
+        <ErrorState
+          error={error}
+          onRetry={retryWorks}
+          fallbackMessage="We couldn't load the research works."
         />
       );
     }
@@ -195,7 +198,7 @@ const WorksListScreen = ({ route }) => {
         data={works}
         keyExtractor={(item) => item.id}
         renderItem={renderWork}
-        contentContainerStyle={styles.scrollContainer}
+        contentContainerStyle={styles.listContent}
         initialNumToRender={6}
         ListEmptyComponent={
           <StateMessage
@@ -212,7 +215,7 @@ const WorksListScreen = ({ route }) => {
 
   return (
     <View style={styles.container}>
-      <View style={[styles.TopBanner, { paddingTop: insets.top }]}>
+      <View style={[styles.topBanner, { paddingTop: insets.top }]}>
         <View style={styles.headerContainer}>
           <Text style={styles.headerText} numberOfLines={2} ellipsizeMode="tail">
             {topicName || 'Works'}
@@ -224,7 +227,7 @@ const WorksListScreen = ({ route }) => {
               icon="filter"
               size={24}
               onPress={openFilters}
-              iconColor={colors.lightOrange}
+              iconColor={colors.accent}
               style={styles.filterIcon}
               accessibilityLabel="Edit filters"
             />
@@ -234,10 +237,11 @@ const WorksListScreen = ({ route }) => {
             Total: {Number(totalCount).toLocaleString()}
           </Text>
         </View>
+        <BackButton onPress={() => navigation.goBack()} />
       </View>
 
       <Portal>
-        <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)}>
+        <Dialog visible={filterVisible} onDismiss={() => setFilterVisible(false)} style={styles.dialog}>
           <Dialog.Title style={styles.dialogTitle}>Filter</Dialog.Title>
           <Dialog.Content>
             <ToggleRow
@@ -256,6 +260,8 @@ const WorksListScreen = ({ route }) => {
               minimumValue={0}
               maximumValue={50}
               step={1}
+              minimumTrackTintColor={colors.accent}
+              maximumTrackTintColor={colors.border}
               trackStyle={styles.sliderTrack}
               thumbStyle={styles.sliderThumb}
             />
@@ -277,52 +283,58 @@ const WorksListScreen = ({ route }) => {
               horizontal
               showsHorizontalScrollIndicator={false}
               style={styles.yearScroll}
+              contentContainerStyle={styles.yearScrollContent}
               onContentSizeChange={() => yearScrollRef.current?.scrollToEnd({ animated: false })}
             >
               {YEARS.map(year => (
-                <Button
+                <OptionButton
                   key={year}
-                  mode={draftFilters.year === year ? 'contained' : 'outlined'}
+                  selected={draftFilters.year === year}
                   onPress={() => updateDraft({ year })}
-                  style={styles.yearButton}
-                  buttonColor={draftFilters.year === year ? colors.secondary : colors.primary}
-                  textColor={draftFilters.year === year ? colors.primary : colors.secondary}
                 >
                   {year}
-                </Button>
+                </OptionButton>
               ))}
             </ScrollView>
           </Dialog.Content>
-          <Dialog.Actions>
-            <Button onPress={() => setDraftFilters(DEFAULT_FILTERS)} textColor={colors.red}>Clear</Button>
-            <Button onPress={() => setFilterVisible(false)} textColor={colors.secondary}>Cancel</Button>
-            <Button onPress={handleApplyFilters} textColor={colors.darkGreen}>Apply</Button>
+          <Dialog.Actions style={styles.dialogActions}>
+            <AppButton variant="link" size="medium" onPress={() => setDraftFilters(DEFAULT_FILTERS)}>
+              Clear
+            </AppButton>
+            <AppButton variant="link" size="medium" onPress={() => setFilterVisible(false)}>
+              Cancel
+            </AppButton>
+            <AppButton variant="primary" size="medium" onPress={handleApplyFilters}>
+              Apply
+            </AppButton>
           </Dialog.Actions>
         </Dialog>
       </Portal>
 
       <View style={styles.body}>{renderBody()}</View>
 
-      <View style={[styles.paginationContainer, { paddingBottom: spacing.s + insets.bottom }]}>
-        <IconButton
-          onPress={() => setCurrentPage(page => Math.max(1, page - 1))}
-          icon="page-previous-outline"
-          disabled={loading || currentPage === 1}
-          size={32}
-          iconColor={colors.secondary}
-          accessibilityLabel="Previous page"
-        />
-        <Text style={styles.paginationText}>
-          Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
-        </Text>
-        <IconButton
-          onPress={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
-          disabled={loading || !totalPages || currentPage >= totalPages}
-          icon="page-next-outline"
-          size={32}
-          iconColor={colors.secondary}
-          accessibilityLabel="Next page"
-        />
+      <View style={[styles.paginationBar, { paddingBottom: insets.bottom }]}>
+        <View style={styles.paginationContent}>
+          <IconButton
+            onPress={() => setCurrentPage(page => Math.max(1, page - 1))}
+            icon="page-previous-outline"
+            disabled={loading || currentPage === 1}
+            size={32}
+            iconColor={colors.text}
+            accessibilityLabel="Previous page"
+          />
+          <Text style={styles.paginationText}>
+            Page {currentPage.toLocaleString()}{totalPages ? ` / ${totalPages.toLocaleString()}` : ''}
+          </Text>
+          <IconButton
+            onPress={() => setCurrentPage(page => Math.min(totalPages, page + 1))}
+            disabled={loading || !totalPages || currentPage >= totalPages}
+            icon="page-next-outline"
+            size={32}
+            iconColor={colors.text}
+            accessibilityLabel="Next page"
+          />
+        </View>
       </View>
     </View>
   );
@@ -331,36 +343,40 @@ const WorksListScreen = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   body: {
     flex: 1,
   },
-  TopBanner: {
-    elevation: 5,
-    backgroundColor: colors.primary,
+  topBanner: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   headerContainer: {
-    padding: spacing.m,
-    alignItems: 'center',
+    ...contentWidth,
+    minHeight: BACK_BUTTON_SIZE + spacing.s,
     justifyContent: 'center',
+    // Leaves room for the back button on both sides so the centered title never runs under it.
+    paddingHorizontal: spacing.s + BACK_BUTTON_SIZE + spacing.s,
+    paddingTop: spacing.s,
+    paddingBottom: spacing.m,
   },
   headerText: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
+    ...typography.h2,
     textAlign: 'center',
-    marginTop: spacing.m,
   },
   filterSection: {
+    ...contentWidth,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    borderTopWidth: 1,
-    borderTopColor: colors.secondary,
+    gap: spacing.s,
+    paddingRight: spacing.m,
+    paddingLeft: spacing.s,
+    paddingVertical: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
   filterLeft: {
     flexDirection: 'row',
@@ -368,113 +384,118 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   filterIcon: {
-    marginRight: spacing.s,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    marginRight: spacing.xs,
   },
   filterText: {
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.caption,
+    flexShrink: 1,
   },
   totalCountText: {
-    fontSize: sizes.h4,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
+    ...typography.caption,
+    fontFamily: fonts.bold,
+    color: colors.text,
     textAlign: 'right',
   },
-  scrollContainer: {
+  listContent: {
+    ...contentWidth,
     flexGrow: 1,
-    padding: spacing.m,
-    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.m,
+    paddingBottom: spacing.l,
   },
   workCard: {
-    marginBottom: spacing.l,
-    elevation: 3,
+    backgroundColor: colors.surface,
     borderRadius: sizes.radius,
-    backgroundColor: colors.lightGreen,
-  },
-  cardTitle: {
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
-    fontSize: sizes.h3,
-    flexWrap: 'wrap',
-  },
-  cardSubtitle: {
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
-    flexWrap: 'wrap',
-    fontStyle: 'italic',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.m,
     marginBottom: spacing.m,
   },
+  cardTitle: {
+    ...typography.h3,
+  },
+  cardSubtitle: {
+    ...typography.bodySmall,
+    fontStyle: 'italic',
+    marginTop: spacing.xs,
+    marginBottom: spacing.s,
+  },
   workInfo: {
-    fontFamily: 'Montserrat',
-    color: colors.primary,
+    ...typography.bodySmall,
     marginTop: spacing.xs,
   },
   exploreButton: {
-    borderRadius: sizes.buttonRadius,
+    alignSelf: 'flex-end',
+    marginTop: spacing.m,
   },
-  exploreButtonContent: {
-    flexDirection: 'row-reverse',
+  dialog: {
+    width: '88%',
+    maxWidth: layout.maxContentWidth * 0.8,
+    marginHorizontal: 0,
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
   },
-  exploreButtonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
+  dialogTitle: {
+    ...typography.h2,
     textAlign: 'center',
   },
+  dialogActions: {
+    paddingBottom: spacing.m,
+  },
   filterLabel: {
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    marginBottom: spacing.s,
-    color: colors.secondary,
+    ...typography.bodySmall,
+    color: colors.text,
+    flexShrink: 1,
   },
   filterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.s,
     marginVertical: spacing.s,
   },
   toggleButton: {
-    width: 80,
+    minWidth: 88,
+  },
+  optionUnselected: {
+    borderColor: colors.border,
   },
   sliderTrack: {
     height: 4,
-    backgroundColor: colors.lightGray,
+    borderRadius: 2,
   },
   sliderThumb: {
     height: 20,
     width: 20,
-    backgroundColor: colors.secondary,
     borderRadius: 10,
-  },
-  yearButton: {
-    paddingHorizontal: spacing.s,
-    minWidth: 60,
-    marginRight: spacing.s,
-    borderRadius: sizes.buttonRadius,
+    backgroundColor: colors.accent,
   },
   yearScroll: {
     marginVertical: spacing.s,
   },
-  paginationContainer: {
+  yearScrollContent: {
+    gap: spacing.s,
+  },
+  paginationBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  paginationContent: {
+    ...contentWidth,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.s,
-    elevation: 5,
-    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.xs,
   },
   paginationText: {
-    fontSize: sizes.h4,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
+    ...typography.bodySmall,
+    fontFamily: fonts.bold,
+    color: colors.text,
     textAlign: 'center',
-  },
-  dialogTitle: {
-    fontSize: sizes.h2,
-    fontFamily: 'MontserratBold',
-    color: colors.secondary,
-    textAlign: 'center',
-    marginBottom: spacing.m,
   },
 });
 

@@ -42,27 +42,37 @@ The native splash screen stays visible until `MainNavigator` has resolved the in
 src/
   features/         # Feature modules, each with screens/ and components/
     cast/           # Video/article feed, discovery, search (OpenAlex)
-    track/          # Learning progress, quizzes (Ready → Evaluation → Finish), user publications lists
+    track/          # Learning progress, gamified quizzes (Ready → Evaluation → Finish) with XP/levels/streaks/
+                    # badges, user publications lists
     lab/            # Virtual laboratories by department, topics, works (OpenAlex)
     library/        # User publications hub (Professor/Researcher/PhD Student only)
     auth/           # Login, signup, forgot password
     onboarding/     # First-launch flow, auth choice, welcome animation
-    profile/        # Profile, edit profile, preferences, learning objective
+    profile/        # Profile, edit profile, field preferences
+    learning/       # Learning paths: picker (onboarding & change), path screen, milestone/goal components
     post-content/   # Content creation (video casts, articles)
   shared/
-    api/client.js   # axios instances (api, openAlex), getErrorMessage, cached getUniversityLogo
-    components/     # Banner (header), Icon, Loader (Lottie), StateMessage (error/empty), CastVideoPlayer
-    config/         # APIConfig (API_BASE_URL, OPENALEX_BASE_URL), theme (colors, sizes, spacing, shadow)
-    utils/          # UserStorage (session in AsyncStorage), media (SRT parsing, time formatting)
+    api/client.js   # axios instances (api, openAlex) with GET retry, error classification (getErrorType,
+                    # getErrorMessage, notFoundError), cached getUniversityLogo
+    components/     # Banner (header), AppButton, BackButton, ConfirmDialog, SearchField, Loader (Lottie),
+                    # StateMessage (empty), ErrorState (errors), ErrorSnackbar (failed refresh), OfflineBanner,
+                    # ErrorBoundary, CastVideoPlayer, ConfettiBurst
+    config/         # APIConfig (API_BASE_URL, OPENALEX_BASE_URL), theme (design tokens: colors, typography,
+                    # sizes, spacing, layout, shadow, scale)
+    utils/          # UserStorage (session in AsyncStorage), media (SRT parsing, time formatting),
+                    # connectivity (expo-network offline state, useIsOffline, useOnReconnect), haptics
     data/           # Static data: categories, departments, visibility
   navigation/
     MainNavigator.js     # Root stack navigator (all screen routes)
     BottomNavigation.js  # Tabs: Cast, Track, Lab (+ Library for academic roles)
+    FloatingTabBar.js    # Custom floating tab bar + useTabBarSpace()
     navigationHelpers.js # resetToAuthChoice / resetToHome (root-stack resets)
 ```
 
 Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `variant`),
-`track/components/PublicationsList.js` (user casts/articles lists), `lab/data/departmentImages.js`,
+`track/components/PublicationsList.js` (user casts/articles lists), `track/components/` reward widgets
+(`LevelBadge`, `XpBar`, `StreakFlame`, `BadgeMedal`, `RewardsCard`) and `track/components/quiz/` (quiz UI),
+`track/utils/` (`rewards.js` rules mirror, `quizApi.js`, `useCountUp`), `lab/data/departmentImages.js`,
 `post-content/components/PostFormFields.js` (topic/visibility pickers, upload overlay, guest check),
 `auth/utils/validation.js` (`isValidEmail`).
 
@@ -76,17 +86,33 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   setting state after unmount (an `active` flag cleared in the effect cleanup).
 - **API calls** — Use the shared axios instances from `@shared/api/client`; never build URLs from `API_BASE_URL`
   or hardcode hosts. `api.get(`/user/${userId}`)` for the BrightMinds backend, `openAlex.get('/works', { params })` for
-  OpenAlex. Both have a 15 s timeout; pass a larger `timeout` for uploads. Show errors with `getErrorMessage(error)`.
-  Only HTTPS endpoints (cleartext HTTP is blocked in store builds).
+  OpenAlex. Both have a 15 s timeout; pass a larger `timeout` for uploads, and
+  `{ timeout: OPTIONAL_REQUEST_TIMEOUT_MS, retries: 0 }` for optional data (logos, enrichment) that must not hold a
+  screen back. GETs are retried once automatically after network errors and 502/503/504 (never POST/PUT/DELETE or
+  timeouts); `{ retries: 0 }` opts out. Only HTTPS endpoints (cleartext HTTP is blocked in store builds).
+- **Error messages** — `getErrorMessage(error, fallback)` for alerts: connectivity/5xx failures get a friendly generic
+  message, 4xx show the API's `message`/`error`, anything else the `fallback`. `getErrorType(error)` classifies
+  failures (`offline`, `network`, `timeout`, `server`, `notFound`, `client`, `canceled`, `unknown`). Keep the raw
+  error object in state (not a message string) so the UI can classify it. Mutation alerts use a
+  "Couldn't …" title plus `getErrorMessage`. `isRouteNotFound(error)` detects an endpoint the server doesn't have yet
+  (older backend) so callers can fall back.
 - **University logos** — `getUniversityLogo(name)` (cached & de-duplicated); don't fetch `/university/by/name` per item.
-- **Loading / error / empty states** — `<Loader />` for loading, `<StateMessage ... onAction={retry} />` for errors and
-  empty lists. A screen must never spin forever or stay blank when a request fails.
+- **Loading / error / empty states** — `<Loader />` for loading (it explains slow loads after a few seconds).
+  `<ErrorState error={error} onRetry={retry} fallbackMessage="We couldn't load …" />` for every failed load: it picks
+  the title/message from the error type, shows the shared illustration and reloads automatically when the device
+  comes back online. Stack screens add `secondaryActionLabel="Go back"` + `onSecondaryAction`; use `notFoundError()`
+  / `notFoundTitle` for missing content, and `compact` inside modals or panels. `<StateMessage icon=… />` is for
+  empty lists. Content already on screen is never replaced by an error: a failed pull-to-refresh shows
+  `<ErrorSnackbar error={refreshError} onRetry={onRefresh} />`, a failed background (focus) refresh stays silent.
+  A screen must never spin forever or stay blank when a request fails; optional data (logos) must not delay it.
+- **Connectivity** — `@shared/utils/connectivity` wraps `expo-network`: `useIsOffline()`, `useOnReconnect(cb)`,
+  `isDeviceOffline()`. The global `OfflineBanner` and `ErrorBoundary` (render-crash recovery) are mounted in `App.js`.
 - **Session / roles** — Use `@shared/utils/UserStorage` (`getUser`, `setUser`, `clearUser`, `setGuestUser`,
   `isGuestUser`, `canAccessLibrary`, onboarding helpers) instead of raw AsyncStorage keys.
 - **Guest mode** — `GUEST_USER_ID`; check with `isGuestUser(userId)`. Guests must not call endpoints that write user data.
 - **Role-based access** — Library tab only for `Professor`, `Researcher`, `PhD Student` (`canAccessLibrary`).
 - **Navigation** — Screens receive `navigation` and `route` props. All stack screens have `headerShown: false` except
-  `BottomNav` and `Evaluation`, which use the shared `Banner` header. React Navigation 7: `navigate` never goes
+  `BottomNav`, which uses the shared `Banner` header. React Navigation 7: `navigate` never goes
   back — it pushes a new screen if the target isn't focused. To return to a screen already in the stack (a tab,
   `LoginScreen`, `DiscoverScreen`, …) use `popTo`, e.g. `navigation.popTo('BottomNav', { screen: 'Cast' })`.
   After login / guest entry use `resetToHome(navigation)`;
@@ -94,14 +120,35 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   `Evaluation`, `Finish` and `VirtualLab` redirect back gestures to their tab (see `redirectBackToTab` in MainNavigator).
 - **Safe areas** — Screens without a header must respect insets (`useSafeAreaInsets` / `SafeAreaView` from
   `react-native-safe-area-context`, not the deprecated react-native one).
-- **react-native-paper** — The root `Provider` is in `App.js`; don't wrap screens in another Paper `Provider`
-  (it resets the theme). `Portal`/`Modal` work directly.
-- **Responsive text** — `RFValue` from `react-native-responsive-fontsize`. Fonts: `Montserrat` / `MontserratBold`.
-  Colors, sizes and spacing come from `@shared/config/theme`.
+- **react-native-paper** — The root `Provider` is in `App.js` with the brand theme (primary = accent blue, neutral
+  surfaces); don't wrap screens in another Paper `Provider` (it resets the theme). `Portal`/`Dialog` work directly.
+- **Design tokens** — Everything visual comes from `@shared/config/theme`; no literal colors, font sizes or font names
+  in screens. Text: spread `typography.title | h1 | h2 | h3 | body | bodySmall | caption` (Montserrat via `fonts`)
+  and override only color/alignment. Font sizes are `sizes.*`, already scaled to the device; use `scale(n)` for other
+  fixed dimensions designed for a 390 pt phone (`react-native-responsive-fontsize`/`RFValue` was removed). Colors use
+  semantic roles: `background`, `surface`, `text`, `textSecondary`, `textMuted`, `textOnColor`, `border`, `danger`,
+  `overlay`, `placeholder`. **Accent rule:** buttons are green (`colors.action`, `AppButton` default) for main actions;
+  blue (`colors.accent` / `accentSoft`) is only for navigation and selection: active tab, selected chips/options,
+  links, progress fills, external links. Cards: `surface` + hairline `border`, radius `sizes.radius`, padding
+  `spacing.m`; screen padding `spacing.m`, section gaps `spacing.l`.
+- **Components** — Buttons: `AppButton` (`variant` primary | accent | danger | secondary | link | light, `size`
+  large | medium, `iconPosition="right"` for forward actions); never style Paper `Button` labels by hand.
+  Confirmations: `ConfirmDialog`. Search inputs: `SearchField`. Back navigation: `BackButton` (`tone` default | light |
+  overlay; floating top-left by default, `floating={false}` inside header rows; `BACK_BUTTON_SIZE` to pad content
+  below it). Outlined Paper `TextInput`s on `surface` with
+  `outlineStyle={{ borderRadius: sizes.radius }}` and no `activeOutlineColor` override.
+- **Adaptive layout** — Forms and reading content use `...contentWidth` (centered, max `layout.maxContentWidth`) so
+  tablets don't stretch edge to edge. Size from flex, percentages and safe-area insets, not window-height offsets;
+  cap any window-derived size with `Math.min` and prefer `useWindowDimensions()` over module-level `Dimensions`.
+- **Tab bar** — `FloatingTabBar` floats above the content (icons only, Ionicons outline → filled, springy blue
+  indicator, hidden while the keyboard is open). Tab screens (Cast, Track, Lab, Library) must reserve
+  `useTabBarSpace()` at the bottom (scroll `paddingBottom`, centered states, snackbars, floating buttons). Add a new
+  tab's icons to `TAB_ICONS` in `FloatingTabBar.js`.
 - **Video playback** — Uses `expo-video` (`useVideoPlayer` + `VideoView`; times are in **seconds**, listen with
   `useEventListener` from `expo`). `expo-av` was removed from the SDK — don't reintroduce it. All cast playback goes through
   `@shared/components/CastVideoPlayer` (captions from SRT, 85% "watched" tracking, close button, share);
   `VideoScreen`, `DiscoverVideoScreen` and `VirtualLabVideoScreen` are thin wrappers defining the exit navigation.
+  Player `status === 'error'` shows an `ErrorState` overlay that reloads the stream (`replaceAsync`) and resumes.
   `expo-audio` is intentionally not installed (its config plugin enables background audio by default).
 - **Media picking** — `expo-image-picker` with `mediaTypes: ['images']`/`['videos']` and explicit
   permission requests. Permission strings are configured in the `expo-image-picker` plugin in `app.json`.
@@ -116,7 +163,30 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   `console.error/warn` remain. Don't leave noisy debug logs.
 - **Animations** — Lottie files in `assets/Loader/` and `assets/lotties/`; React Native `Animated` / Reanimated 4
   (`babel-preset-expo` adds the worklets plugin automatically — don't add it to babel.config.js).
-  Hermes v1 is the default engine.
+  Hermes v1 is the default engine. Don't combine a Reanimated `entering` animation and animated transforms on the
+  same `Animated.View`; nest two views instead.
+- **Quiz gamification** — The backend is the source of truth: `POST /user/:id/quiz` grades the answers against the
+  stored `evaluation.correct` and awards XP, levels, the daily streak and badges; `GET /user/:id/rewards` returns
+  them (send `utcOffsetMinutes` so streaks follow the local day). Go through `track/utils/quizApi.js`
+  (`submitQuiz`, `fetchRewards`): it falls back to the legacy mark-answered endpoint on an older backend.
+  `track/utils/rewards.js` mirrors the backend rules (`services/rewards.js`) for live XP and the "up to +N XP"
+  preview — keep both in sync (its tests pin the values). Pass the same `quizId` when retrying a submission so it
+  isn't rewarded twice. Rewards are a bonus: their failure must never block the quiz or the Track tab. Badge icons/tiers
+  live in `BADGE_STYLES` (MaterialCommunityIcons); titles/descriptions come from the server. Colors: `rewardColors`.
+- **Haptics** — Use `@shared/utils/haptics` (`tap`, `impact`, `success`, `error`, `celebrate`), never `expo-haptics`
+  directly: the wrappers swallow failures on unsupported devices.
+- **Learning paths** — Four paths (`follower`, `explorer`, `deep_learner`, `researcher`; Career was retired), each with
+  5 milestones whose goals read *lifetime* stats (casts watched/articles read, correct answers, fields explored, papers
+  opened; Deep Learner counts only its focus field), so switching path never loses progress. The backend owns the
+  catalog (`GET /learning/paths`), the profile/journey (`GET /user/:id/learning`), the change (`PUT /user/:id/learning`
+  with `{ path, focusField }`) and paper tracking (`POST /user/:id/learning/papers`); always send path **keys** and go
+  through `learning/utils/learningApi.js` (`fetchLearningProfile` resolves to `null` on an older server — hide the
+  path UI then). Visuals (icons, gradient colors from `pathColors`, goal labels and actions) live in
+  `learning/utils/pathStyles.js`, keyed by path key. Activity is counted server-side (content watched, quizzes); the
+  app only reports opened papers (`OpenAlexDetailsScreen`). New users pick a path after their fields
+  (`PreferencesScreen` → `LearningPathPicker` `{ mode: 'onboarding' }` → `WelcomeScreen`); later changes go through
+  `LearningPath` → `LearningPathPicker` `{ mode: 'change' }`, which returns with `popTo('LearningPath', { celebrate })`.
+  Milestones reached by a quiz come back in `newMilestones` (shown on `Finish`).
 - **Accessibility** — Icon-only buttons need `accessibilityRole="button"` and an `accessibilityLabel`.
 - **Tests** — Jest with the `jest-expo` preset; tests live in `__tests__/` next to the code. Mock AsyncStorage with
   `@react-native-async-storage/async-storage/jest/async-storage-mock`.
@@ -124,7 +194,7 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
 ## Dependencies
 
 React Native 0.88, React 19.3, Expo 58 (New Architecture only, Hermes v1), React Navigation 7 (Stack + Bottom Tabs),
-React Native Paper 5, Axios, AsyncStorage, expo-video, expo-image-picker, expo-dev-client, Lottie, Reanimated 4,
+React Native Paper 5, Axios, AsyncStorage, expo-video, expo-image-picker, expo-network, expo-haptics, expo-dev-client, Lottie, Reanimated 4,
 react-native-gesture-handler 3, react-native-svg (+ circular-progress, pie-chart). `@expo/vector-icons` must stay an
 explicit dependency (`expo` no longer pulls it in). Add Expo/RN libraries with `npx expo install` and remove unused ones —
 every native dependency increases the binary size of the store builds. React Navigation is not managed by

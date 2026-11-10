@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Dimensions, Linking, Alert, TouchableOpacity } from 'react-native';
-import { Button } from 'react-native-paper';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, Image, ScrollView, StyleSheet, Linking, Alert, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { openAlex, getErrorMessage } from '@shared/api/client';
+import { colors, contentWidth, fonts, spacing, typography } from '@shared/config/theme';
+import { openAlex, notFoundError } from '@shared/api/client';
 import departments from '@shared/data/departments';
+import { getUser, isGuestUser } from '@shared/utils/UserStorage';
+import { recordPaperOpened } from '@features/learning/utils/learningApi';
 import Loader from '@shared/components/Loader';
-import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import AppButton from '@shared/components/AppButton';
+import BackButton, { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
 
-const { height } = Dimensions.get('window');
+const BUTTON_HEIGHT = 52;
 
 // OpenAlex ships abstracts as an inverted index ({ word: [positions] }).
 const reconstructAbstract = (invertedIndex) => {
@@ -58,9 +60,7 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
       setWork(data?.title ? data : null);
     } catch (error) {
       console.error('Error fetching work details:', error);
-      if (mountedRef.current) {
-        setLoadError(getErrorMessage(error, 'We could not load this research paper.'));
-      }
+      if (mountedRef.current) setLoadError(error);
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
@@ -69,6 +69,22 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
   useEffect(() => {
     fetchWork();
   }, [fetchWork]);
+
+  // Opening a paper counts for the Researcher path (once per visit, in the background).
+  const recordedRef = useRef(false);
+  useEffect(() => {
+    if (!work || recordedRef.current) return;
+    recordedRef.current = true;
+    const fieldId = work.primary_topic?.field?.id;
+    const field = fieldId ? departments.find((dept) => dept.id === fieldId)?.name : undefined;
+    getUser()
+      .then(({ userId }) => {
+        if (userId && !isGuestUser(userId)) {
+          recordPaperOpened(userId, { paperId: work.id || articleId, field });
+        }
+      })
+      .catch(() => {});
+  }, [work, articleId]);
 
   const abstractText = useMemo(() => {
     const index = work?.abstract_inverted_index_v3 || work?.abstract_inverted_index;
@@ -89,31 +105,23 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
     });
   };
 
-  const backButton = (
-    <TouchableOpacity
-      style={[styles.backButton, { top: insets.top + spacing.s }]}
-      onPress={() => navigation.goBack()}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Ionicons name="chevron-back" size={28} color={colors.secondary} />
-    </TouchableOpacity>
-  );
+  const backButton = <BackButton onPress={() => navigation.goBack()} />;
 
   if (isLoading) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (loadError || !work) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StateMessage
-          icon={loadError ? 'cloud-offline-outline' : 'document-text-outline'}
-          title={loadError ? 'Something went wrong' : 'Research paper not found'}
-          message={loadError || 'This work is not available right now.'}
-          actionLabel={loadError ? 'Try again' : 'Back to Cast'}
-          onAction={loadError ? fetchWork : goToCast}
+        <ErrorState
+          error={loadError || notFoundError()}
+          onRetry={fetchWork}
+          fallbackMessage="We couldn't load this research paper."
+          notFoundTitle="Research paper not found"
+          notFoundMessage="This work is not available right now."
+          secondaryActionLabel="Back to Cast"
+          onSecondaryAction={goToCast}
         />
         {backButton}
       </View>
@@ -122,18 +130,24 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
 
   const fieldId = work.primary_topic?.field?.id;
   const departmentDetails = fieldId ? departments.find((dept) => dept.id === fieldId) : null;
+  const bottomBarPadding = Math.max(insets.bottom, spacing.m);
+  // Keeps the end of the abstract above the pinned "Access Full Research" bar.
+  const scrollBottomPadding = BUTTON_HEIGHT + spacing.s + bottomBarPadding + spacing.l;
 
   return (
     <View style={styles.container}>
       <ScrollView
-        style={styles.containerScroll}
-        contentContainerStyle={{ paddingTop: insets.top + spacing.s }}
+        style={styles.scroll}
+        contentContainerStyle={{
+          paddingTop: insets.top + spacing.s + BACK_BUTTON_SIZE,
+          paddingBottom: scrollBottomPadding,
+        }}
       >
         <View style={styles.content}>
           <Text style={styles.title}>{work.title}</Text>
           {!!departmentDetails && (
             <TouchableOpacity
-              style={styles.topIconContainer}
+              style={styles.metaRow}
               onPress={() =>
                 navigation.navigate('VirtualLab', {
                   labId: departmentDetails.name,
@@ -142,39 +156,34 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
               }
               accessibilityRole="button"
             >
-              <Image source={departmentDetails.image} style={styles.icon} />
-              <Text style={styles.iconTextDepartment}>{departmentDetails.display}</Text>
+              <Image source={departmentDetails.image} style={styles.metaIcon} />
+              <Text style={styles.metaText}>{departmentDetails.display}</Text>
             </TouchableOpacity>
           )}
-          <View style={styles.dateContainer}>
-            <Text style={styles.dateText}>{getTimeSincePosted(work.publication_date)}</Text>
-          </View>
+          <Text style={styles.dateText}>{getTimeSincePosted(work.publication_date)}</Text>
           <Text style={styles.description}>{abstractText}</Text>
-        </View>
-        <View style={styles.buttonContainer}>
-          <Button
-            mode="contained"
+
+          <AppButton
+            variant="primary"
             onPress={goToCast}
-            buttonColor={colors.darkGreen}
             icon={require('@assets/Cast_screen_icons/like.png')}
-            labelStyle={styles.gotItLabel}
             style={styles.gotItButton}
           >
             Got it!
-          </Button>
+          </AppButton>
         </View>
       </ScrollView>
-      <View style={[styles.fixedButtonContainer, { paddingBottom: spacing.m + insets.bottom }]}>
-        <Button
-          mode="contained"
+
+      <View style={[styles.bottomBar, { paddingBottom: bottomBarPadding }]}>
+        <AppButton
+          variant="accent"
+          fullWidth
           onPress={openFullResearch}
-          buttonColor={colors.darkblue}
           icon={require('@assets/Cast_screen_icons/link.png')}
-          labelStyle={styles.researchLabel}
-          style={styles.researchButton}
+          style={styles.bottomButton}
         >
           Access Full Research
-        </Button>
+        </AppButton>
       </View>
       {backButton}
     </View>
@@ -182,91 +191,69 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.primaryBis },
-  containerScroll: { backgroundColor: colors.primaryBis },
-  backButton: {
-    position: 'absolute',
-    left: spacing.m,
-    zIndex: 10,
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  content: { padding: spacing.m },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.m,
+    gap: spacing.m,
+  },
   title: {
-    fontSize: sizes.h1,
-    marginBottom: spacing.l,
-    marginTop: spacing.l,
-    fontFamily: 'MontserratBold',
+    ...typography.h1,
+    textAlign: 'center',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    gap: spacing.s,
+    minHeight: 44,
+    maxWidth: '100%',
+  },
+  metaIcon: {
+    width: 40,
+    height: 40,
+    resizeMode: 'contain',
+  },
+  metaText: {
+    ...typography.body,
+    color: colors.textSecondary,
+    flexShrink: 1,
+    textAlign: 'center',
+  },
+  dateText: {
+    ...typography.caption,
+    fontFamily: fonts.bold,
     textAlign: 'center',
   },
   description: {
-    fontSize: sizes.h3,
-    color: colors.black,
-    textAlign: 'left',
-    fontFamily: 'Montserrat',
-  },
-  topIconContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    alignSelf: 'center',
-    marginVertical: spacing.s,
-  },
-  icon: {
-    width: 48,
-    height: 48,
-    resizeMode: 'contain',
-    marginRight: spacing.s,
-  },
-  iconTextDepartment: {
-    fontSize: sizes.h3,
-    color: colors.black,
-    fontFamily: 'Montserrat',
-    flexShrink: 1,
-    flexWrap: 'wrap',
-    textAlign: 'center',
-  },
-  dateContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.l,
-    marginTop: spacing.s,
-  },
-  dateText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'MontserratBold',
-  },
-  buttonContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.l * 2,
-  },
-  gotItLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
+    ...typography.body,
   },
   gotItButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: height * 0.08,
-    marginTop: spacing.l,
-    paddingHorizontal: spacing.m,
-    borderRadius: sizes.buttonRadius,
+    alignSelf: 'center',
+    minWidth: 200,
+    marginTop: spacing.s,
   },
-  fixedButtonContainer: {
+  bottomBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'transparent',
-    padding: spacing.m,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.s,
+    backgroundColor: colors.background,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
   },
-  researchLabel: { fontSize: sizes.h3, fontFamily: 'Montserrat' },
-  researchButton: {
-    marginLeft: spacing.m,
-    marginRight: spacing.m,
-    marginBottom: spacing.s,
-    marginTop: spacing.l,
-    paddingHorizontal: spacing.s,
+  bottomButton: {
+    ...contentWidth,
   },
 });
 

@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Button } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import departments from '@shared/data/departments';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 import { api, getErrorMessage } from '@shared/api/client';
 import { getUser } from '@shared/utils/UserStorage';
+import AppButton from '@shared/components/AppButton';
 
 const MIN_SELECTION = 3;
 
@@ -40,11 +40,14 @@ const PreferencesScreen = ({ navigation }) => {
         });
         savedDepartmentsRef.current.add(department);
       }
-      navigation.reset({ index: 0, routes: [{ name: 'WelcomeScreen' }] });
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'LearningPathPicker', params: { mode: 'onboarding' } }],
+      });
     } catch (error) {
       console.error('Failed to set preferences:', error);
       Alert.alert(
-        'Could not save your preferences',
+        "Couldn't save your preferences",
         getErrorMessage(error, 'Please try again.')
       );
     } finally {
@@ -57,7 +60,7 @@ const PreferencesScreen = ({ navigation }) => {
       style={styles.scrollView}
       contentContainerStyle={[
         styles.container,
-        { paddingTop: 20 + insets.top, paddingBottom: 20 + insets.bottom },
+        { paddingTop: spacing.l + insets.top, paddingBottom: spacing.l + insets.bottom },
       ]}
     >
       <Text style={styles.title}>What do you want to learn about?</Text>
@@ -81,80 +84,68 @@ const PreferencesScreen = ({ navigation }) => {
           );
         })}
       </View>
-      <Button
-        mode="contained"
+      <AppButton
+        fullWidth
         onPress={handleConfirm}
         disabled={isButtonDisabled}
         loading={isSubmitting}
-        buttonColor={colors.darkGreen}
-        labelStyle={styles.buttonLabel}
         style={styles.button}
       >
         Confirm
-      </Button>
+      </AppButton>
     </ScrollView>
   );
 };
 const styles = StyleSheet.create({
+  scrollView: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
+    ...contentWidth,
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: colors.primaryBis,
+    paddingHorizontal: spacing.m,
   },
   title: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
-    marginBottom: spacing.s,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
-    marginTop: spacing.l,
   },
   subtitle: {
-    fontSize: sizes.h3,
+    ...typography.bodySmall,
     textAlign: 'center',
+    marginTop: spacing.xs,
     marginBottom: spacing.l,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
   },
   bubbleContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
+    gap: spacing.s,
   },
   bubble: {
-    padding: 10,
-    margin: 5,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    borderWidth: 1,
-    borderColor: colors.secondary,
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingVertical: spacing.s,
+    paddingHorizontal: spacing.m,
+    borderRadius: sizes.buttonRadius,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   bubbleSelected: {
-    backgroundColor: colors.secondary,
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
   bubbleText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+    ...typography.bodySmall,
+    color: colors.text,
   },
   bubbleTextSelected: {
-    color: colors.primary,
-  },
-  scrollView: {
-    flex: 1,
-    backgroundColor: colors.primaryBis,
+    color: colors.textOnColor,
   },
   button: {
-    marginBottom: spacing.s,
     marginTop: spacing.l,
-    borderRadius: sizes.buttonRadius,
-  },
-  buttonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
   },
 });
 

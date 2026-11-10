@@ -6,18 +6,20 @@ import {
   TouchableOpacity,
   FlatList,
   Image,
-  TextInput,
   RefreshControl,
   Alert,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Modal, Portal, Button } from 'react-native-paper';
 import { api, getErrorMessage } from '@shared/api/client';
 import { getUser, isGuestUser } from '@shared/utils/UserStorage';
 import Loader from '@shared/components/Loader';
 import StateMessage from '@shared/components/StateMessage';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import ErrorState from '@shared/components/ErrorState';
+import ErrorSnackbar from '@shared/components/ErrorSnackbar';
+import SearchField from '@shared/components/SearchField';
+import ConfirmDialog from '@shared/components/ConfirmDialog';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 
 /**
  * Lists the current user's publications of one type (casts or articles) with search,
@@ -37,6 +39,7 @@ const PublicationsList = ({
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [refreshError, setRefreshError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -50,7 +53,9 @@ const PublicationsList = ({
     };
   }, []);
 
-  const loadItems = useCallback(async () => {
+  // `manual` marks a pull-to-refresh: its failure is reported, while a failed background
+  // reload (on focus) silently keeps the data already on screen.
+  const loadItems = useCallback(async ({ manual = false } = {}) => {
     try {
       const { userId } = await getUser();
       if (!userId || isGuestUser(userId)) {
@@ -79,9 +84,9 @@ const PublicationsList = ({
       hasLoadedRef.current = true;
     } catch (loadError) {
       console.error(`Error fetching user ${itemLabel}s:`, loadError);
-      // Keep already displayed data on a failed background refresh.
-      if (mountedRef.current && !hasLoadedRef.current) {
-        setError(getErrorMessage(loadError, `We couldn't load your ${itemLabel}s.`));
+      if (mountedRef.current) {
+        if (!hasLoadedRef.current) setError(loadError);
+        else if (manual) setRefreshError(loadError);
       }
     } finally {
       if (mountedRef.current) {
@@ -106,7 +111,8 @@ const PublicationsList = ({
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadItems();
+    setRefreshError(null);
+    loadItems({ manual: true });
   };
 
   const filteredItems = useMemo(() => {
@@ -130,7 +136,7 @@ const PublicationsList = ({
     } catch (deleteError) {
       console.error(`Error deleting ${itemLabel}:`, deleteError);
       Alert.alert(
-        `Could not delete ${itemLabel}`,
+        `Couldn't delete this ${itemLabel}`,
         getErrorMessage(deleteError, 'Please try again later.')
       );
     } finally {
@@ -144,9 +150,9 @@ const PublicationsList = ({
   const renderItem = ({ item }) => (
     <View style={styles.item}>
       <Image source={{ uri: item[imageKey] }} style={styles.itemImage} />
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle}>{item.title}</Text>
-      </View>
+      <Text style={styles.itemTitle} numberOfLines={2}>
+        {item.title}
+      </Text>
       <TouchableOpacity
         onPress={() => setSelectedId(item._id)}
         style={styles.deleteButton}
@@ -161,19 +167,20 @@ const PublicationsList = ({
 
   const renderContent = () => {
     if (isLoading) {
-      return <Loader backgroundColor={colors.primaryBis} />;
+      return <Loader backgroundColor={colors.background} />;
     }
     if (error) {
       return (
-        <StateMessage
-          icon="cloud-offline-outline"
-          title="Something went wrong"
-          message={error}
-          actionLabel="Try again"
-          onAction={retry}
+        <ErrorState
+          error={error}
+          onRetry={retry}
+          fallbackMessage={`We couldn't load your ${itemLabel}s.`}
+          secondaryActionLabel="Go back"
+          onSecondaryAction={() => navigation.goBack()}
         />
       );
     }
+    const query = searchQuery.trim();
     return (
       <FlatList
         data={filteredItems}
@@ -183,9 +190,21 @@ const PublicationsList = ({
         contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing.m }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
-          <Text style={styles.noDataText}>
-            {searchQuery.trim() ? `No ${itemLabel}s match your search.` : 'No publications found.'}
-          </Text>
+          query ? (
+            <StateMessage
+              icon="search-outline"
+              title={`No matching ${itemLabel}s`}
+              message={`No ${itemLabel} matches "${query}".`}
+            />
+          ) : (
+            <StateMessage
+              icon="albums-outline"
+              title="No publications yet"
+              message={`Your published ${itemLabel}s will appear here.`}
+              actionLabel="Create"
+              onAction={() => navigation.navigate('CastTypeChoice')}
+            />
+          )
         }
       />
     );
@@ -193,77 +212,50 @@ const PublicationsList = ({
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <View style={styles.searchContainerAndButton}>
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
+      <View style={styles.header}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <View style={styles.searchContainerAndButton}>
+          <SearchField
             placeholder={searchPlaceholder}
-            placeholderTextColor={colors.secondary}
             onChangeText={setSearchQuery}
             value={searchQuery}
-            clearButtonMode="while-editing"
             returnKeyType="search"
+            style={styles.searchField}
           />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity
-              onPress={() => setSearchQuery('')}
-              style={styles.clearButton}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search"
-            >
-              <Text style={styles.clearButtonText}>✕</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={() => navigation.navigate('CastTypeChoice')}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel={`Create a new ${itemLabel}`}
+          >
+            <Image
+              source={require('@assets/Cast_screen_icons/plus_icon.png')}
+              style={styles.addButtonIcon}
+            />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate('CastTypeChoice')}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          accessibilityRole="button"
-          accessibilityLabel={`Create a new ${itemLabel}`}
-        >
-          <Image
-            source={require('@assets/Cast_screen_icons/plus_icon.png')}
-            style={styles.addButtonIcon}
-          />
-        </TouchableOpacity>
       </View>
 
       {renderContent()}
 
-      <Portal>
-        <Modal
-          visible={selectedId !== null}
-          onDismiss={hideModal}
-          dismissable={!isDeleting}
-          contentContainerStyle={styles.modalContainer}
-        >
-          <Text style={styles.modalText}>Are you sure you want to delete this {itemLabel}?</Text>
-          <View style={styles.modalButtons}>
-            <Button
-              mode="outlined"
-              onPress={handleDelete}
-              loading={isDeleting}
-              disabled={isDeleting}
-              style={styles.modalButton}
-              textColor={colors.secondary}
-            >
-              Yes
-            </Button>
-            <Button
-              mode="contained"
-              onPress={hideModal}
-              disabled={isDeleting}
-              style={styles.modalButton}
-              buttonColor={colors.secondary}
-            >
-              No
-            </Button>
-          </View>
-        </Modal>
-      </Portal>
+      <ErrorSnackbar
+        error={refreshError}
+        onDismiss={() => setRefreshError(null)}
+        onRetry={onRefresh}
+        wrapperStyle={{ paddingBottom: insets.bottom }}
+      />
+
+      <ConfirmDialog
+        visible={selectedId !== null}
+        title={`Delete this ${itemLabel}?`}
+        message="This can't be undone."
+        confirmLabel="Delete"
+        destructive
+        loading={isDeleting}
+        onConfirm={handleDelete}
+        onDismiss={hideModal}
+      />
     </View>
   );
 };
@@ -271,123 +263,77 @@ const PublicationsList = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
     width: '100%',
   },
+  header: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    paddingTop: spacing.l,
+    paddingBottom: spacing.m,
+  },
   sectionTitle: {
-    fontSize: sizes.title,
+    ...typography.title,
     textAlign: 'center',
     marginBottom: spacing.m,
-    marginTop: spacing.xl,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
   },
   searchContainerAndButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.m,
+    gap: spacing.s,
   },
-  searchContainer: {
+  searchField: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: sizes.radius,
-    paddingHorizontal: spacing.m,
-    height: 40,
-    flexShrink: 1,
-  },
-  searchInput: {
-    flex: 1,
-    color: colors.secondary,
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-  },
-  clearButton: {
-    marginLeft: spacing.s,
-  },
-  clearButtonText: {
-    color: colors.secondary,
-    fontSize: sizes.h3,
   },
   addButton: {
-    flex: 0,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: spacing.m,
-    marginRight: spacing.s,
   },
   addButtonIcon: {
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     resizeMode: 'contain',
-    tintColor: colors.lightGreen,
+    tintColor: colors.action,
   },
   listContent: {
+    ...contentWidth,
     flexGrow: 1,
-  },
-  noDataText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    textAlign: 'center',
-    marginTop: spacing.l,
-    fontFamily: 'Montserrat',
+    paddingHorizontal: spacing.m,
   },
   item: {
     flexDirection: 'row',
-    marginBottom: spacing.m,
+    alignItems: 'center',
+    gap: spacing.m,
+    marginBottom: spacing.s,
     padding: spacing.s,
-    backgroundColor: colors.primary,
+    backgroundColor: colors.surface,
     borderRadius: sizes.radius,
-    elevation: 5,
-    marginHorizontal: spacing.m,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   itemImage: {
-    width: 80,
-    height: 80,
-    borderRadius: sizes.radius,
-    marginRight: spacing.s,
-  },
-  itemInfo: {
-    flex: 1,
-    justifyContent: 'center',
+    width: 72,
+    height: 72,
+    borderRadius: 12,
+    backgroundColor: colors.placeholder,
   },
   itemTitle: {
-    fontSize: sizes.h4,
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
+    ...typography.h3,
+    flex: 1,
   },
   deleteButton: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: sizes.radius,
   },
   deleteIcon: {
     width: 24,
     height: 24,
-    tintColor: colors.red,
-  },
-  modalContainer: {
-    backgroundColor: colors.primary,
-    padding: 20,
-    margin: 20,
-    borderRadius: sizes.radius,
-    alignItems: 'center',
-  },
-  modalText: {
-    fontSize: sizes.h3,
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    width: '100%',
-  },
-  modalButton: {
-    margin: spacing.s,
+    resizeMode: 'contain',
+    tintColor: colors.danger,
   },
 });
 

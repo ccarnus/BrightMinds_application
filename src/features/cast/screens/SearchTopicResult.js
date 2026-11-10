@@ -1,23 +1,22 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, ScrollView, Dimensions, TouchableOpacity, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RFValue } from 'react-native-responsive-fontsize';
-import { colors, sizes, spacing } from '@shared/config/theme';
-import { openAlex, getErrorMessage } from '@shared/api/client';
+import { colors, contentWidth, fonts, scale, sizes, spacing, typography } from '@shared/config/theme';
+import { openAlex, notFoundError } from '@shared/api/client';
 import Loader from '@shared/components/Loader';
-import StateMessage from '@shared/components/StateMessage';
+import ErrorState from '@shared/components/ErrorState';
+import BackButton, { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
 
 import citationIcon from '@assets/Virtual_lab_icons/citation.png';
 import worksIcon from '@assets/Virtual_lab_icons/works.png';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 // The citation gauge is scaled against this many citations.
 const MAX_GAUGE_CITATIONS = 8000000;
-const INITIAL_HEADER_HEIGHT = height / 4;
-const MIN_HEADER_HEIGHT = height / 9;
+const INITIAL_HEADER_HEIGHT = Math.min(height / 4, 260);
+const MIN_HEADER_HEIGHT = Math.min(height / 9, 110);
 const HEADER_SHRINK_RANGE = INITIAL_HEADER_HEIGHT - MIN_HEADER_HEIGHT;
 
 const SearchTopicResult = ({ route, navigation }) => {
@@ -38,7 +37,7 @@ const SearchTopicResult = ({ route, navigation }) => {
   });
   const titleFontSize = scrollY.interpolate({
     inputRange: [0, HEADER_SHRINK_RANGE],
-    outputRange: [RFValue(sizes.h1), RFValue(sizes.h3)],
+    outputRange: [sizes.h1, sizes.h3],
     extrapolate: 'clamp',
   });
 
@@ -57,7 +56,7 @@ const SearchTopicResult = ({ route, navigation }) => {
       if (mountedRef.current) setTopicData(data || null);
     } catch (err) {
       console.error('Error fetching topic details:', err);
-      if (mountedRef.current) setError(getErrorMessage(err, 'We could not load this topic.'));
+      if (mountedRef.current) setError(err);
     } finally {
       if (mountedRef.current) setLoading(false);
     }
@@ -67,33 +66,27 @@ const SearchTopicResult = ({ route, navigation }) => {
     fetchTopicData();
   }, [fetchTopicData]);
 
-  const renderBackButton = (color) => (
-    <TouchableOpacity
-      style={[styles.backButton, { top: insets.top + spacing.s }]}
-      onPress={() => navigation.goBack()}
-      accessibilityRole="button"
-      accessibilityLabel="Go back"
-      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-    >
-      <Ionicons name="chevron-back" size={28} color={color} />
-    </TouchableOpacity>
+  const renderBackButton = (tone) => (
+    <BackButton tone={tone} onPress={() => navigation.goBack()} style={styles.backButton} />
   );
 
   if (loading) {
-    return <Loader backgroundColor={colors.primaryBis} />;
+    return <Loader backgroundColor={colors.background} />;
   }
 
   if (error || !topicData) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StateMessage
-          icon={error ? 'cloud-offline-outline' : 'search-outline'}
-          title={error ? 'Something went wrong' : 'Topic not found'}
-          message={error || 'This topic is not available right now.'}
-          actionLabel={error ? 'Try again' : 'Back to Cast'}
-          onAction={error ? fetchTopicData : () => navigation.popTo('BottomNav', { screen: 'Cast' })}
+        <ErrorState
+          error={error || notFoundError()}
+          onRetry={fetchTopicData}
+          fallbackMessage="We couldn't load this topic."
+          notFoundTitle="Topic not found"
+          notFoundMessage="This topic is not available right now."
+          secondaryActionLabel="Back to Cast"
+          onSecondaryAction={() => navigation.popTo('BottomNav', { screen: 'Cast' })}
         />
-        {renderBackButton(colors.secondary)}
+        {renderBackButton('default')}
       </View>
     );
   }
@@ -110,66 +103,70 @@ const SearchTopicResult = ({ route, navigation }) => {
         >
           <Animated.Text
             style={[styles.headerTitle, { fontSize: titleFontSize }]}
+            numberOfLines={3}
             adjustsFontSizeToFit
             minimumFontScale={0.5}
           >
             {display_name}
           </Animated.Text>
         </LinearGradient>
-        {renderBackButton(colors.primary)}
+        {renderBackButton('light')}
       </Animated.View>
 
       <Animated.ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingTop: INITIAL_HEADER_HEIGHT + insets.top }}
+        contentContainerStyle={{
+          paddingTop: INITIAL_HEADER_HEIGHT + insets.top + spacing.m,
+          paddingBottom: insets.bottom + spacing.l,
+        }}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], {
           useNativeDriver: false,
         })}
       >
-        <View style={styles.overviewContainer}>
-          <View style={styles.citationGaugeWrapper}>
-            <View style={styles.citationIconContainer}>
-              <Image source={citationIcon} style={styles.horizontalGaugeIcon} resizeMode="contain" />
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <View style={styles.citationRow}>
+              <Image source={citationIcon} style={styles.citationIcon} resizeMode="contain" />
               <Text style={styles.citationCountText}>{cited_by_count} Citations</Text>
             </View>
-            <View style={styles.horizontalGaugeWrapper}>
-              <View style={[styles.horizontalGaugeFill, { width: `${citationFill}%` }]} />
+            <View style={styles.gaugeTrack}>
+              <View style={[styles.gaugeFill, { width: `${citationFill}%` }]} />
             </View>
-          </View>
-          <View style={styles.buttonsRow}>
-            <TouchableOpacity
-              style={styles.statButton}
-              onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexId })}
-              accessibilityRole="button"
-            >
-              <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
-              <Text style={styles.statButtonLabel}>Works</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.contentContainer}>
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionHeader}>Description</Text>
-            <Text style={styles.descriptionText}>{description || 'No description available.'}</Text>
-          </View>
-          {Array.isArray(keywords) && keywords.length > 0 && (
-            <View style={styles.sectionContainer}>
-              <Text style={styles.sectionHeader}>Keywords</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.keywordsContainer}
+            <View style={styles.statRow}>
+              <TouchableOpacity
+                style={styles.statButton}
+                onPress={() => navigation.navigate('WorksListScreen', { topicId: openAlexId })}
+                accessibilityRole="button"
               >
-                {keywords.map((word, index) => (
-                  <View key={`${word}-${index}`} style={styles.keywordChip}>
-                    <Text style={styles.keywordText}>{word}</Text>
-                  </View>
-                ))}
-              </ScrollView>
+                <Image source={worksIcon} style={styles.statButtonIcon} resizeMode="contain" />
+                <Text style={styles.statButtonLabel}>Works</Text>
+              </TouchableOpacity>
             </View>
-          )}
+          </View>
+
+          <View style={[styles.card, styles.sections]}>
+            <View>
+              <Text style={styles.sectionHeader}>Description</Text>
+              <Text style={styles.descriptionText}>{description || 'No description available.'}</Text>
+            </View>
+            {Array.isArray(keywords) && keywords.length > 0 && (
+              <View>
+                <Text style={styles.sectionHeader}>Keywords</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.keywordsContainer}
+                >
+                  {keywords.map((word, index) => (
+                    <View key={`${word}-${index}`} style={styles.keywordChip}>
+                      <Text style={styles.keywordText}>{word}</Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
         </View>
       </Animated.ScrollView>
     </View>
@@ -179,11 +176,9 @@ const SearchTopicResult = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
   backButton: {
-    position: 'absolute',
-    left: spacing.m,
     zIndex: 1001,
   },
   header: {
@@ -197,118 +192,103 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: spacing.m,
+    // Leaves room for the back button on both sides so the centered title never runs under it.
+    paddingHorizontal: spacing.s + BACK_BUTTON_SIZE + spacing.s,
   },
   headerTitle: {
-    color: 'white',
-    fontFamily: 'Montserrat',
+    fontFamily: fonts.bold,
+    color: colors.textOnColor,
     textAlign: 'center',
   },
   scrollView: {
     flex: 1,
   },
-  overviewContainer: {
-    backgroundColor: colors.primary,
-    margin: spacing.m,
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-    elevation: 3,
+  content: {
+    ...contentWidth,
+    paddingHorizontal: spacing.m,
+    gap: spacing.m,
   },
-  buttonsRow: {
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: sizes.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.m,
+  },
+  sections: {
+    gap: spacing.l,
+  },
+  citationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.s,
+    marginBottom: spacing.s,
+  },
+  citationIcon: {
+    width: scale(32),
+    height: scale(32),
+  },
+  citationCountText: {
+    ...typography.h3,
+    color: colors.accent,
+  },
+  gaugeTrack: {
+    width: '100%',
+    height: sizes.gauge,
+    borderRadius: sizes.gauge / 2,
+    overflow: 'hidden',
+    backgroundColor: colors.border,
+  },
+  gaugeFill: {
+    height: '100%',
+    borderRadius: sizes.gauge / 2,
+    backgroundColor: colors.accent,
+  },
+  statRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginVertical: spacing.m,
+    marginTop: spacing.l,
   },
   statButton: {
     alignItems: 'center',
-    backgroundColor: colors.lightGreen,
+    minWidth: scale(128),
+    backgroundColor: colors.action,
     padding: spacing.m,
     borderRadius: sizes.radius,
-    elevation: 3,
   },
   statButtonIcon: {
-    width: RFValue(36),
-    height: RFValue(36),
+    width: scale(36),
+    height: scale(36),
     marginBottom: spacing.s,
-    tintColor: colors.primary,
+    tintColor: colors.textOnColor,
   },
   statButtonLabel: {
-    fontSize: RFValue(14),
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
-  },
-  citationGaugeWrapper: {
-    marginVertical: spacing.m,
-    alignItems: 'center',
-  },
-  citationIconContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.s,
-  },
-  horizontalGaugeIcon: {
-    width: RFValue(32),
-    height: RFValue(32),
-    marginHorizontal: spacing.s,
-  },
-  citationCountText: {
-    fontSize: RFValue(14),
-    fontFamily: 'MontserratBold',
-    color: colors.lightblue,
-  },
-  horizontalGaugeWrapper: {
-    width: width * 0.8,
-    height: RFValue(20),
-    borderRadius: sizes.radius,
-    overflow: 'hidden',
-    backgroundColor: colors.primaryBis,
-  },
-  horizontalGaugeFill: {
-    height: '100%',
-    backgroundColor: colors.lightblue,
-  },
-  contentContainer: {
-    backgroundColor: colors.primary,
-    margin: spacing.m,
-    padding: spacing.m,
-    borderRadius: sizes.radius,
-    elevation: 3,
-  },
-  sectionContainer: {
-    marginBottom: spacing.m,
+    ...typography.button,
+    color: colors.textOnColor,
   },
   sectionHeader: {
-    fontSize: RFValue(sizes.h2),
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    marginBottom: spacing.m,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.secondary,
-    paddingBottom: spacing.s,
+    ...typography.h2,
+    marginBottom: spacing.s,
   },
   descriptionText: {
-    fontSize: RFValue(sizes.h4),
-    fontFamily: 'Montserrat',
-    color: colors.secondary,
-    lineHeight: 22,
+    ...typography.body,
   },
   keywordsContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     alignItems: 'center',
+    gap: spacing.s,
   },
   keywordChip: {
-    backgroundColor: colors.darkOrange,
-    borderRadius: 16,
+    backgroundColor: colors.accentSoft,
+    borderRadius: sizes.radius,
     paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s / 2,
-    marginRight: spacing.xs,
-    marginBottom: spacing.xs,
+    paddingVertical: spacing.xs + 2,
   },
   keywordText: {
-    fontSize: RFValue(12),
-    fontFamily: 'MontserratBold',
-    color: colors.primary,
+    fontFamily: fonts.bold,
+    fontSize: sizes.h5,
+    color: colors.accent,
   },
 });
 

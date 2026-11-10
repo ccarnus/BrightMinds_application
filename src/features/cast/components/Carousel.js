@@ -2,11 +2,12 @@ import React, { useCallback } from 'react';
 import { FlatList, Text, View, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import LottieView from 'lottie-react-native';
-import { colors, shadow, sizes, spacing } from '@shared/config/theme';
+import { colors, fonts, scale, sizes, spacing, typography } from '@shared/config/theme';
 
-const CARD_HEIGHT = 140;
-const CARD_WIDTH = CARD_HEIGHT * 1.75;
-const CARD_WIDTH_SPACING = CARD_WIDTH + spacing.l;
+const IMAGE_HEIGHT = scale(140);
+const CARD_WIDTH = Math.round(IMAGE_HEIGHT * 1.75);
+const CARD_GAP = spacing.m;
+const SNAP_INTERVAL = CARD_WIDTH + CARD_GAP;
 
 const doneAnimation = require('@assets/lotties/done.json');
 
@@ -18,24 +19,18 @@ const formatCastDuration = (duration = 0) => {
 
 const VARIANTS = {
   cast: {
-    cardHeight: 200,
-    titleOffset: 55,
-    titleMaxHeight: 70,
-    itemMarginBottom: 0,
     formatDuration: formatCastDuration,
     route: 'VideoScreen',
     getParams: (id) => ({ selectedVideoId: id }),
   },
   article: {
-    cardHeight: 180,
-    titleOffset: 30,
-    titleMaxHeight: 50,
-    itemMarginBottom: spacing.xl,
     formatDuration: (duration) => `${duration} min`,
     route: 'ArticleDetails',
     getParams: (id) => ({ selectedArticleId: id }),
   },
 };
+
+const Separator = () => <View style={{ width: CARD_GAP }} />;
 
 /**
  * Horizontal content carousel used for casts and articles.
@@ -46,55 +41,47 @@ const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish 
   const config = VARIANTS[variant] || VARIANTS.cast;
 
   const renderItem = useCallback(
-    ({ item, index }) => {
+    ({ item }) => {
       const isFinished = finishedIds.includes(item.id);
       return (
         <TouchableOpacity
-          style={{
-            marginLeft: spacing.l,
-            marginBottom: config.itemMarginBottom,
-            marginRight: index === list.length - 1 ? spacing.l : 0,
-          }}
+          style={styles.card}
+          activeOpacity={0.85}
           onPress={() => navigation.navigate(config.route, config.getParams(item.id))}
           accessibilityRole="button"
           accessibilityLabel={item.title}
         >
-          <View style={[styles.card, { height: config.cardHeight }, shadow.dark]}>
-            <View style={styles.imageBox}>
-              <Image source={{ uri: item.image }} style={styles.image} />
-              {isFinished && (
-                <LottieView
-                  source={doneAnimation}
-                  autoPlay
-                  loop={false}
-                  onAnimationFinish={() => onAnimationFinish?.(item.id)}
-                  style={styles.lottieOverlay}
-                />
-              )}
-              <Text style={styles.duration}>{config.formatDuration(item.duration)}</Text>
-            </View>
-            <View
-              style={[
-                styles.titleBox,
-                { top: config.cardHeight - config.titleOffset, maxHeight: config.titleMaxHeight },
-              ]}
-            >
-              <Text style={styles.title}>{item.title}</Text>
-            </View>
+          <View style={styles.imageBox}>
+            <Image source={{ uri: item.image }} style={styles.image} />
+            {isFinished && (
+              <LottieView
+                source={doneAnimation}
+                autoPlay
+                loop={false}
+                onAnimationFinish={() => onAnimationFinish?.(item.id)}
+                style={styles.lottieOverlay}
+              />
+            )}
+            <Text style={styles.duration}>{config.formatDuration(item.duration)}</Text>
           </View>
+          <Text style={styles.title} numberOfLines={2}>
+            {item.title}
+          </Text>
         </TouchableOpacity>
       );
     },
-    [config, finishedIds, list.length, navigation, onAnimationFinish]
+    [config, finishedIds, navigation, onAnimationFinish]
   );
 
   return (
     <FlatList
       data={list}
       horizontal
-      snapToInterval={CARD_WIDTH_SPACING}
+      snapToInterval={SNAP_INTERVAL}
       decelerationRate="fast"
       showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.content}
+      ItemSeparatorComponent={Separator}
       keyExtractor={(item) => String(item.id)}
       renderItem={renderItem}
       extraData={finishedIds}
@@ -103,51 +90,46 @@ const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish 
 };
 
 const styles = StyleSheet.create({
+  content: {
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+  },
   card: {
     width: CARD_WIDTH,
-    marginVertical: 10,
-    position: 'relative',
   },
   imageBox: {
     width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    height: IMAGE_HEIGHT,
+    borderRadius: sizes.radius,
     overflow: 'hidden',
-    position: 'relative',
-    elevation: 5,
+    backgroundColor: colors.placeholder,
   },
   image: {
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    width: '100%',
+    height: '100%',
     resizeMode: 'cover',
   },
   lottieOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: CARD_WIDTH,
-    height: CARD_HEIGHT,
+    ...StyleSheet.absoluteFillObject,
     zIndex: 1,
   },
-  titleBox: {
-    position: 'absolute',
-    width: '100%',
-  },
   title: {
-    fontSize: sizes.h4,
-    color: colors.black,
-    textAlign: 'left',
-    fontFamily: 'Montserrat',
+    ...typography.bodySmall,
+    marginTop: spacing.s,
+    color: colors.text,
   },
   duration: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    color: colors.primary,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 4,
+    bottom: spacing.s,
+    right: spacing.s,
+    overflow: 'hidden',
+    paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
-    fontSize: sizes.h5,
+    borderRadius: 6,
+    color: colors.textOnColor,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    fontFamily: fonts.bold,
+    fontSize: sizes.small,
     zIndex: 2,
   },
 });

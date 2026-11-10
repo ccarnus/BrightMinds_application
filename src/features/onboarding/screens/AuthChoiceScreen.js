@@ -1,12 +1,17 @@
 import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Image } from 'react-native';
-import { Button } from 'react-native-paper';
+import { View, StyleSheet, Image, useWindowDimensions } from 'react-native';
 import LottieView from 'lottie-react-native';
-import { colors, sizes, spacing } from '@shared/config/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppButton from '@shared/components/AppButton';
+import { colors, contentWidth, spacing } from '@shared/config/theme';
 import { setGuestUser } from '@shared/utils/UserStorage';
 import { resetToHome } from '@navigation/navigationHelpers';
 
 const AuthChoiceScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  // Square logo that leaves room for the buttons on any screen size.
+  const logoSize = Math.min(width * 0.7, height * 0.38, 340);
   const [enteringAsGuest, setEnteringAsGuest] = useState(false);
   const enteringRef = useRef(false);
 
@@ -20,50 +25,46 @@ const AuthChoiceScreen = ({ navigation }) => {
 
   return (
     <View style={styles.rootContainer}>
-      <LottieView
-        source={require('@assets/Onboarding/star_bg_2.json')}
-        autoPlay
-        backgroundColor={colors.secondary}
-        loop
-        style={StyleSheet.absoluteFillObject}
-      />
-      <View style={styles.container}>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <LottieView
+          source={require('@assets/Onboarding/star_bg_2.json')}
+          autoPlay
+          backgroundColor={colors.secondary}
+          loop
+          style={StyleSheet.absoluteFill}
+        />
+      </View>
+      <View
+        style={[
+          styles.container,
+          { paddingTop: insets.top + spacing.l, paddingBottom: insets.bottom + spacing.l },
+        ]}
+      >
         <Image
           source={require('@assets/Onboarding/BrightMinds.png')}
-          style={styles.logo}
+          style={[styles.logo, { width: logoSize, height: logoSize }]}
           resizeMode="contain"
         />
 
-        <Button
-          mode="contained"
-          onPress={() => navigation.navigate('LoginScreen')}
-          buttonColor={colors.darkGreen}
-          labelStyle={styles.buttonLabel}
-          style={styles.authButton}
-        >
-          Log In
-        </Button>
+        <View style={styles.actions}>
+          <AppButton fullWidth onPress={() => navigation.navigate('SignupScreen')}>
+            Sign Up
+          </AppButton>
 
-        <Button
-          mode="contained"
-          onPress={() => navigation.navigate('SignupScreen')}
-          buttonColor={colors.darkGreen}
-          labelStyle={styles.buttonLabel}
-          style={styles.authButton}
-        >
-          Sign Up
-        </Button>
+          <AppButton variant="light" fullWidth onPress={() => navigation.navigate('LoginScreen')}>
+            Log In
+          </AppButton>
 
-        <Button
-          mode="contained"
-          onPress={handleContinueAsGuest}
-          disabled={enteringAsGuest}
-          buttonColor={colors.darkblue}
-          labelStyle={styles.buttonLabel}
-          style={styles.authButton}
-        >
-          Guest
-        </Button>
+          <AppButton
+            variant="secondary"
+            onDark
+            fullWidth
+            onPress={handleContinueAsGuest}
+            disabled={enteringAsGuest}
+          >
+            Continue as guest
+          </AppButton>
+        </View>
       </View>
     </View>
   );
@@ -72,29 +73,21 @@ const AuthChoiceScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
+    backgroundColor: colors.secondary,
   },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.l,
+    paddingHorizontal: spacing.l,
   },
   logo: {
-    width: '80%',
-    height: undefined,
-    aspectRatio: 1,
     marginBottom: spacing.xl,
   },
-  authButton: {
-    width: '100%',
-    marginVertical: spacing.s,
-    borderRadius: sizes.buttonRadius,
-  },
-  buttonLabel: {
-    fontSize: sizes.h3,
-    fontFamily: 'Montserrat',
-    textAlign: 'center',
-    paddingTop: spacing.s,
+  actions: {
+    ...contentWidth,
+    maxWidth: 420,
+    gap: spacing.s,
   },
 });
 

@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { spacing, colors, sizes } from '@shared/config/theme';
-import { BackButton } from '@features/post-content/components/PostFormFields';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, contentWidth, scale, sizes, spacing, typography } from '@shared/config/theme';
+import BackButton from '@shared/components/BackButton';
 
 const FADE_IN_DURATION = 400;
+const ICON_SIZE = Math.min(scale(56), 72);
 
 const CHOICES = [
   { route: 'PostCast', label: 'Clip', icon: require('@assets/Cast_screen_icons/cast_logo.png') },
@@ -27,25 +29,24 @@ const CastTypeChoice = ({ navigation }) => {
   }, [fadeAnims]);
 
   return (
-    <View style={styles.container}>
-      <BackButton onPress={() => navigation.goBack()} style={{ top: insets.top + spacing.s }} />
-      {CHOICES.map((choice, index) => (
-        <Animated.View
-          key={choice.route}
-          style={[styles.buttonContainer, { opacity: fadeAnims[index] }]}
-        >
-          <TouchableOpacity
-            onPress={() => navigation.navigate(choice.route)}
-            accessibilityRole="button"
-            accessibilityLabel={`Post a ${choice.label.toLowerCase()}`}
-          >
-            <View style={styles.content}>
-              <Image source={choice.icon} style={styles.icon} />
-              <Text style={styles.buttonText}>{choice.label}</Text>
-            </View>
-          </TouchableOpacity>
-        </Animated.View>
-      ))}
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <BackButton onPress={() => navigation.goBack()} />
+      <View style={styles.choices}>
+        {CHOICES.map((choice, index) => (
+          <Animated.View key={choice.route} style={{ opacity: fadeAnims[index] }}>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => navigation.navigate(choice.route)}
+              accessibilityRole="button"
+              accessibilityLabel={`Post a ${choice.label.toLowerCase()}`}
+            >
+              <Image source={choice.icon} style={styles.icon} resizeMode="contain" />
+              <Text style={styles.label}>{choice.label}</Text>
+              <Ionicons name="chevron-forward" size={22} color={colors.textMuted} />
+            </TouchableOpacity>
+          </Animated.View>
+        ))}
+      </View>
     </View>
   );
 };
@@ -54,35 +55,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.primaryBis,
+    backgroundColor: colors.background,
   },
-  buttonContainer: {
-    width: '80%',
-    minHeight: 100,
-    justifyContent: 'center',
-    padding: spacing.s,
-    marginVertical: spacing.m,
-    backgroundColor: colors.primary,
-    borderRadius: sizes.radius,
-    elevation: 5,
+  choices: {
+    ...contentWidth,
+    maxWidth: 420,
+    paddingHorizontal: spacing.l,
+    gap: spacing.m,
   },
-  content: {
+  card: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    padding: 20,
+    gap: spacing.m,
+    padding: spacing.m,
     borderRadius: sizes.radius,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   icon: {
-    width: 74,
-    height: 70,
-    marginRight: 20,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
   },
-  buttonText: {
-    fontSize: 32,
-    color: colors.secondary,
-    fontFamily: 'Montserrat',
+  label: {
+    ...typography.h2,
+    flex: 1,
   },
 });
 
