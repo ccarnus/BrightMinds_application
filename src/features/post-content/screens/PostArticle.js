@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, spacing } from '@shared/config/theme';
 import departments from '@shared/data/departments';
 import categories from '@shared/data/categories';
@@ -28,12 +29,26 @@ import {
   useDepartmentTopics,
   usePostAuthor,
 } from '@features/post-content/components/PostFormFields';
+import MediaSourceModal, { pickMedia } from '@features/post-content/components/MediaSourceModal';
+import CoverImagePicker from '@features/post-content/components/CoverImagePicker';
 
-const POST_TIMEOUT_MS = 60000;
+const POST_TIMEOUT_MS = 120000;
 const WORDS_PER_MINUTE = 200;
+// JPEG (not HEIC on iOS), recompressed: the server re-encodes the cover anyway.
+const COVER_PICKER_OPTIONS = {
+  mediaTypes: ['images'],
+  quality: 0.85,
+  preferredAssetRepresentationMode: ImagePicker.UIImagePickerPreferredAssetRepresentationMode.Compatible,
+};
 
 const calculateReadingTime = (text) =>
   Math.ceil(text.trim().split(/\s+/).length / WORDS_PER_MINUTE);
+
+const coverFile = (image) => {
+  const type = image.mimeType || 'image/jpeg';
+  const extension = type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg';
+  return { uri: image.uri, type, name: `cover.${extension}` };
+};
 
 const PostArticle = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -44,10 +59,12 @@ const PostArticle = ({ navigation }) => {
   const [department, setDepartment] = useState('');
   const [topic, setTopic] = useState('');
   const [visibility, setVisibility] = useState(1);
+  const [cover, setCover] = useState(null);
 
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isDepartmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [isTopicModalVisible, setTopicModalVisible] = useState(false);
+  const [isSourceModalVisible, setSourceModalVisible] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
@@ -63,6 +80,16 @@ const PostArticle = ({ navigation }) => {
     setDepartmentModalVisible(false);
   };
 
+  const pickCover = async (source) => {
+    try {
+      const asset = await pickMedia(source, 'image', COVER_PICKER_OPTIONS);
+      if (asset) setCover(asset);
+    } catch (error) {
+      console.error('Error selecting cover image:', error);
+      Alert.alert('Error', 'Could not open the image picker. Please try again.');
+    }
+  };
+
   const handlePostArticle = async () => {
     if (submittingRef.current) return;
 
@@ -72,6 +99,7 @@ const PostArticle = ({ navigation }) => {
     if (!isNonEmpty(category)) missingFields.push('Category');
     if (!isNonEmpty(department)) missingFields.push('Department');
     if (!isNonEmpty(topic)) missingFields.push('Topic');
+    if (!cover) missingFields.push('Cover image');
 
     if (missingFields.length > 0) {
       Alert.alert('Missing information', 'Please fill in all required fields:\n\n' + missingFields.join('\n'));
@@ -84,7 +112,7 @@ const PostArticle = ({ navigation }) => {
 
     const articleData = {
       title,
-      articleDescription: description,
+      description,
       link,
       department,
       university,
@@ -95,8 +123,15 @@ const PostArticle = ({ navigation }) => {
       duration: calculateReadingTime(description),
     };
 
+    const formData = new FormData();
+    formData.append('article', JSON.stringify(articleData));
+    formData.append('image', coverFile(cover));
+
     try {
-      await api.post('/article', articleData, { timeout: POST_TIMEOUT_MS });
+      await api.post('/article', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: POST_TIMEOUT_MS,
+      });
       Alert.alert('Success', 'Article posted successfully!');
       navigation.popTo('BottomNav', { screen: 'Cast' });
     } catch (error) {
@@ -189,6 +224,7 @@ const PostArticle = ({ navigation }) => {
           {isNonEmpty(topic) && (
             <>
               <VisibilitySlider value={visibility} onChange={setVisibility} />
+              <CoverImagePicker image={cover} onPress={() => setSourceModalVisible(true)} />
               <AppButton
                 fullWidth
                 onPress={handlePostArticle}
@@ -240,6 +276,14 @@ const PostArticle = ({ navigation }) => {
           setTopic(name);
           setTopicModalVisible(false);
         }}
+      />
+
+      <MediaSourceModal
+        visible={isSourceModalVisible}
+        title="Choose a cover image"
+        cameraLabel="Take a Photo"
+        onSelect={pickCover}
+        onClose={() => setSourceModalVisible(false)}
       />
 
       <UploadingOverlay visible={loading} message="Posting your article..." />

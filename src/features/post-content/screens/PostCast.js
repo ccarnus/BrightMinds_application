@@ -6,16 +6,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  Linking,
-  Modal as ModalReact,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
 import { TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import categories from '@shared/data/categories';
 import departments from '@shared/data/departments';
 import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
@@ -34,28 +30,10 @@ import {
   useDepartmentTopics,
   usePostAuthor,
 } from '@features/post-content/components/PostFormFields';
+import MediaSourceModal, { pickMedia } from '@features/post-content/components/MediaSourceModal';
+import ThumbnailPicker from '@features/post-content/components/ThumbnailPicker';
 
 const UPLOAD_TIMEOUT_MS = 300000;
-
-const requestPermission = async (source) => {
-  const { granted } =
-    source === 'camera'
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (!granted) {
-    Alert.alert(
-      'Permission required',
-      source === 'camera'
-        ? 'Please allow camera access in your device settings to record a video.'
-        : 'Please allow photo library access in your device settings to choose a video.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Open Settings', onPress: () => Linking.openSettings() },
-      ]
-    );
-  }
-  return granted;
-};
 
 const PostCast = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -65,8 +43,9 @@ const PostCast = ({ navigation }) => {
   const [department, setDepartment] = useState('');
   const [topic, setTopic] = useState('');
   const [video, setVideo] = useState(null);
+  // Moment of the video (seconds) used as the cast's image; null until the video is loaded.
+  const [thumbnailTime, setThumbnailTime] = useState(null);
   const [visibility, setVisibility] = useState(1);
-  const previewPlayer = useVideoPlayer(video?.uri ?? null);
 
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
@@ -75,7 +54,6 @@ const PostCast = ({ navigation }) => {
   const [isCategoryModalVisible, setCategoryModalVisible] = useState(false);
   const [isDepartmentModalVisible, setDepartmentModalVisible] = useState(false);
   const [isTopicModalVisible, setTopicModalVisible] = useState(false);
-  const pendingSourceRef = useRef(null);
 
   const { userId, university } = usePostAuthor('GeorgiaTech');
   const topicsState = useDepartmentTopics(department);
@@ -90,33 +68,15 @@ const PostCast = ({ navigation }) => {
 
   const pickVideo = async (source) => {
     try {
-      if (!(await requestPermission(source))) return;
-      const options = { mediaTypes: ['videos'] };
-      const result =
-        source === 'camera'
-          ? await ImagePicker.launchCameraAsync(options)
-          : await ImagePicker.launchImageLibraryAsync(options);
-      if (!result.canceled && result.assets?.length > 0) {
-        setVideo(result.assets[0]);
+      const asset = await pickMedia(source, 'video', { mediaTypes: ['videos'] });
+      if (asset) {
+        setVideo(asset);
+        setThumbnailTime(null);
       }
     } catch (error) {
       console.error('Error selecting video:', error);
       Alert.alert('Error', 'Could not open the video picker. Please try again.');
     }
-  };
-
-  // iOS cannot present the picker while the source modal is still animating out,
-  // so the launch is deferred to the modal's onDismiss there.
-  const launchPendingSource = () => {
-    const source = pendingSourceRef.current;
-    pendingSourceRef.current = null;
-    if (source) pickVideo(source);
-  };
-
-  const chooseSource = (source) => {
-    pendingSourceRef.current = source;
-    setSourceModalVisible(false);
-    if (Platform.OS !== 'ios') launchPendingSource();
   };
 
   const sendCast = async () => {
@@ -148,6 +108,8 @@ const PostCast = ({ navigation }) => {
       university,
       brightmindid: userId,
       visibility,
+      // The server cuts the thumbnail at this moment (omitted: it picks one automatically).
+      ...(thumbnailTime !== null ? { thumbnailTime } : {}),
     };
 
     const formData = new FormData();
@@ -251,14 +213,13 @@ const PostCast = ({ navigation }) => {
               </TouchableOpacity>
 
               {video && (
-                <View style={styles.previewContainer}>
-                  <VideoView
-                    player={previewPlayer}
-                    style={styles.preview}
-                    contentFit="contain"
-                    nativeControls
-                  />
-                </View>
+                <ThumbnailPicker
+                  key={video.uri}
+                  uri={video.uri}
+                  initialDuration={video.duration ? video.duration / 1000 : 0}
+                  value={thumbnailTime}
+                  onChange={setThumbnailTime}
+                />
               )}
             </>
           )}
@@ -317,28 +278,13 @@ const PostCast = ({ navigation }) => {
         }}
       />
 
-      <ModalReact
-        animationType="fade"
-        transparent={true}
+      <MediaSourceModal
         visible={isSourceModalVisible}
-        onRequestClose={() => setSourceModalVisible(false)}
-        onDismiss={launchPendingSource}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Choose Video Source</Text>
-            <AppButton fullWidth icon="camera" onPress={() => chooseSource('camera')}>
-              Record Video
-            </AppButton>
-            <AppButton fullWidth icon="image-multiple" onPress={() => chooseSource('library')}>
-              Choose from Gallery
-            </AppButton>
-            <AppButton fullWidth variant="secondary" onPress={() => setSourceModalVisible(false)}>
-              Cancel
-            </AppButton>
-          </View>
-        </View>
-      </ModalReact>
+        title="Choose Video Source"
+        cameraLabel="Record Video"
+        onSelect={pickVideo}
+        onClose={() => setSourceModalVisible(false)}
+      />
 
       <UploadingOverlay visible={loading} message="Uploading your cast..." />
     </KeyboardAvoidingView>
@@ -380,38 +326,6 @@ const styles = StyleSheet.create({
   },
   videoPickerText: {
     ...typography.body,
-  },
-  previewContainer: {
-    width: '100%',
-    aspectRatio: 4 / 3,
-    marginBottom: spacing.l,
-    borderRadius: sizes.radius,
-    overflow: 'hidden',
-    backgroundColor: colors.black,
-  },
-  preview: {
-    width: '100%',
-    height: '100%',
-  },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.l,
-    backgroundColor: colors.overlay,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 400,
-    gap: spacing.s,
-    padding: spacing.l,
-    borderRadius: sizes.radius,
-    backgroundColor: colors.surface,
-  },
-  modalTitle: {
-    ...typography.h2,
-    textAlign: 'center',
-    marginBottom: spacing.s,
   },
 });
 

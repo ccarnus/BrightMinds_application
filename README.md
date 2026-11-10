@@ -132,8 +132,9 @@ npx expo export --platform ios
   the ✕ (answers given so far still count), finish and check XP / level-up / new badges, then the Track tab updates.
   With no pending question, Ready shows "All caught up!" and links to the Cast tab.
 - Lab tab: departments → virtual lab → topic → casts / works (OpenAlex papers).
-- Library tab (Professor / Researcher / PhD Student roles only): publish a cast (camera & gallery permissions)
-  and an article, then delete them.
+- Library tab (Professor / Researcher / PhD Student roles only): publish a cast (camera & gallery permissions;
+  slide or play/pause the preview to choose the thumbnail moment, then check the card in the Cast feed) and an
+  article (a cover image is required: gallery or camera), then delete them.
 - Learning path: on Track (or Profile), the path card shows the milestone trail and the next goals; tap it for the
   path screen (milestones timeline, stats, top fields, previous paths), then "Change learning path": switching keeps
   every past activity, and milestones the new path already covers unlock at once (confetti). Watching casts, reading

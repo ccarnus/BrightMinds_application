@@ -74,6 +74,8 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
 (`LevelBadge`, `XpBar`, `StreakFlame`, `BadgeMedal`, `RewardsCard`) and `track/components/quiz/` (quiz UI),
 `track/utils/` (`rewards.js` rules mirror, `quizApi.js`, `useCountUp`), `lab/data/departmentImages.js`,
 `post-content/components/PostFormFields.js` (topic/visibility pickers, upload overlay, guest check),
+`post-content/components/MediaSourceModal.js` (camera/gallery choice + `pickMedia` with permissions),
+`ThumbnailPicker` (cast thumbnail moment) and `CoverImagePicker` (article cover),
 `auth/utils/validation.js` (`isValidEmail`).
 
 **Path aliases** (`babel.config.js`, `babel-plugin-module-resolver`):
@@ -151,8 +153,13 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   Player `status === 'error'` shows an `ErrorState` overlay that reloads the stream (`replaceAsync`) and resumes.
   `expo-audio` is intentionally not installed (its config plugin enables background audio by default).
 - **Media picking** — `expo-image-picker` with `mediaTypes: ['images']`/`['videos']` and explicit
-  permission requests. Permission strings are configured in the `expo-image-picker` plugin in `app.json`.
+  permission requests (use `pickMedia` + `MediaSourceModal`). Permission strings are configured in the
+  `expo-image-picker` plugin in `app.json`; keep them in line with every use (App Store review checks them).
   `expo-file-system` legacy APIs must be imported from `expo-file-system/legacy`.
+- **Content images** — Images are never generated. Casts: the author picks a moment of the video in
+  `ThumbnailPicker` and the app sends it as `thumbnailTime` (seconds) in the `cast` JSON; the server cuts the
+  980×560 thumbnail there (it picks one automatically when omitted). Articles: a cover image is required and sent
+  as the multipart `image` file next to the `article` JSON field (picked as JPEG: the server can't read HEIC).
 - **Edge-to-edge / status bar** — Edge-to-edge is mandatory on Android. React Native 0.88 removed `StatusBar`
   `backgroundColor`/`translucent`, `InteractionManager` (use `requestIdleCallback`) and the `Modal` `animated` prop;
   `ImageBackground` is deprecated. Don't use them (also check new third-party libraries for them).
