@@ -28,13 +28,23 @@ const captionOnIcon = require('@assets/Cast_screen_icons/caption_on.png');
 const captionOffIcon = require('@assets/Cast_screen_icons/caption_off.png');
 const shareIcon = require('@assets/Cast_screen_icons/share.png');
 
-/**
- * Full-screen cast player shared by the Cast, Discover and Virtual Lab flows.
- * Marks the cast as watched once playback crosses 85% and calls
- * `onExit({ watched, castId })` when the user leaves or playback ends.
- */
-const CastVideoPlayer = ({ castId, navigation, onExit }) => {
-  useKeepAwake();
+const CloseButton = ({ onPress }) => {
+  const insets = useSafeAreaInsets();
+  return (
+    <TouchableOpacity
+      style={[styles.closeButton, { top: insets.top + spacing.s }]}
+      onPress={onPress}
+      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+      accessibilityRole="button"
+      accessibilityLabel="Close video"
+    >
+      <Ionicons name="close" size={30} color={colors.primary} />
+    </TouchableOpacity>
+  );
+};
+
+/** Plays a loaded cast: mounted only once its video URL is known. */
+const CastPlayback = ({ video, castId, navigation, onExit }) => {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const userIdRef = useRef(null);
@@ -45,9 +55,7 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   // Playback position (seconds) to restore after reloading a failed stream.
   const resumeAtRef = useRef(0);
 
-  const [video, setVideo] = useState(null);
   const [universityLogo, setUniversityLogo] = useState(null);
-  const [loadError, setLoadError] = useState(null);
   const [playbackError, setPlaybackError] = useState(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isBuffering, setIsBuffering] = useState(true);
@@ -57,8 +65,11 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   const [captions, setCaptions] = useState([]);
   const [currentCaption, setCurrentCaption] = useState('');
 
+  // Created with its source. A player created empty and given the URL later is fragile: Android
+  // reports the empty player as played to the end (which closed the screen), and the play request
+  // can be lost while the source is swapped in.
   // expo-video uses the iOS "playback" audio session, so casts are audible in silent mode.
-  const player = useVideoPlayer(video?.casturl ?? null, (instance) => {
+  const player = useVideoPlayer(video.casturl, (instance) => {
     instance.timeUpdateEventInterval = 0.25;
   });
 
@@ -72,25 +83,9 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
     };
   }, []);
 
-  const loadVideo = useCallback(async () => {
-    setLoadError(null);
-    try {
-      const { data } = await api.get(`/cast/${encodeURIComponent(castId)}`);
-      if (!data?.casturl) throw notFoundError();
-      if (mountedRef.current) setVideo(data);
-    } catch (error) {
-      console.error('Error fetching cast:', error);
-      if (mountedRef.current) setLoadError(error);
-    }
-  }, [castId]);
-
-  useEffect(() => {
-    if (castId) loadVideo();
-  }, [castId, loadVideo]);
-
   // The logo is decoration: it loads alongside playback instead of delaying it.
   useEffect(() => {
-    if (!video?.university) return undefined;
+    if (!video.university) return undefined;
     let active = true;
     getUniversityLogo(video.university).then((logo) => {
       if (active) setUniversityLogo(logo);
@@ -98,10 +93,10 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
     return () => {
       active = false;
     };
-  }, [video?.university]);
+  }, [video.university]);
 
   useEffect(() => {
-    if (!video?.subtitleurl) {
+    if (!video.subtitleurl) {
       setCaptions([]);
       return undefined;
     }
@@ -115,10 +110,10 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
     return () => {
       cancelled = true;
     };
-  }, [video?.subtitleurl]);
+  }, [video.subtitleurl]);
 
   const exit = useCallback(() => {
-    onExit({ watched: watchedRef.current, castId: video?._id || castId });
+    onExit({ watched: watchedRef.current, castId: video._id || castId });
   }, [onExit, video, castId]);
 
   useEffect(() => {
@@ -133,7 +128,7 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
 
   const markAsWatched = () => {
     const userId = userIdRef.current;
-    if (!video || watchedRef.current || !userId || isGuestUser(userId)) return;
+    if (watchedRef.current || !userId || isGuestUser(userId)) return;
     watchedRef.current = true;
     api
       .post(`/user/add/content/${userId}`, { contentId: video._id, type: 'cast' })
@@ -143,10 +138,9 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   };
 
   useEffect(() => {
-    if (!video) return;
     if (isPlaying) player.play();
     else player.pause();
-  }, [player, video, isPlaying]);
+  }, [player, isPlaying]);
 
   useEventListener(player, 'statusChange', ({ status, error }) => {
     setIsBuffering(status === 'loading');
@@ -159,12 +153,13 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
         player.currentTime = resumeAtRef.current;
         resumeAtRef.current = 0;
       }
+      // play() is requested before the source has loaded, which not every native version keeps.
+      if (isPlaying && !player.playing) player.play();
     }
   });
 
   // Reloads the stream after a playback failure (e.g. lost connection) and resumes where it stopped.
   const retryPlayback = useCallback(async () => {
-    if (!video?.casturl) return;
     resumeAtRef.current = position / 1000;
     setPlaybackError(null);
     setIsBuffering(true);
@@ -175,7 +170,7 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
       console.error('Error reloading cast:', error);
       if (mountedRef.current) setPlaybackError(error);
     }
-  }, [player, video?.casturl, position, isPlaying]);
+  }, [player, video.casturl, position, isPlaying]);
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     const positionMillis = currentTime * 1000;
@@ -196,6 +191,8 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
   });
 
   useEventListener(player, 'playToEnd', () => {
+    // Android also reports a failed stream as ended; that one shows the retry message instead.
+    if (player.status === 'error') return;
     markAsWatched();
     exit();
   });
@@ -216,40 +213,6 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
       // User dismissed or sharing is unavailable; nothing to do.
     }
   };
-
-  const closeButton = (
-    <TouchableOpacity
-      style={[styles.closeButton, { top: insets.top + spacing.s }]}
-      onPress={exit}
-      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      accessibilityRole="button"
-      accessibilityLabel="Close video"
-    >
-      <Ionicons name="close" size={30} color={colors.primary} />
-    </TouchableOpacity>
-  );
-
-  if (!video) {
-    return (
-      <View style={styles.centered}>
-        {loadError ? (
-          <ErrorState
-            dark
-            error={loadError}
-            onRetry={loadVideo}
-            fallbackMessage="We couldn't load this cast."
-            notFoundTitle="Cast not available"
-            notFoundMessage="This cast may have been removed."
-            secondaryActionLabel="Close"
-            onSecondaryAction={exit}
-          />
-        ) : (
-          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Loading cast" />
-        )}
-        {closeButton}
-      </View>
-    );
-  }
 
   const iconSize = width / 9;
   const hasCaptions = captions.length > 0;
@@ -292,7 +255,7 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
         </View>
       )}
 
-      {closeButton}
+      <CloseButton onPress={exit} />
 
       {!!universityLogo && (
         <Image
@@ -345,6 +308,77 @@ const CastVideoPlayer = ({ castId, navigation, onExit }) => {
       </View>
     </View>
   );
+};
+
+/**
+ * Full-screen cast player shared by the Cast, Discover and Virtual Lab flows.
+ * Marks the cast as watched once playback crosses 85% and calls
+ * `onExit({ watched, castId })` when the user leaves or playback ends.
+ */
+const CastVideoPlayer = ({ castId, navigation, onExit }) => {
+  useKeepAwake();
+  const mountedRef = useRef(true);
+  const [video, setVideo] = useState(null);
+  const [loadError, setLoadError] = useState(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const loadVideo = useCallback(async () => {
+    setLoadError(null);
+    try {
+      const { data } = await api.get(`/cast/${encodeURIComponent(castId)}`);
+      if (!data?.casturl) throw notFoundError();
+      if (mountedRef.current) setVideo(data);
+    } catch (error) {
+      console.error('Error fetching cast:', error);
+      if (mountedRef.current) setLoadError(error);
+    }
+  }, [castId]);
+
+  useEffect(() => {
+    if (castId) loadVideo();
+  }, [castId, loadVideo]);
+
+  const close = useCallback(() => onExit({ watched: false, castId }), [onExit, castId]);
+
+  // Until the cast is loaded; playback then handles the back button itself.
+  useEffect(() => {
+    if (video) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      close();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [video, close]);
+
+  if (!video) {
+    return (
+      <View style={styles.centered}>
+        {loadError ? (
+          <ErrorState
+            dark
+            error={loadError}
+            onRetry={loadVideo}
+            fallbackMessage="We couldn't load this cast."
+            notFoundTitle="Cast not available"
+            notFoundMessage="This cast may have been removed."
+            secondaryActionLabel="Close"
+            onSecondaryAction={close}
+          />
+        ) : (
+          <ActivityIndicator size="large" color={colors.primary} accessibilityLabel="Loading cast" />
+        )}
+        <CloseButton onPress={close} />
+      </View>
+    );
+  }
+
+  return <CastPlayback video={video} castId={castId} navigation={navigation} onExit={onExit} />;
 };
 
 const styles = StyleSheet.create({
