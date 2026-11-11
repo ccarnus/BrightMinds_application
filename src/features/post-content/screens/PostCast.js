@@ -30,7 +30,7 @@ import {
   useDepartmentTopics,
   usePostAuthor,
 } from '@features/post-content/components/PostFormFields';
-import MediaSourceModal, { pickMedia } from '@features/post-content/components/MediaSourceModal';
+import MediaSourceModal, { pickVideoAsset } from '@features/post-content/components/MediaSourceModal';
 import ThumbnailPicker from '@features/post-content/components/ThumbnailPicker';
 
 const UPLOAD_TIMEOUT_MS = 300000;
@@ -68,7 +68,7 @@ const PostCast = ({ navigation }) => {
 
   const pickVideo = async (source) => {
     try {
-      const asset = await pickMedia(source, 'video', { mediaTypes: ['videos'] });
+      const asset = await pickVideoAsset(source);
       if (asset) {
         setVideo(asset);
         setThumbnailTime(null);

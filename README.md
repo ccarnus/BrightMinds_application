@@ -1,7 +1,7 @@
 # BrightMinds
 
 Cross-platform (iOS & Android) academic learning app built with **Expo SDK 58 / React Native 0.88**.
-Users watch short research "casts", read articles, track their learning with quizzes, browse virtual labs
+Users watch and share short research "casts" (3MT-style videos), track their learning progress with quizzes, browse virtual labs
 by department and explore research papers through the [OpenAlex](https://openalex.org) API.
 
 - iOS bundle id: `com.brightmindsresearch` (App Store)
@@ -13,7 +13,7 @@ by department and explore research papers through the [OpenAlex](https://openale
 ## Testing the app locally
 
 > ⚠️ The app always talks to the **production** backend. Anything you create while testing (accounts,
-> casts, articles, quiz answers) is real data. Prefer a dedicated test account, or use **guest mode**
+> casts, quiz answers) is real data. Prefer a dedicated test account, or use **guest mode**
 > ("Continue as guest" on the auth screen) to browse without writing data.
 
 ### 1. Prerequisites
@@ -133,12 +133,11 @@ npx expo export --platform ios
   With no pending question, Ready shows "All caught up!" and links to the Cast tab.
 - Lab tab: departments → virtual lab → topic → casts / works (OpenAlex papers).
 - Library tab (Professor / Researcher / PhD Student roles only): publish a cast (camera & gallery permissions;
-  slide or play/pause the preview to choose the thumbnail moment, then check the card in the Cast feed) and an
-  article (a cover image is required: gallery or camera), then delete them.
+  slide or play/pause the preview to choose the thumbnail moment, then check the card in the Cast feed), then delete it.
 - Learning path: on Track (or Profile), the path card shows the milestone trail and the next goals; tap it for the
   path screen (milestones timeline, stats, top fields, previous paths), then "Change learning path": switching keeps
-  every past activity, and milestones the new path already covers unlock at once (confetti). Watching casts, reading
-  articles, quizzes and opening research papers (Researcher) move the goals forward.
+  every past activity, and milestones the new path already covers unlock at once (confetti). Watching casts,
+    quizzes and opening research papers (Researcher) move the goals forward.
 - Profile: edit profile picture, learning path card, log out (back gesture must not return into the app).
 - Airplane mode / no data (see below): screens must show the shared error screen instead of loading forever.
 

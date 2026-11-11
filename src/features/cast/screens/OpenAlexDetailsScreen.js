@@ -37,7 +37,7 @@ const getTimeSincePosted = (dateString) => {
 
 const OpenAlexDetailsScreen = ({ route, navigation }) => {
   // Short OpenAlex work id, e.g. "W2935714482".
-  const { articleId } = route.params;
+  const { workId } = route.params;
   const insets = useSafeAreaInsets();
   const [work, setWork] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +55,7 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const { data } = await openAlex.get(`/works/${encodeURIComponent(articleId)}`);
+      const { data } = await openAlex.get(`/works/${encodeURIComponent(workId)}`);
       if (!mountedRef.current) return;
       setWork(data?.title ? data : null);
     } catch (error) {
@@ -64,7 +64,7 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
-  }, [articleId]);
+  }, [workId]);
 
   useEffect(() => {
     fetchWork();
@@ -80,11 +80,11 @@ const OpenAlexDetailsScreen = ({ route, navigation }) => {
     getUser()
       .then(({ userId }) => {
         if (userId && !isGuestUser(userId)) {
-          recordPaperOpened(userId, { paperId: work.id || articleId, field });
+          recordPaperOpened(userId, { paperId: work.id || workId, field });
         }
       })
       .catch(() => {});
-  }, [work, articleId]);
+  }, [work, workId]);
 
   const abstractText = useMemo(() => {
     const index = work?.abstract_inverted_index_v3 || work?.abstract_inverted_index;

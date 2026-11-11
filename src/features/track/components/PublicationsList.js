@@ -21,19 +21,8 @@ import SearchField from '@shared/components/SearchField';
 import ConfirmDialog from '@shared/components/ConfirmDialog';
 import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 
-/**
- * Lists the current user's publications of one type (casts or articles) with search,
- * pull-to-refresh and delete-with-confirmation.
- */
-const PublicationsList = ({
-  navigation,
-  title,
-  searchPlaceholder,
-  publicationsKey,
-  endpoint,
-  imageKey,
-  itemLabel,
-}) => {
+/** Lists the current user's cast publications with search, pull-to-refresh and delete-with-confirmation. */
+const PublicationsList = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -63,11 +52,11 @@ const PublicationsList = ({
         return;
       }
       const { data } = await api.get(`/user/${userId}`);
-      const ids = data?.[publicationsKey] || [];
+      const ids = data?.castPublications || [];
       const results = await Promise.all(
         ids.map((id) =>
           api
-            .get(`/${endpoint}/${id}`)
+            .get(`/cast/${id}`)
             .then((response) => ({ item: response.data }))
             .catch((itemError) => ({ itemError }))
         )
@@ -83,7 +72,7 @@ const PublicationsList = ({
       }
       hasLoadedRef.current = true;
     } catch (loadError) {
-      console.error(`Error fetching user ${itemLabel}s:`, loadError);
+      console.error('Error fetching user casts:', loadError);
       if (mountedRef.current) {
         if (!hasLoadedRef.current) setError(loadError);
         else if (manual) setRefreshError(loadError);
@@ -94,7 +83,7 @@ const PublicationsList = ({
         setRefreshing(false);
       }
     }
-  }, [publicationsKey, endpoint, itemLabel]);
+  }, []);
 
   // Reload on focus so publications created from this screen appear when coming back.
   useFocusEffect(
@@ -129,14 +118,14 @@ const PublicationsList = ({
     if (!selectedId || isDeleting) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/${endpoint}/${selectedId}`);
+      await api.delete(`/cast/${selectedId}`);
       if (mountedRef.current) {
         setItems((prev) => prev.filter((item) => item._id !== selectedId));
       }
     } catch (deleteError) {
-      console.error(`Error deleting ${itemLabel}:`, deleteError);
+      console.error('Error deleting cast:', deleteError);
       Alert.alert(
-        `Couldn't delete this ${itemLabel}`,
+        "Couldn't delete this cast",
         getErrorMessage(deleteError, 'Please try again later.')
       );
     } finally {
@@ -149,7 +138,7 @@ const PublicationsList = ({
 
   const renderItem = ({ item }) => (
     <View style={styles.item}>
-      <Image source={{ uri: item[imageKey] }} style={styles.itemImage} />
+      <Image source={{ uri: item.castimageurl }} style={styles.itemImage} />
       <Text style={styles.itemTitle} numberOfLines={2}>
         {item.title}
       </Text>
@@ -158,7 +147,7 @@ const PublicationsList = ({
         style={styles.deleteButton}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         accessibilityRole="button"
-        accessibilityLabel={`Delete ${itemLabel} ${item.title || ''}`.trim()}
+        accessibilityLabel={`Delete cast ${item.title || ''}`.trim()}
       >
         <Image source={require('@assets/Track_icons/delete_icon.png')} style={styles.deleteIcon} />
       </TouchableOpacity>
@@ -174,7 +163,7 @@ const PublicationsList = ({
         <ErrorState
           error={error}
           onRetry={retry}
-          fallbackMessage={`We couldn't load your ${itemLabel}s.`}
+          fallbackMessage="We couldn't load your casts."
           secondaryActionLabel="Go back"
           onSecondaryAction={() => navigation.goBack()}
         />
@@ -193,16 +182,16 @@ const PublicationsList = ({
           query ? (
             <StateMessage
               icon="search-outline"
-              title={`No matching ${itemLabel}s`}
-              message={`No ${itemLabel} matches "${query}".`}
+              title="No matching casts"
+              message={`No cast matches "${query}".`}
             />
           ) : (
             <StateMessage
               icon="albums-outline"
               title="No publications yet"
-              message={`Your published ${itemLabel}s will appear here.`}
+              message="Your published casts will appear here."
               actionLabel="Create"
-              onAction={() => navigation.navigate('CastTypeChoice')}
+              onAction={() => navigation.navigate('PostCast')}
             />
           )
         }
@@ -213,10 +202,10 @@ const PublicationsList = ({
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionTitle}>Your Casts</Text>
         <View style={styles.searchContainerAndButton}>
           <SearchField
-            placeholder={searchPlaceholder}
+            placeholder="Search your casts.."
             onChangeText={setSearchQuery}
             value={searchQuery}
             returnKeyType="search"
@@ -224,10 +213,10 @@ const PublicationsList = ({
           />
           <TouchableOpacity
             style={styles.addButton}
-            onPress={() => navigation.navigate('CastTypeChoice')}
+            onPress={() => navigation.navigate('PostCast')}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel={`Create a new ${itemLabel}`}
+            accessibilityLabel="Create a new cast"
           >
             <Image
               source={require('@assets/Cast_screen_icons/plus_icon.png')}
@@ -248,7 +237,7 @@ const PublicationsList = ({
 
       <ConfirmDialog
         visible={selectedId !== null}
-        title={`Delete this ${itemLabel}?`}
+        title="Delete this cast?"
         message="This can't be undone."
         confirmLabel="Delete"
         destructive

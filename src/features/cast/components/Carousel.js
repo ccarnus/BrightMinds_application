@@ -17,28 +17,14 @@ const formatCastDuration = (duration = 0) => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-const VARIANTS = {
-  cast: {
-    formatDuration: formatCastDuration,
-    route: 'VideoScreen',
-    getParams: (id) => ({ selectedVideoId: id }),
-  },
-  article: {
-    formatDuration: (duration) => `${duration} min`,
-    route: 'ArticleDetails',
-    getParams: (id) => ({ selectedArticleId: id }),
-  },
-};
-
 const Separator = () => <View style={{ width: CARD_GAP }} />;
 
 /**
- * Horizontal content carousel used for casts and articles.
+ * Horizontal carousel of casts.
  * `list` items must be normalized to `{ id, image, title, duration }`.
  */
-const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish }) => {
+const Carousel = ({ list, finishedIds = [], onAnimationFinish }) => {
   const navigation = useNavigation();
-  const config = VARIANTS[variant] || VARIANTS.cast;
 
   const renderItem = useCallback(
     ({ item }) => {
@@ -47,7 +33,7 @@ const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish 
         <TouchableOpacity
           style={styles.card}
           activeOpacity={0.85}
-          onPress={() => navigation.navigate(config.route, config.getParams(item.id))}
+          onPress={() => navigation.navigate('VideoScreen', { selectedVideoId: item.id })}
           accessibilityRole="button"
           accessibilityLabel={item.title}
         >
@@ -62,7 +48,7 @@ const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish 
                 style={styles.lottieOverlay}
               />
             )}
-            <Text style={styles.duration}>{config.formatDuration(item.duration)}</Text>
+            <Text style={styles.duration}>{formatCastDuration(item.duration)}</Text>
           </View>
           <Text style={styles.title} numberOfLines={2}>
             {item.title}
@@ -70,7 +56,7 @@ const Carousel = ({ list, variant = 'cast', finishedIds = [], onAnimationFinish 
         </TouchableOpacity>
       );
     },
-    [config, finishedIds, navigation, onAnimationFinish]
+    [finishedIds, navigation, onAnimationFinish]
   );
 
   return (

@@ -170,7 +170,7 @@ const WorksListScreen = ({ route }) => {
 
   const handleExplore = useCallback((workId) => {
     const shortId = String(workId).split('/').pop();
-    navigation.navigate('OpenAlexDetailsScreen', { articleId: shortId });
+    navigation.navigate('OpenAlexDetailsScreen', { workId: shortId });
   }, [navigation]);
 
   const renderWork = useCallback(

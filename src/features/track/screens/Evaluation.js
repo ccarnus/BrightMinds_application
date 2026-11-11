@@ -94,7 +94,7 @@ const TakeTest = ({ route, navigation }) => {
         Promise.all(
           evaluations.map((evaluation) =>
             api
-              .get(`/${evaluation.type === 'article' ? 'article' : 'cast'}/${evaluation.contentid}`)
+              .get(`/cast/${evaluation.contentid}`)
               .then(({ data }) => ({ evaluation, question: data?.evaluation }))
               .catch((itemError) => ({ evaluation, itemError }))
           )
@@ -228,8 +228,6 @@ const TakeTest = ({ route, navigation }) => {
     );
   }
 
-  const isArticle = current.evaluation.type === 'article';
-
   return (
     <View style={[styles.container, { paddingTop: insets.top + spacing.s }]}>
       <QuizTopBar
@@ -250,14 +248,8 @@ const TakeTest = ({ route, navigation }) => {
       >
         <Animated.View key={`question-${index}`} entering={FadeInRight.springify().damping(18)} style={styles.questionCard}>
           <View style={styles.source}>
-            <MaterialCommunityIcons
-              name={isArticle ? 'file-document' : 'play-circle'}
-              size={16}
-              color={colors.accent}
-            />
-            <Text style={styles.sourceText}>
-              {isArticle ? 'From an article you read' : 'From a cast you watched'}
-            </Text>
+            <MaterialCommunityIcons name="play-circle" size={16} color={colors.accent} />
+            <Text style={styles.sourceText}>From a cast you watched</Text>
           </View>
           <Text style={styles.questionText} accessibilityRole="header">
             {current.question.question}

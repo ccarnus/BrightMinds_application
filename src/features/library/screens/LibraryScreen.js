@@ -18,7 +18,6 @@ import StateMessage from '@shared/components/StateMessage';
 import ErrorState from '@shared/components/ErrorState';
 import ErrorSnackbar from '@shared/components/ErrorSnackbar';
 
-const articleLogo = require('@assets/Cast_screen_icons/article_logo.png');
 const castLogo = require('@assets/Cast_screen_icons/cast_logo.png');
 
 const LibraryScreen = () => {
@@ -26,7 +25,6 @@ const LibraryScreen = () => {
   const tabBarSpace = useTabBarSpace();
   const [userRole, setUserRole] = useState('');
   const [castCount, setCastCount] = useState(0);
-  const [articleCount, setArticleCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshError, setRefreshError] = useState(null);
@@ -47,7 +45,6 @@ const LibraryScreen = () => {
         const { data } = await api.get(`/user/${encodeURIComponent(userId)}`);
         if (!isMounted.current) return;
         setCastCount(data?.castPublications?.length || 0);
-        setArticleCount(data?.articlePublications?.length || 0);
       }
       setError(null);
       hasLoaded.current = true;
@@ -98,11 +95,6 @@ const LibraryScreen = () => {
     );
   }
 
-  const tiles = [
-    { label: 'Articles', count: articleCount, icon: articleLogo, route: 'ArticlePublicationsScreen' },
-    { label: 'Casts', count: castCount, icon: castLogo, route: 'CastPublicationsScreen' },
-  ];
-
   return (
     <View style={styles.container}>
       <ScrollView
@@ -112,22 +104,17 @@ const LibraryScreen = () => {
         <Text style={styles.title}>Your Publications</Text>
 
         {canAccessLibrary(userRole) ? (
-          <View style={styles.tiles}>
-            {tiles.map((tile) => (
-              <TouchableOpacity
-                key={tile.route}
-                style={styles.tile}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(tile.route)}
-                accessibilityRole="button"
-                accessibilityLabel={`Your ${tile.label.toLowerCase()}: ${tile.count}`}
-              >
-                <Image source={tile.icon} style={styles.tileIcon} />
-                <Text style={styles.tileCount}>{tile.count}</Text>
-                <Text style={styles.tileLabel}>{tile.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <TouchableOpacity
+            style={styles.tile}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('CastPublicationsScreen')}
+            accessibilityRole="button"
+            accessibilityLabel={`Your casts: ${castCount}`}
+          >
+            <Image source={castLogo} style={styles.tileIcon} />
+            <Text style={styles.tileCount}>{castCount}</Text>
+            <Text style={styles.tileLabel}>Casts</Text>
+          </TouchableOpacity>
         ) : (
           <StateMessage
             icon="library-outline"
@@ -164,12 +151,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.l,
   },
-  tiles: {
-    flexDirection: 'row',
-    gap: spacing.m,
-  },
   tile: {
-    flex: 1,
+    alignSelf: 'center',
+    width: '60%',
     alignItems: 'center',
     paddingVertical: spacing.l,
     paddingHorizontal: spacing.s,

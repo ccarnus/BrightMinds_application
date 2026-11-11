@@ -131,7 +131,7 @@ const CastPlayback = ({ video, castId, navigation, onExit }) => {
     if (watchedRef.current || !userId || isGuestUser(userId)) return;
     watchedRef.current = true;
     api
-      .post(`/user/add/content/${userId}`, { contentId: video._id, type: 'cast' })
+      .post(`/user/add/content/${userId}`, { contentId: video._id })
       .catch(() => {
         watchedRef.current = false;
       });

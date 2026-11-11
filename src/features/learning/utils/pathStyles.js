@@ -12,7 +12,7 @@ export const PATH_STYLES = {
 export const pathStyle = (key) => PATH_STYLES[key] || { icon: 'map-marker-path', colors: pathColors.none };
 
 export const METRIC_STYLES = {
-  contents: { icon: 'play-box-multiple-outline', label: 'Casts & articles' },
+  casts: { icon: 'play-box-multiple-outline', label: 'Casts' },
   correctAnswers: { icon: 'check-decagram-outline', label: 'Correct answers' },
   fields: { icon: 'earth', label: 'Fields explored' },
   papers: { icon: 'file-document-outline', label: 'Research papers' },
@@ -31,7 +31,7 @@ export const goalLabel = (metric, focusField) => {
 
 // Where to go to move a goal forward.
 export const GOAL_ACTIONS = {
-  contents: { label: 'Explore casts', icon: 'play-circle-outline', tab: 'Cast' },
+  casts: { label: 'Explore casts', icon: 'play-circle-outline', tab: 'Cast' },
   fields: { label: 'Explore new fields', icon: 'compass-outline', tab: 'Cast' },
   correctAnswers: { label: 'Test yourself', icon: 'help-circle-outline', screen: 'Ready' },
   papers: { label: 'Browse research papers', icon: 'flask-outline', tab: 'Lab' },

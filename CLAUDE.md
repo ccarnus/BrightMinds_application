@@ -5,7 +5,8 @@ This file provides guidance to Claude Code (claude.ai/code) and other AI assista
 ## Project Overview
 
 BrightMinds is a cross-platform React Native mobile app (iOS & Android) built with Expo SDK 58 and JavaScript (no TypeScript).
-It's an academic learning platform with video "casts", articles, learning tracking/quizzes, virtual labs and research paper
+It's an academic learning platform built around sharing 3MT-style video "casts" and a research-progress score: learning
+tracking/quizzes, virtual labs and research paper
 discovery (OpenAlex API). It ships to the **App Store and Google Play**, so changes must be production-safe on both platforms.
 
 ## Commands
@@ -41,7 +42,7 @@ The native splash screen stays visible until `MainNavigator` has resolved the in
 ```
 src/
   features/         # Feature modules, each with screens/ and components/
-    cast/           # Video/article feed, discovery, search (OpenAlex)
+    cast/           # Cast feed, discovery, search (papers & topics via OpenAlex, casts), paper details
     track/          # Learning progress, gamified quizzes (Ready → Evaluation → Finish) with XP/levels/streaks/
                     # badges, user publications lists
     lab/            # Virtual laboratories by department, topics, works (OpenAlex)
@@ -50,7 +51,7 @@ src/
     onboarding/     # First-launch flow, auth choice, welcome animation
     profile/        # Profile, edit profile, field preferences
     learning/       # Learning paths: picker (onboarding & change), path screen, milestone/goal components
-    post-content/   # Content creation (video casts, articles)
+    post-content/   # Content creation (video casts)
   shared/
     api/client.js   # axios instances (api, openAlex) with GET retry, error classification (getErrorType,
                     # getErrorMessage, notFoundError), cached getUniversityLogo
@@ -69,13 +70,13 @@ src/
     navigationHelpers.js # resetToAuthChoice / resetToHome (root-stack resets)
 ```
 
-Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `variant`),
-`track/components/PublicationsList.js` (user casts/articles lists), `track/components/` reward widgets
+Feature-level shared code: `cast/components/Carousel.js` (horizontal cast carousel),
+`track/components/PublicationsList.js` (the user's casts list), `track/components/` reward widgets
 (`LevelBadge`, `XpBar`, `StreakFlame`, `BadgeMedal`, `RewardsCard`) and `track/components/quiz/` (quiz UI),
 `track/utils/` (`rewards.js` rules mirror, `quizApi.js`, `useCountUp`), `lab/data/departmentImages.js`,
 `post-content/components/PostFormFields.js` (topic/visibility pickers, upload overlay, guest check),
-`post-content/components/MediaSourceModal.js` (camera/gallery choice + `pickMedia` with permissions),
-`ThumbnailPicker` (cast thumbnail moment) and `CoverImagePicker` (article cover),
+`post-content/components/MediaSourceModal.js` (camera/gallery choice + `pickVideoAsset` with permissions),
+`ThumbnailPicker` (cast thumbnail moment),
 `auth/utils/validation.js` (`isValidEmail`).
 
 **Path aliases** (`babel.config.js`, `babel-plugin-module-resolver`):
@@ -152,14 +153,15 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
   `VideoScreen`, `DiscoverVideoScreen` and `VirtualLabVideoScreen` are thin wrappers defining the exit navigation.
   Player `status === 'error'` shows an `ErrorState` overlay that reloads the stream (`replaceAsync`) and resumes.
   `expo-audio` is intentionally not installed (its config plugin enables background audio by default).
-- **Media picking** — `expo-image-picker` with `mediaTypes: ['images']`/`['videos']` and explicit
-  permission requests (use `pickMedia` + `MediaSourceModal`). Permission strings are configured in the
+- **Media picking** — Cast videos are picked/recorded with `expo-image-picker` (`mediaTypes: ['videos']`) and explicit
+  permission requests (use `pickVideoAsset` + `MediaSourceModal`); profile pictures use the library picker directly.
+  Permission strings are configured in the
   `expo-image-picker` plugin in `app.json`; keep them in line with every use (App Store review checks them).
   `expo-file-system` legacy APIs must be imported from `expo-file-system/legacy`.
-- **Content images** — Images are never generated. Casts: the author picks a moment of the video in
+- **Content images** — Images are never generated. The cast author picks a moment of the video in
   `ThumbnailPicker` and the app sends it as `thumbnailTime` (seconds) in the `cast` JSON; the server cuts the
-  980×560 thumbnail there (it picks one automatically when omitted). Articles: a cover image is required and sent
-  as the multipart `image` file next to the `article` JSON field (picked as JPEG: the server can't read HEIC).
+  980×560 thumbnail there (it picks one automatically when omitted). Casts are the only content type: content ids,
+  bookmarks and evaluations carry no `type` field.
 - **Edge-to-edge / status bar** — Edge-to-edge is mandatory on Android. React Native 0.88 removed `StatusBar`
   `backgroundColor`/`translucent`, `InteractionManager` (use `requestIdleCallback`) and the `Modal` `animated` prop;
   `ImageBackground` is deprecated. Don't use them (also check new third-party libraries for them).
@@ -183,8 +185,8 @@ Feature-level shared code: `cast/components/Carousel.js` (casts & articles via `
 - **Haptics** — Use `@shared/utils/haptics` (`tap`, `impact`, `success`, `error`, `celebrate`), never `expo-haptics`
   directly: the wrappers swallow failures on unsupported devices.
 - **Learning paths** — Four paths (`follower`, `explorer`, `deep_learner`, `researcher`; Career was retired), each with
-  5 milestones whose goals read *lifetime* stats (casts watched/articles read, correct answers, fields explored, papers
-  opened; Deep Learner counts only its focus field), so switching path never loses progress. The backend owns the
+  5 milestones whose goals read *lifetime* stats   (casts watched, correct answers, fields explored, papers
+    opened; Deep Learner counts only its focus field); the metric/stat key for casts is `casts` (formerly `contents`), so switching path never loses progress. The backend owns the
   catalog (`GET /learning/paths`), the profile/journey (`GET /user/:id/learning`), the change (`PUT /user/:id/learning`
   with `{ path, focusField }`) and paper tracking (`POST /user/:id/learning/papers`); always send path **keys** and go
   through `learning/utils/learningApi.js` (`fetchLearningProfile` resolves to `null` on an older server — hide the

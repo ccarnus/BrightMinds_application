@@ -155,7 +155,7 @@ const LearningPathScreen = ({ navigation, route }) => {
   const action = nextGoal ? GOAL_ACTIONS[nextGoal.metric] : null;
   const since = formatDate(learning.startedAt);
   const topFields = stats.fields.slice(0, TOP_FIELDS);
-  const maxContents = Math.max(1, ...topFields.map((field) => field.contents));
+  const maxCasts = Math.max(1, ...topFields.map((field) => field.casts));
 
   const runAction = () => {
     if (!action) return;
@@ -245,7 +245,7 @@ const LearningPathScreen = ({ navigation, route }) => {
           <Section title="Your learning so far" delay={300}>
             <Text style={styles.caption}>Everything counts, whatever the path: progress never resets.</Text>
             <View style={styles.stats}>
-              <StatTile metric="contents" value={stats.contents} label="Casts & articles" />
+              <StatTile metric="casts" value={stats.casts} label="Casts" />
               <StatTile metric="correctAnswers" value={stats.correctAnswers} label="Correct answers" />
               <StatTile metric="fields" value={stats.fieldsExplored} label="Fields explored" />
               <StatTile metric="papers" value={stats.papers} label="Research papers" />
@@ -261,7 +261,7 @@ const LearningPathScreen = ({ navigation, route }) => {
                         {field.field === focusField ? '  ·  focus' : ''}
                       </Text>
                       <Text style={styles.fieldCaption}>
-                        {field.contents} watched or read · {field.correctAnswers} correct
+                        {field.casts} watched · {field.correctAnswers} correct
                         {field.papers > 0 ? ` · ${field.papers} ${field.papers === 1 ? 'paper' : 'papers'}` : ''}
                       </Text>
                     </View>
@@ -269,7 +269,7 @@ const LearningPathScreen = ({ navigation, route }) => {
                       <View
                         style={[
                           styles.fieldFill,
-                          { width: `${(field.contents / maxContents) * 100}%`, backgroundColor: accent },
+                          { width: `${(field.casts / maxCasts) * 100}%`, backgroundColor: accent },
                         ]}
                       />
                     </View>

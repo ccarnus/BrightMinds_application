@@ -28,15 +28,14 @@ import Carousel from '@features/cast/components/Carousel';
 import { feedTitle } from '@features/learning/utils/pathStyles';
 
 const SEARCH_DEBOUNCE_MS = 400;
-const SEARCH_CATEGORIES = ['Article', 'Topic', 'Video'];
+const SEARCH_CATEGORIES = ['Paper', 'Topic', 'Video'];
 const CATEGORY_ICONS = {
-  Article: require('@assets/Cast_screen_icons/article_icon.png'),
+  Paper: require('@assets/Cast_screen_icons/paper_icon.png'),
   Topic: require('@assets/Bottom_icons/lab.png'),
   Video: require('@assets/Cast_screen_icons/cast_icon.png'),
 };
 const forYouIcon = require('@assets/Cast_screen_icons/foryou_icon.png');
 const trendingIcon = require('@assets/Cast_screen_icons/trending_icon.png');
-const articleIcon = require('@assets/Cast_screen_icons/article_icon.png');
 const randomIcon = require('@assets/Cast_screen_icons/random.png');
 
 const toCastCard = (cast) => ({
@@ -46,17 +45,10 @@ const toCastCard = (cast) => ({
   duration: cast.duration,
 });
 
-const toArticleCard = (article) => ({
-  id: article._id,
-  image: article.articleimageurl,
-  title: article.title,
-  duration: article.duration,
-});
-
-const getWatchedIds = (evaluationList, type) =>
+const getWatchedIds = (evaluationList) =>
   new Set(
     (Array.isArray(evaluationList) ? evaluationList : [])
-      .filter((item) => item.type === type && item.watched)
+      .filter((item) => item.watched)
       .map((item) => item.contentid)
   );
 
@@ -117,16 +109,14 @@ const searchContent = async (category, query, castCacheRef) => {
 const CastScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { finishedVideoId, finishedArticleId } = route.params ?? {};
+  const { finishedVideoId } = route.params ?? {};
 
   const [userId, setUserId] = useState(null);
   const [suggestedCastData, setSuggestedCastData] = useState([]);
   // The backend shapes the suggestions by learning path; the title says how.
   const [suggestedTitle, setSuggestedTitle] = useState('For You');
   const [trendingCastData, setTrendingCastData] = useState([]);
-  const [articleData, setArticleData] = useState([]);
   const [finishedVideos, setFinishedVideos] = useState([]);
-  const [finishedArticles, setFinishedArticles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState(null);
@@ -135,7 +125,7 @@ const CastScreen = () => {
 
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('Article');
+  const [selectedCategory, setSelectedCategory] = useState('Paper');
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
@@ -153,20 +143,13 @@ const CastScreen = () => {
     };
   }, []);
 
-  // Finished IDs arrive as route params from VideoScreen / ArticleDetails; clear them once
-  // handled so they don't re-trigger the "done" animation.
+  // The finished ID arrives as a route param from VideoScreen; clear it once handled so it
+  // doesn't re-trigger the "done" animation.
   useEffect(() => {
-    if (!finishedVideoId && !finishedArticleId) return;
-    if (finishedVideoId) {
-      setFinishedVideos((prev) => (prev.includes(finishedVideoId) ? prev : [...prev, finishedVideoId]));
-    }
-    if (finishedArticleId) {
-      setFinishedArticles((prev) =>
-        prev.includes(finishedArticleId) ? prev : [...prev, finishedArticleId]
-      );
-    }
-    navigation.setParams({ finishedVideoId: undefined, finishedArticleId: undefined });
-  }, [finishedVideoId, finishedArticleId, navigation]);
+    if (!finishedVideoId) return;
+    setFinishedVideos((prev) => (prev.includes(finishedVideoId) ? prev : [...prev, finishedVideoId]));
+    navigation.setParams({ finishedVideoId: undefined });
+  }, [finishedVideoId, navigation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -191,16 +174,15 @@ const CastScreen = () => {
   // Throws when no section could be loaded; otherwise returns the first section error (or null).
   const fetchFeed = useCallback(async (currentUserId) => {
     const guest = isGuestUser(currentUserId);
-    const [userResult, suggestedResult, trendingResult, articleResult] = await Promise.allSettled([
+    const [userResult, suggestedResult, trendingResult] = await Promise.allSettled([
       guest ? null : api.get(`/user/${currentUserId}`),
       guest ? null : api.get(`/user/${currentUserId}/suggested/for/you`),
       api.get('/cast/trending/right/now'),
-      api.get('/article'),
     ]);
     if (!mountedRef.current) return null;
 
-    const results = { suggested: suggestedResult, trending: trendingResult, articles: articleResult };
-    const sectionNames = guest ? ['trending', 'articles'] : ['suggested', 'trending', 'articles'];
+    const results = { suggested: suggestedResult, trending: trendingResult };
+    const sectionNames = guest ? ['trending'] : ['suggested', 'trending'];
     const failedSections = sectionNames.filter((name) => results[name].status === 'rejected');
     failedSections.forEach((name) => console.error(`Error fetching ${name}:`, results[name].reason));
     if (failedSections.length === sectionNames.length) {
@@ -215,25 +197,18 @@ const CastScreen = () => {
     if (userResult.status === 'fulfilled') {
       setSuggestedTitle(feedTitle(userResult.value?.data?.learning));
     }
-    const watchedCasts = getWatchedIds(evaluationList, 'cast');
-    const watchedArticles = getWatchedIds(evaluationList, 'article');
+    const watchedCasts = getWatchedIds(evaluationList);
 
     // A failed section keeps what it already shows (e.g. on refresh).
     const suggested = listFromResult(suggestedResult);
     const trending = listFromResult(trendingResult);
-    const articles = listFromResult(articleResult);
     if (suggested) {
       setSuggestedCastData(suggested.filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard));
     }
     if (trending) {
       setTrendingCastData(trending.filter((cast) => !watchedCasts.has(cast._id)).map(toCastCard));
     }
-    if (articles) {
-      setArticleData(
-        articles.filter((article) => !watchedArticles.has(article._id)).map(toArticleCard)
-      );
-    }
-    setSectionErrors({ suggested: !suggested, trending: !trending, articles: !articles });
+    setSectionErrors({ suggested: !suggested, trending: !trending });
     return failedSections.length > 0 ? results[failedSections[0]].reason : null;
   }, []);
 
@@ -324,8 +299,8 @@ const CastScreen = () => {
   };
 
   const handleSearchResultPress = ({ category, id }) => {
-    if (category === 'Article') {
-      navigation.navigate('OpenAlexDetailsScreen', { articleId: id });
+    if (category === 'Paper') {
+      navigation.navigate('OpenAlexDetailsScreen', { workId: id });
     } else if (category === 'Topic') {
       navigation.navigate('SearchTopicResult', { topicId: id });
     } else {
@@ -338,11 +313,6 @@ const CastScreen = () => {
     setSuggestedCastData((prev) => prev.filter((item) => item.id !== id));
     setTrendingCastData((prev) => prev.filter((item) => item.id !== id));
     setFinishedVideos((prev) => prev.filter((itemId) => itemId !== id));
-  }, []);
-
-  const removeFinishedArticle = useCallback((id) => {
-    setArticleData((prev) => prev.filter((item) => item.id !== id));
-    setFinishedArticles((prev) => prev.filter((itemId) => itemId !== id));
   }, []);
 
   const renderCategoryRow = () => (
@@ -429,14 +399,13 @@ const CastScreen = () => {
   };
 
   // Shows the carousel, else an inline error when the section failed to load, else an empty note.
-  const renderSection = ({ list, failed, errorMessage, emptyMessage, variant, finishedIds, onAnimationFinish }) => {
+  const renderSection = ({ list, failed, errorMessage, emptyMessage }) => {
     if (list.length > 0) {
       return (
         <Carousel
           list={list}
-          variant={variant}
-          finishedIds={finishedIds}
-          onAnimationFinish={onAnimationFinish}
+          finishedIds={finishedVideos}
+          onAnimationFinish={removeFinishedVideo}
         />
       );
     }
@@ -463,7 +432,7 @@ const CastScreen = () => {
       <View style={styles.container}>
         <View style={styles.searchHeader}>
           <SearchField
-            placeholder="Search articles, topics, videos"
+            placeholder="Search papers, topics, videos"
             onChangeText={setSearchQuery}
             value={searchQuery}
             style={styles.searchHeaderField}
@@ -493,7 +462,7 @@ const CastScreen = () => {
         <View style={styles.searchSection}>
           <Text style={styles.titleText}>I want to learn about...</Text>
           <SearchField
-            placeholder="Search articles, topics, videos"
+            placeholder="Search papers, topics, videos"
             onChangeText={setSearchQuery}
             value={searchQuery}
             onFocus={() => setIsSearching(true)}
@@ -520,9 +489,6 @@ const CastScreen = () => {
               failed: sectionErrors.suggested,
               errorMessage: "Couldn't load your suggestions.",
               emptyMessage: 'No suggestions available.',
-              variant: 'cast',
-              finishedIds: finishedVideos,
-              onAnimationFinish: removeFinishedVideo,
             })}
           </>
         )}
@@ -536,23 +502,6 @@ const CastScreen = () => {
           failed: sectionErrors.trending,
           errorMessage: "Couldn't load trending casts.",
           emptyMessage: 'No trending casts available.',
-          variant: 'cast',
-          finishedIds: finishedVideos,
-          onAnimationFinish: removeFinishedVideo,
-        })}
-
-        <View style={styles.sectionHeader}>
-          <Image source={articleIcon} style={styles.sectionIcon} />
-          <Text style={styles.sectionTitle}>Articles</Text>
-        </View>
-        {renderSection({
-          list: articleData,
-          failed: sectionErrors.articles,
-          errorMessage: "Couldn't load articles.",
-          emptyMessage: 'No articles available.',
-          variant: 'article',
-          finishedIds: finishedArticles,
-          onAnimationFinish: removeFinishedArticle,
         })}
       </ScrollView>
       <ErrorSnackbar

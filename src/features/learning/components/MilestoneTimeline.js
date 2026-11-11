@@ -6,7 +6,7 @@ import { METRIC_STYLES, fieldDisplay, formatDate } from '@features/learning/util
 
 const NODE_SIZE = 32;
 
-// "3 casts & articles · 2 correct answers in Chemistry"
+// "3 casts · 2 correct answers in Chemistry"
 const goalsSummary = (goals, focusField) =>
   goals
     .map((goal) => `${goal.target} ${(METRIC_STYLES[goal.metric]?.label || goal.metric).toLowerCase()}`)

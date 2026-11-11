@@ -20,14 +20,10 @@ import Ready from '@features/track/screens/Ready';
 import Evaluation from '@features/track/screens/Evaluation';
 import Finish from '@features/track/screens/Finish';
 import CastPublicationsScreen from '@features/track/screens/CastPublicationsScreen';
-import ArticlePublicationsScreen from '@features/track/screens/ArticlePublicationsScreen';
-import CastTypeChoice from '@features/post-content/screens/CastTypeChoice';
 import PostCast from '@features/post-content/screens/PostCast';
-import PostArticle from '@features/post-content/screens/PostArticle';
 import VideoScreen from '@features/cast/screens/VideoScreen';
 import DiscoverScreen from '@features/cast/screens/DiscoverScreen';
 import DiscoverVideoScreen from '@features/cast/screens/DiscoverVideoScreen';
-import ArticleDetailsScreen from '@features/cast/screens/ArticleDetailsScreen';
 import OpenAlexDetailsScreen from '@features/cast/screens/OpenAlexDetailsScreen';
 import SearchTopicResult from '@features/cast/screens/SearchTopicResult';
 import VirtualLab from '@features/lab/screens/VirtualLab';
@@ -98,9 +94,8 @@ const MainNavigator = () => {
         {/* Cast */}
         <Stack.Screen name="VideoScreen" component={VideoScreen} options={fullScreenVideo} />
         <Stack.Screen name="DiscoverScreen" component={DiscoverScreen} />
-        <Stack.Screen name="DiscoverVideoScreen" component={DiscoverVideoScreen} options={fullScreenVideo} />
-        <Stack.Screen name="ArticleDetails" component={ArticleDetailsScreen} />
-        <Stack.Screen name="OpenAlexDetailsScreen" component={OpenAlexDetailsScreen} />
+        <Stack.Screen name="DiscoverVideoScreen" component={DiscoverVideoScreen} options={        fullScreenVideo} />
+                <Stack.Screen name="OpenAlexDetailsScreen" component={OpenAlexDetailsScreen} />
         <Stack.Screen name="SearchTopicResult" component={SearchTopicResult} />
 
         {/* Track */}
@@ -118,10 +113,7 @@ const MainNavigator = () => {
 
         {/* Library & content creation */}
         <Stack.Screen name="CastPublicationsScreen" component={CastPublicationsScreen} />
-        <Stack.Screen name="ArticlePublicationsScreen" component={ArticlePublicationsScreen} />
-        <Stack.Screen name="CastTypeChoice" component={CastTypeChoice} />
         <Stack.Screen name="PostCast" component={PostCast} />
-        <Stack.Screen name="PostArticle" component={PostArticle} />
 
         {/* Profile */}
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} />

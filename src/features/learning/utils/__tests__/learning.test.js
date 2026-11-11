@@ -90,18 +90,19 @@ describe('pathStyles', () => {
   test('labels name the focus field with its display name', () => {
     expect(fieldDisplay('ComputerScience')).toBe('Computer Science');
     expect(fieldDisplay('Unknown')).toBe('Unknown');
-    expect(goalLabel('contents', 'ComputerScience')).toBe('Casts & articles in Computer Science');
+    expect(goalLabel('casts', 'ComputerScience')).toBe('Casts in Computer Science');
+    expect(goalLabel('casts')).toBe('Casts');
     expect(goalLabel('correctAnswers')).toBe('Correct answers');
   });
 
   test('the weakest unfinished goal is the next thing to work on', () => {
     const goals = [
-      { metric: 'contents', current: 9, target: 10 },
+      { metric: 'casts', current: 9, target: 10 },
       { metric: 'correctAnswers', current: 2, target: 8 },
       { metric: 'fields', current: 5, target: 4 },
     ];
     expect(weakestGoal(goals).metric).toBe('correctAnswers');
-    expect(weakestGoal([{ metric: 'contents', current: 3, target: 3 }])).toBeNull();
+    expect(weakestGoal([{ metric: 'casts', current: 3, target: 3 }])).toBeNull();
   });
 
   test('the For You title follows the path', () => {

@@ -132,8 +132,8 @@ const TrackScreen = () => {
   // The floating "Test Yourself" button sits just above the tab bar.
   const buttonBottom = tabBarSpace - spacing.s;
   // Fields the user learned about; each gauge is relative to their most studied field.
-  const fields = (learning?.stats?.fields || []).filter((field) => field.contents > 0);
-  const maxContents = Math.max(1, ...fields.map((field) => field.contents));
+  const fields = (learning?.stats?.fields || []).filter((field) => field.casts > 0);
+  const maxCasts = Math.max(1, ...fields.map((field) => field.casts));
 
   return (
     <View style={styles.container}>
@@ -186,13 +186,13 @@ const TrackScreen = () => {
             <View style={styles.topicGrid}>
               {fields.map((field) => {
                 const department = departments.find((dep) => dep.name === field.field);
-                const percent = toPercent(field.contents / maxContents);
+                const percent = toPercent(field.casts / maxCasts);
                 return (
                   <View
                     style={styles.topicItem}
                     key={field.field}
                     accessible
-                    accessibilityLabel={`${department ? department.display : field.field}: ${field.contents} watched or read`}
+                    accessibilityLabel={`${department ? department.display : field.field}: ${field.casts} watched`}
                   >
                     <AnimatedCircularProgress
                       size={TOPIC_GAUGE_SIZE}
@@ -203,7 +203,7 @@ const TrackScreen = () => {
                       lineCap="round"
                       rotation={0}
                     >
-                      {() => <Text style={styles.topicGaugeText}>{field.contents}</Text>}
+                      {() => <Text style={styles.topicGaugeText}>{field.casts}</Text>}
                     </AnimatedCircularProgress>
                     <Text style={styles.topicName} numberOfLines={2}>
                       {department ? department.display : field.field}

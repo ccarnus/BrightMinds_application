@@ -5,33 +5,27 @@ import { colors, sizes, spacing, typography } from '@shared/config/theme';
 import AppButton from '@shared/components/AppButton';
 
 const PERMISSION_MESSAGES = {
-  video: {
-    camera: 'Please allow camera access in your device settings to record a video.',
-    library: 'Please allow photo library access in your device settings to choose a video.',
-  },
-  image: {
-    camera: 'Please allow camera access in your device settings to take a photo.',
-    library: 'Please allow photo library access in your device settings to choose a photo.',
-  },
+  camera: 'Please allow camera access in your device settings to record a video.',
+  library: 'Please allow photo library access in your device settings to choose a video.',
 };
 
 /**
- * Asks for the permission of `source` ('camera' | 'library') then opens it.
- * `kind` ('video' | 'image') only words the permission message.
+ * Asks for the permission of `source` ('camera' | 'library') then opens it to pick a video.
  * @returns {Promise<ImagePicker.ImagePickerAsset | null>} The picked asset, null if canceled/denied.
  */
-export const pickMedia = async (source, kind, options) => {
+export const pickVideoAsset = async (source) => {
   const { granted } =
     source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!granted) {
-    Alert.alert('Permission required', PERMISSION_MESSAGES[kind][source], [
+    Alert.alert('Permission required', PERMISSION_MESSAGES[source], [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Open Settings', onPress: () => Linking.openSettings() },
     ]);
     return null;
   }
+  const options = { mediaTypes: ['videos'] };
   const result =
     source === 'camera'
       ? await ImagePicker.launchCameraAsync(options)

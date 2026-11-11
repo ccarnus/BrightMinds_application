@@ -100,7 +100,7 @@ const ReadyScreen = ({ navigation }) => {
         ]);
         pending = (data?.evaluation_list || [])
           .filter((item) => item.watched && !item.answered)
-          .map((item) => ({ contentid: item.contentid, type: item.type }));
+          .map((item) => ({ contentid: item.contentid }));
         userRewards = rewardsData;
       }
       if (!mountedRef.current) return;
@@ -175,7 +175,7 @@ const ReadyScreen = ({ navigation }) => {
                 All caught up!
               </Text>
               <Text style={styles.emptyText}>
-                Watch casts or read articles to unlock new questions, then come back to earn XP.
+                Watch casts to unlock new questions, then come back to earn XP.
               </Text>
             </>
           )}

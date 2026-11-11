@@ -72,7 +72,7 @@ const DiscoverScreen = ({ navigation, route }) => {
 
       const watchedCasts = new Set(
         (userResponse?.data?.evaluation_list || [])
-          .filter((item) => item.type === 'cast' && item.watched)
+          .filter((item) => item.watched)
           .map((item) => item.contentid)
       );
       const casts = (Array.isArray(castsResponse.data) ? castsResponse.data : []).filter(
