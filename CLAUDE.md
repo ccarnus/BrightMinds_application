@@ -42,10 +42,12 @@ The native splash screen stays visible until `MainNavigator` has resolved the in
 ```
 src/
   features/         # Feature modules, each with screens/ and components/
-    cast/           # Cast feed, discovery, search (papers & topics via OpenAlex, casts), paper details
+    cast/           # Home (greeting, progress, search, shortcuts, hero cast, rails), discovery, search (papers &
+                    # topics via OpenAlex, casts), paper details
     track/          # Learning progress, gamified quizzes (Ready → Evaluation → Finish) with XP/levels/streaks/
                     # badges, user publications lists
-    lab/            # Virtual laboratories by department, topics, works (OpenAlex)
+    lab/            # Lab tab: explorable research map (all 26 departments, sized by research), lab screen (topics),
+                    # topic details, works (OpenAlex)
     library/        # User publications hub (Professor/Researcher/PhD Student only)
     auth/           # Login, signup, forgot password
     onboarding/     # First-launch flow, auth choice, welcome animation
@@ -56,10 +58,11 @@ src/
     api/client.js   # axios instances (api, openAlex) with GET retry, error classification (getErrorType,
                     # getErrorMessage, notFoundError), cached getUniversityLogo
     components/     # Banner (header), AppButton, BackButton, ConfirmDialog, SearchField, Loader (Lottie),
+                    # PressableScale (spring press feedback),
                     # StateMessage (empty), ErrorState (errors), ErrorSnackbar (failed refresh), OfflineBanner,
                     # ErrorBoundary, CastVideoPlayer, ConfettiBurst
     config/         # APIConfig (API_BASE_URL, OPENALEX_BASE_URL), theme (design tokens: colors, typography,
-                    # sizes, spacing, layout, shadow, scale)
+                    # sizes, spacing, layout, shadow, tints, scrim, scale)
     utils/          # UserStorage (session in AsyncStorage), media (SRT parsing, time formatting),
                     # connectivity (expo-network offline state, useIsOffline, useOnReconnect), haptics
     data/           # Static data: categories, departments, visibility
@@ -70,8 +73,12 @@ src/
     navigationHelpers.js # resetToAuthChoice / resetToHome (root-stack resets)
 ```
 
-Feature-level shared code: `cast/components/Carousel.js` (horizontal cast carousel),
-`track/components/PublicationsList.js` (the user's casts list), `track/components/` reward widgets
+Feature-level shared code: the home screen (`cast/screens/CastScreen.js`) is assembled from `cast/components/`:
+`HomeHeader` (greeting), `ProgressCard` (level/XP/streak, from `GET /user/:id/rewards`), `SearchPill` →
+`SearchPanel` (state in `cast/utils/useCastSearch.js`, requests in `castSearch.js`), `QuickActions` (Discover, Quiz with
+the questions ready, Labs), `FeaturedCast` (hero), `CastRail` + `CastCard` (posters; `ranked` for trending),
+`SectionHeader` and `HomeSkeleton`; its pure helpers (greeting, new tag, hero/rail split) are in `cast/utils/home.js`.
+Also `track/components/PublicationsList.js` (the user's casts list), `track/components/` reward widgets
 (`LevelBadge`, `XpBar`, `StreakFlame`, `BadgeMedal`, `RewardsCard`) and `track/components/quiz/` (quiz UI),
 `track/utils/` (`rewards.js` rules mirror, `quizApi.js`, `useCountUp`), `lab/data/departmentImages.js`,
 `post-content/components/PostFormFields.js` (topic/visibility pickers, upload overlay, guest check),
@@ -100,7 +107,8 @@ Feature-level shared code: `cast/components/Carousel.js` (horizontal cast carous
   "Couldn't …" title plus `getErrorMessage`. `isRouteNotFound(error)` detects an endpoint the server doesn't have yet
   (older backend) so callers can fall back.
 - **University logos** — `getUniversityLogo(name)` (cached & de-duplicated); don't fetch `/university/by/name` per item.
-- **Loading / error / empty states** — `<Loader />` for loading (it explains slow loads after a few seconds).
+- **Loading / error / empty states** — `<Loader />` for loading (it explains slow loads after a few seconds); the home
+  screen uses `HomeSkeleton` (same slow-load hint) so its layout doesn't jump when the feed arrives.
   `<ErrorState error={error} onRetry={retry} fallbackMessage="We couldn't load …" />` for every failed load: it picks
   the title/message from the error type, shows the shared illustration and reloads automatically when the device
   comes back online. Stack screens add `secondaryActionLabel="Go back"` + `onSecondaryAction`; use `notFoundError()`
@@ -113,6 +121,12 @@ Feature-level shared code: `cast/components/Carousel.js` (horizontal cast carous
 - **Session / roles** — Use `@shared/utils/UserStorage` (`getUser`, `setUser`, `clearUser`, `setGuestUser`,
   `isGuestUser`, `canAccessLibrary`, onboarding helpers) instead of raw AsyncStorage keys.
 - **Guest mode** — `GUEST_USER_ID`; check with `isGuestUser(userId)`. Guests must not call endpoints that write user data.
+- **Signup / email confirmation** — The backend creates the account and returns `userId` at once: `SignupScreen`
+  stores the session (`setUser`) and goes straight to `PreferencesScreen` (older servers without `userId` keep the
+  "check your email, then log in" flow). The email confirmation never blocks the app: unconfirmed users see
+  `profile/components/VerifyEmailBanner` (tap → `POST /user/:id/verification/resend`, the server's 429 message says
+  how long to wait). Passwords: 8+ characters, at most 72 bytes (`auth/utils/validation.js` mirrors the server).
+  The reset request always succeeds server-side, so `ForgotPasswordScreen` words its success "If an account exists…".
 - **Role-based access** — Library tab only for `Professor`, `Researcher`, `PhD Student` (`canAccessLibrary`).
 - **Navigation** — Screens receive `navigation` and `route` props. All stack screens have `headerShown: false` except
   `BottomNav`, which uses the shared `Banner` header. React Navigation 7: `navigate` never goes
@@ -144,9 +158,27 @@ Feature-level shared code: `cast/components/Carousel.js` (horizontal cast carous
   tablets don't stretch edge to edge. Size from flex, percentages and safe-area insets, not window-height offsets;
   cap any window-derived size with `Math.min` and prefer `useWindowDimensions()` over module-level `Dimensions`.
 - **Tab bar** — `FloatingTabBar` floats above the content (icons only, Ionicons outline → filled, springy blue
-  indicator, hidden while the keyboard is open). Tab screens (Cast, Track, Lab, Library) must reserve
+  indicator, hidden while the keyboard is open). The indicator sits in the same row as the items and follows their
+  measured `onLayout` position: keep it that way (computed offsets drift with rounding, borders and tab count).
+  Tab screens (Cast, Track, Lab, Library) must reserve
   `useTabBarSpace()` at the bottom (scroll `paddingBottom`, centered states, snackbars, floating buttons). Add a new
   tab's icons to `TAB_ICONS` in `FloatingTabBar.js`.
+- **Lab map** — `lab/screens/LabScreen` shows `lab/components/ResearchMap`: a flat world seen from a tilted camera
+  with perspective, drawn with plain views (no 3D transforms, so touches are exact on every platform). All geometry is
+  in `lab/utils/labMap.js` (`project`/`unproject` worklets, camera limits, hit test, grid path; pure and unit tested):
+  keep it free of React/Reanimated imports. Every department has a fixed place and region in `lab/data/labMeta.js`
+  (positions in map units; `buildLabNodes` only pushes overlapping discs apart). The **size of a lab is the research
+  done in its field**: `level` (0-100, log scale of OpenAlex works over 12 months) from
+  `GET /virtual/lab/overview` through `lab/utils/labApi.js` (older servers fall back to casts per department; a lab
+  with no value gets the middle size). Labs with casts show a green dot, the others are muted. Gestures are one
+  `Gesture.Simultaneous` (pan with the grabbed point staying under the finger, pinch around the fingers, tap, double
+  tap) on the camera shared values `camX/camY/zoom`; taps are hit-tested in `hitLab`, not with touchables, and each
+  lab view exposes `accessibilityLabel`/`onAccessibilityTap`. Names are unscaled, in a layer above the discs. Colors are
+  `labColors` in the theme. The lab screen (`VirtualLab`) lists topics sized by their own research (`labTopics.js`).
+- **Press feedback & entrances** — Cards, tiles and chips are `PressableScale` (spring on press); screens bring their
+  blocks in with Reanimated layout animations (`FadeInDown`/`FadeInUp`/`FadeInRight`, a short stagger) on a wrapper
+  `Animated.View` around the `PressableScale`, never on it. Soft color accents use `tints.*`; text on photos sits on the
+  `scrim` gradient.
 - **Video playback** — Uses `expo-video` (`useVideoPlayer` + `VideoView`; times are in **seconds**, listen with
   `useEventListener` from `expo`). `expo-av` was removed from the SDK — don't reintroduce it. All cast playback goes through
   `@shared/components/CastVideoPlayer` (captions from SRT, 85% "watched" tracking, close button, share);

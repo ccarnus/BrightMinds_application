@@ -27,7 +27,8 @@ import Loader from '@shared/components/Loader';
 import SearchField from '@shared/components/SearchField';
 import StateMessage from '@shared/components/StateMessage';
 import ErrorState from '@shared/components/ErrorState';
-import { isValidEmail } from '@features/auth/utils/validation';
+import { getPasswordProblem, isValidEmail } from '@features/auth/utils/validation';
+import { setUser } from '@shared/utils/UserStorage';
 
 const SIGNUP_TIMEOUT_MS = 60000;
 const CATEGORY_OPTIONS = [
@@ -67,9 +68,11 @@ const SignupScreen = ({ navigation }) => {
 
   const needsUniversity = ROLES_WITH_UNIVERSITY.includes(role);
   const passwordsMatch = confirmPassword.length === 0 || password === confirmPassword;
+  const passwordProblem = getPasswordProblem(password);
   const isFormComplete =
     !!email &&
     !!password &&
+    !passwordProblem &&
     !!confirmPassword &&
     passwordsMatch &&
     !!username &&
@@ -214,12 +217,24 @@ const SignupScreen = ({ navigation }) => {
     });
 
     try {
-      await api.post('/user/signup', formData, {
+      const { data } = await api.post('/user/signup', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: SIGNUP_TIMEOUT_MS,
       });
-      Alert.alert('Signup successful', 'Please check your email to verify your account');
-      navigation.popTo('LoginScreen', { email: trimmedEmail });
+      if (data?.userId) {
+        // The account works right away: the email only needs confirming later.
+        await setUser({
+          userId: data.userId,
+          userRole: role,
+          userUniversity: needsUniversity && selectedUniversity ? selectedUniversity.name : '',
+        });
+        Alert.alert('Welcome to BrightMinds!', data.response || 'Your account is ready.');
+        navigation.reset({ index: 0, routes: [{ name: 'PreferencesScreen' }] });
+      } else {
+        // Older servers only create the account and require the email to be confirmed first.
+        Alert.alert('Signup successful', 'Please check your email to verify your account');
+        navigation.popTo('LoginScreen', { email: trimmedEmail });
+      }
     } catch (error) {
       Alert.alert('Signup failed', getErrorMessage(error, 'Could not create account. Please try again.'));
     } finally {
@@ -329,7 +344,7 @@ const SignupScreen = ({ navigation }) => {
 
           <TextInput
             label="Password"
-            style={styles.input}
+            style={[styles.input, !!passwordProblem && styles.inputWithHelper]}
             outlineStyle={styles.inputOutline}
             value={password}
             onChangeText={setPassword}
@@ -337,7 +352,13 @@ const SignupScreen = ({ navigation }) => {
             mode="outlined"
             autoCapitalize="none"
             textContentType="newPassword"
+            error={!!passwordProblem}
           />
+          {!!passwordProblem && (
+            <HelperText type="error" visible style={styles.helperText}>
+              {passwordProblem}
+            </HelperText>
+          )}
 
           <TextInput
             label="Confirm Password"

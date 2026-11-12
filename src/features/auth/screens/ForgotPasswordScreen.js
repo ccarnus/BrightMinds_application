@@ -37,7 +37,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
     setLoading(true);
     try {
       await api.post('/user/reset-password-request', { email: trimmedEmail });
-      setAlert({ message: 'Please check your email to reset your password.', success: true });
+      setAlert({
+        message:
+          "If an account exists for this email, we've sent a link to reset your password. Check your inbox and your spam folder.",
+        success: true,
+      });
     } catch (error) {
       setAlert({ message: getErrorMessage(error, 'Error sending reset email.'), success: false });
     } finally {

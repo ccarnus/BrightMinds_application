@@ -125,13 +125,20 @@ npx expo export --platform ios
 - First launch: onboarding → "Continue as guest" and sign up / log in / forgot password. A first login goes through
   field preferences → learning path picker (try Deep Learner: it asks for a focus field; "Decide later" skips) →
   welcome screen.
-- Cast tab: feed loads, search (topics, papers, casts), play a cast to the end (it is marked as watched at 85%),
-  captions toggle, share, Discover.
+- Cast tab (home): skeleton, then greeting, level/XP/streak card (tap → Track), search (papers, topics, videos), the
+  Discover / Quiz / Labs shortcuts (Quiz shows how many questions are ready), the "Picked for you" hero cast and the
+  suggestion and trending rails (podium ranks, "NEW" tag); pull to refresh; come back from a quiz and the level and
+  count update without a loader. As a guest: no progress card or quiz, a prompt to create an account. Play a cast to
+  the end (it is marked as watched at 85%), captions toggle, share, Discover. Switch tabs and check the blue indicator
+  stays centered behind its icon (also with the Library tab, on a small phone and a tablet).
 - Track tab: rewards card (level, XP bar, streak, badges — tap one for details), progress, start a quiz
   (Ready → Evaluation → Finish): answer right and wrong (animations, haptics, combo toast at 3 in a row), leave with
   the ✕ (answers given so far still count), finish and check XP / level-up / new badges, then the Track tab updates.
   With no pending question, Ready shows "All caught up!" and links to the Cast tab.
-- Lab tab: departments → virtual lab → topic → casts / works (OpenAlex papers).
+- Lab tab: a map of all the labs to explore. Drag in any direction (it glides), pinch or double-tap to zoom, tap a lab
+  to fly into it (a lab is bigger the more research is done in its field; a green dot means it has casts). The search
+  icon flies to a lab and "show all" returns to the overview. A lab opens its topics (sized by research) → topic →
+  casts / works (OpenAlex papers); going back returns the camera to where it was.
 - Library tab (Professor / Researcher / PhD Student roles only): publish a cast (camera & gallery permissions;
   slide or play/pause the preview to choose the thumbnail moment, then check the card in the Cast feed), then delete it.
 - Learning path: on Track (or Profile), the path card shows the milestone trail and the next goals; tap it for the

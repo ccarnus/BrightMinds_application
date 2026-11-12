@@ -12,7 +12,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import PieChart from 'react-native-pie-chart';
-import { colors, contentWidth, fonts, sizes, spacing, typography } from '@shared/config/theme';
+import { colors, contentWidth, sizes, spacing, typography } from '@shared/config/theme';
 import departments from '@shared/data/departments';
 import { api } from '@shared/api/client';
 import { getUser, clearUser, isGuestUser } from '@shared/utils/UserStorage';
@@ -25,6 +25,7 @@ import AppButton from '@shared/components/AppButton';
 import ConfirmDialog from '@shared/components/ConfirmDialog';
 import BackButton from '@shared/components/BackButton';
 import LearningPathCard from '@features/learning/components/LearningPathCard';
+import VerifyEmailBanner from '@features/profile/components/VerifyEmailBanner';
 import { fetchLearningProfile } from '@features/learning/utils/learningApi';
 
 const departmentMapping = departments.reduce((map, dept) => {
@@ -193,14 +194,12 @@ const ProfileScreen = () => {
 
         {/* LOWER SECTION */}
         <View style={styles.lowerSection}>
-          {userData && !userData.isVerified && (
-            <View style={styles.verificationContainer}>
-              <Image
-                source={require('@assets/Profile_icons/warning_icon.png')}
-                style={styles.warningIcon}
-              />
-              <Text style={styles.verificationText}>Verify your email</Text>
-            </View>
+          {userData && !userData.isVerified && !isGuest && (
+            <VerifyEmailBanner
+              userId={userData._id}
+              email={userData.email}
+              onVerified={() => loadProfile({ manual: true })}
+            />
           )}
 
           {/* Learning Path (hidden on servers without learning paths) */}
@@ -377,28 +376,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     marginVertical: spacing.m,
-  },
-  verificationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.s,
-    padding: spacing.m,
-    backgroundColor: colors.surface,
-    borderRadius: sizes.radius,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.danger,
-  },
-  warningIcon: {
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-  },
-  verificationText: {
-    ...typography.body,
-    fontFamily: fonts.bold,
-    color: colors.danger,
-    textAlign: 'center',
   },
   buttonRow: {
     gap: spacing.s,

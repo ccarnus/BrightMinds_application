@@ -135,6 +135,17 @@ export const contentWidth = {
   alignSelf: 'center',
 };
 
+// Soft tints (14% of a brand color) behind icons and tiles, so a color accent stays gentle.
+export const tints = {
+  blue: 'rgba(74, 144, 226, 0.14)',
+  green: 'rgba(46, 139, 87, 0.14)',
+  orange: 'rgba(255, 140, 0, 0.14)',
+  teal: 'rgba(0, 102, 102, 0.12)',
+};
+
+// Dark fade at the bottom of image cards, so text on a photo stays readable.
+export const scrim = ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.78)'];
+
 // Quiz gamification palette: XP (gold), streak (flame), badge tiers and confetti.
 export const rewardColors = {
   xp: '#F5A623',
@@ -160,4 +171,21 @@ export const pathColors = {
   deep_learner: [colors.lightGreen, colors.darkGreen],
   researcher: [colors.lightOrange, colors.darkOrange],
   none: [colors.lightGray, colors.darkGray],
+};
+
+// Virtual lab map: the ground, and one palette per region (rim of the top face, side wall, island).
+export const labColors = {
+  ground: '#e7edf2',
+  haze: 'rgba(231, 237, 242, 0.8)',
+  hazeClear: 'rgba(231, 237, 242, 0)',
+  grid: 'rgba(0, 64, 122, 0.1)',
+  face: '#ffffff',
+  shadow: 'rgba(28, 28, 28, 0.17)',
+  muted: { rim: '#cbd2d9', side: '#b3bcc5', face: '#f1f3f5' },
+  regions: {
+    health: { rim: '#3CB371', side: '#2E8B57', island: '#d9eee3' },
+    life: { rim: '#3fb0b0', side: '#00706f', island: '#d2eeee' },
+    science: { rim: '#4A90E2', side: '#00407A', island: '#d9e6f5' },
+    society: { rim: '#FFA500', side: '#C77400', island: '#fbe7c9' },
+  },
 };

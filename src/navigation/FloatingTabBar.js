@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { View, Pressable, StyleSheet, Keyboard, Platform, useWindowDimensions } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarHeightCallbackContext } from '@react-navigation/bottom-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadow, spacing } from '@shared/config/theme';
+import haptics from '@shared/utils/haptics';
 
 export const TAB_BAR_HEIGHT = 64;
 const INDICATOR_SIZE = 48;
@@ -53,7 +54,7 @@ const useKeyboardVisible = () => {
   return visible;
 };
 
-const TabItem = ({ routeName, label, focused, onPress, onLongPress }) => {
+const TabItem = ({ routeName, label, focused, onPress, onLongPress, onLayout }) => {
   const [activeIcon, inactiveIcon] = TAB_ICONS[routeName] || ['ellipse', 'ellipse-outline'];
   const progress = useSharedValue(focused ? 1 : 0);
   const pressScale = useSharedValue(1);
@@ -73,6 +74,7 @@ const TabItem = ({ routeName, label, focused, onPress, onLongPress }) => {
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      onLayout={onLayout}
       onPressIn={() => {
         pressScale.value = withSpring(0.86, SPRING);
       }}
@@ -98,8 +100,11 @@ const TabItem = ({ routeName, label, focused, onPress, onLongPress }) => {
 
 /**
  * Floating, pill-shaped tab bar: icons only, with a blue indicator that springs (and briefly
- * stretches) toward the selected tab. Sized from the window and safe-area insets so it stays
- * centered on any phone or tablet, and slides away while the keyboard is open.
+ * stretches) toward the selected tab. The bar is centered and sized from the window and the
+ * safe-area insets, and slides away while the keyboard is open.
+ *
+ * The indicator lives in the same row as the items and is placed from their *measured* position,
+ * so it stays exactly behind its icon on any screen size, tab count, rounding or font scale.
  */
 const FloatingTabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -111,38 +116,54 @@ const FloatingTabBar = ({ state, descriptors, navigation }) => {
   const { routes, index: activeIndex } = state;
   const availableWidth = windowWidth - Math.max(insets.left, insets.right, 0) * 2 - SIDE_MARGIN * 2;
   const barWidth = Math.min(availableWidth, routes.length * ITEM_WIDTH + BAR_PADDING * 2);
-  // Items share the bar's inner width (inside the hairline border and side padding).
-  const itemWidth = (barWidth - StyleSheet.hairlineWidth * 2 - BAR_PADDING * 2) / routes.length;
-  const indicatorX = BAR_PADDING + activeIndex * itemWidth + (itemWidth - INDICATOR_SIZE) / 2;
   const barBottom = getBarBottom(insets);
 
-  const translateX = useSharedValue(indicatorX);
+  // Position of each item in the row, by route key.
+  const [layouts, setLayouts] = useState({});
+  const activeLayout = layouts[routes[activeIndex]?.key];
+  const targetX = activeLayout ? activeLayout.x + (activeLayout.width - INDICATOR_SIZE) / 2 : null;
+  const activeWidth = activeLayout?.width ?? null;
+
+  const translateX = useSharedValue(0);
   const stretch = useSharedValue(1);
+  const ready = useSharedValue(0);
   const hidden = useSharedValue(0);
-  const previousLayout = useRef({ indicatorX, itemWidth });
+  const placedWidth = useRef(null);
+
+  const onItemLayout = useCallback((key, { x, width }) => {
+    setLayouts((previous) => {
+      const current = previous[key];
+      if (current && Math.abs(current.x - x) < 0.5 && Math.abs(current.width - width) < 0.5) {
+        return previous;
+      }
+      return { ...previous, [key]: { x, width } };
+    });
+  }, []);
 
   useLayoutEffect(() => {
     reportHeight?.(tabBarSpace);
   }, [reportHeight, tabBarSpace]);
 
   useEffect(() => {
-    const previous = previousLayout.current;
-    previousLayout.current = { indicatorX, itemWidth };
-    if (previous.indicatorX === indicatorX) return;
-    // A layout change (tab added, rotation) moves the indicator instantly; a tab change springs it.
-    if (previous.itemWidth !== itemWidth) {
-      translateX.value = indicatorX;
+    if (targetX === null) return;
+    // First measure, or a new layout (tab added, rotation, tablet resize): jump. A tab change
+    // keeps the item width, so it springs.
+    if (placedWidth.current === null || placedWidth.current !== activeWidth) {
+      placedWidth.current = activeWidth;
+      translateX.value = targetX;
+      ready.value = 1;
       return;
     }
-    translateX.value = withSpring(indicatorX, SPRING);
+    translateX.value = withSpring(targetX, SPRING);
     stretch.value = withSequence(withTiming(1.3, { duration: 110 }), withSpring(1, SPRING));
-  }, [indicatorX, itemWidth, translateX, stretch]);
+  }, [targetX, activeWidth, translateX, stretch, ready]);
 
   useEffect(() => {
     hidden.value = withTiming(keyboardVisible ? 1 : 0, { duration: 200 });
   }, [keyboardVisible, hidden]);
 
   const indicatorStyle = useAnimatedStyle(() => ({
+    opacity: ready.value,
     transform: [{ translateX: translateX.value }, { scaleX: stretch.value }],
   }));
   const barStyle = useAnimatedStyle(() => ({
@@ -156,8 +177,10 @@ const FloatingTabBar = ({ state, descriptors, navigation }) => {
       pointerEvents={keyboardVisible ? 'none' : 'box-none'}
     >
       <View style={[styles.bar, { width: barWidth }]} accessibilityRole="tablist">
-        <Animated.View style={[styles.indicator, indicatorStyle]} />
         <View style={styles.items}>
+          <Animated.View style={[styles.indicatorTrack, indicatorStyle]} pointerEvents="none">
+            <View style={styles.indicator} />
+          </Animated.View>
           {routes.map((route, index) => {
             const { options } = descriptors[route.key];
             const focused = activeIndex === index;
@@ -166,6 +189,7 @@ const FloatingTabBar = ({ state, descriptors, navigation }) => {
             const onPress = () => {
               const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
               if (!focused && !event.defaultPrevented) {
+                haptics.tap();
                 navigation.navigate(route.name, route.params);
               }
             };
@@ -179,10 +203,13 @@ const FloatingTabBar = ({ state, descriptors, navigation }) => {
                 focused={focused}
                 onPress={onPress}
                 onLongPress={onLongPress}
+                onLayout={(event) => onItemLayout(route.key, event.nativeEvent.layout)}
               />
             );
           })}
         </View>
+        {/* The hairline border is drawn over the bar, so it takes no part in the layout. */}
+        <View style={styles.border} pointerEvents="none" />
       </View>
     </Animated.View>
   );
@@ -197,23 +224,31 @@ const styles = StyleSheet.create({
   },
   bar: {
     height: TAB_BAR_HEIGHT,
-    justifyContent: 'center',
     borderRadius: TAB_BAR_HEIGHT / 2,
     backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
     ...shadow.soft,
   },
-  // The bar has no padding so the absolutely positioned indicator shares the items' origin.
+  border: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: TAB_BAR_HEIGHT / 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  // Items and indicator share this row, so they share one origin.
   items: {
     flex: 1,
     flexDirection: 'row',
-    marginHorizontal: BAR_PADDING,
+    paddingHorizontal: BAR_PADDING,
+  },
+  indicatorTrack: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: INDICATOR_SIZE,
+    justifyContent: 'center',
   },
   indicator: {
-    position: 'absolute',
-    left: 0,
-    top: (TAB_BAR_HEIGHT - INDICATOR_SIZE) / 2 - StyleSheet.hairlineWidth,
     width: INDICATOR_SIZE,
     height: INDICATOR_SIZE,
     borderRadius: INDICATOR_SIZE / 2,
