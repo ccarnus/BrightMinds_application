@@ -27,8 +27,9 @@ import BackButton, { BACK_BUTTON_SIZE } from '@shared/components/BackButton';
 
 const { width, height } = Dimensions.get('window');
 
-const MAX_ACTIVITY = 9000;
-const MAX_IMPACT = 2000;
+// The backend scores activity and impact from 0 to 100 within the topic's lab.
+const MAX_ACTIVITY = 100;
+const MAX_IMPACT = 100;
 const MAX_CITATIONS = 8000000;
 const GAUGE_SIZE = Math.min(width * 0.35, 160);
 const INITIAL_HEADER_HEIGHT = Math.min(height / 4, 260);
